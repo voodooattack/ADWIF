@@ -1,0 +1,22 @@
+{
+  "type":"array",
+  "items": {
+    "type":"object",
+    "properties": {
+      "name":{"type":"string","minSize":1, "pattern":"^\\w+$"},
+      "description":{"type":"string"},
+      "dispName":{
+        "type":"array",
+        "items": {
+          "type":"string",
+          "minSize":1
+        },
+        "minItems":3,
+        "maxItems":3
+      },
+      "maleOnly":{"type":"boolean"},
+      "femaleOnly":{"type":"boolean"}
+    },
+    "required":["name","dispName"]
+  }
+}

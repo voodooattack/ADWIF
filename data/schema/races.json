@@ -1,0 +1,22 @@
+{
+  "type":"array",
+  "items": {
+    "type":"object",
+    "properties": {
+      "name":{"type":"string","minSize":1, "pattern":"^\\w+$"},
+      "description":{"type":"string","minSize":1},
+      "dispName":{"type":"string"},
+      "factions":{
+        "type":"array",
+        "items": {"type":"string","minSize":1}
+      },
+      "allowedProfessions":{
+        "type":"array",
+        "items": {"type":"string","minSize":1}
+      },
+      "maleOnly":{"type":"boolean"},
+      "femaleOnly":{"type":"boolean"}
+    },
+    "required":["name","description"]
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "type":"array",
+  "items": {
+    "type":"object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "minSize": 1,
+        "pattern": "^\\w+$"
+      },
+      "description": {
+        "type": "string"
+      },
+      "sym": {
+        "type": "string",
+        "minSize": 1,
+        "maxSize": 1
+      },
+      "style": {
+        "type": "object",
+        "properties": {
+          "fgcolour": {
+            "type":"string",
+            "oneOf": ["Default", "Black", "Red", "Green", "Yellow", "Blue", "Magenta", "Cyan", "White"],
+            "caseSensetive":false
+          },
+          "bgcolour": {
+            "type":"string",
+            "oneOf": ["Default", "Black", "Red", "Green", "Yellow", "Blue", "Magenta", "Cyan", "White"],
+            "caseSensetive":false
+          },
+          "attributes": {
+            "type":"array",
+            "items":{
+              "type":"string",
+              "oneOf": ["Normal", "Bold", "Dim", "Underline", "StandOut", "AltCharSet"],
+              "caseSensetive":false
+            }
+          }
+        }
+      },
+      "materials": {
+        "type":"array",
+        "items": {
+          "type":"string",
+          "minSize": 1,
+          "pattern": "^\\w+$"
+        }
+      },
+      "layerStart": { "type":"integer" },
+      "layerEnd": { "type":"integer" },
+      "mapColour": { "type":"string", "pattern":"^#[A-Fa-f0-9]{6}$" },
+      "background": { "type":"boolean" }
+    },
+    "required": [ "name", "sym", "style" ]
+  }
+}

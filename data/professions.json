@@ -1,0 +1,77 @@
+[
+  {
+    "name":"ManAtArms",
+    "dispName": ["Man at Arms", "Woman at Arms", "Men at Arms"],
+    "description":"With sword and bow you take on the world."
+  },
+  {
+    "name":"Steward",
+    "dispName": ["Steward", "Stewardess", "Stewards"],
+    "description":"You have lived your life as a steward, now it's time to strike off and see the wonders of the world."
+  },
+  {
+    "name":"Smith",
+    "dispName": ["Smith", "Smith", "Smiths"],
+    "description":"Sword, armour, shield. You have made them all, perhaps it is time you try your own gear on."
+  },
+  {
+    "name":"Performer",
+    "dispName": ["Performer", "Performer", "Performers"],
+    "description":""
+  },
+  {
+    "name":"Knave",
+    "dispName": ["Knave", "Knave", "Knaves"],
+    "description":""
+  },
+  {
+    "name":"Hunter",
+    "dispName": ["Hunter", "Huntress", "Hunters"],
+    "description":""
+  },
+  {
+    "name":"Merchant",
+    "dispName": ["Merchant", "Merchant", "Merchants"],
+    "description":""
+  },
+  {
+    "name":"Maester",
+    "dispName": ["Maester", "Maester", "Maesters"],
+    "description":"",
+    "maleOnly": true
+  },
+//  {
+//    "name":"Knight",
+//    "dispName": ["Knight", "Knight", "Knights"],
+//    "description":"",
+//    "title":"Ser",
+//    "maleOnly": true
+//  },
+  {
+    "name":"Raider",
+    "dispName": ["Raider", "Raider", "Raiders"],
+    "description":"",
+    "maleOnly": true
+  },
+  {
+    "name":"WaterDancer",
+    "dispName": ["Water Dancer", "Water Dancer", "Water Dancers"],
+    "description":""
+  },
+  {
+    "name":"Bloodrider",
+    "dispName": ["Bloodrider", "Bloodrider", "Bloodriders"],
+    "description":"",
+    "maleOnly": true
+  },
+  {
+    "name":"Septon",
+    "dispName": ["Wandering Septon", "Wandering Septa", "Septons"],
+    "description":""
+  },
+  {
+    "name":"Skinchanger",
+    "dispName": ["Skinchanger", "Skinchanger", "Skinchanger"],
+    "description":""
+  }
+]

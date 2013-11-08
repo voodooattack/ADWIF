@@ -1,0 +1,30 @@
+[
+  {
+    "name":"HouseTully",
+    "dispName":"House Tully",
+    "surname":"Tully",
+    "home":"Riverrun",
+    "noble":true
+  },
+  {
+    "name":"HouseStark",
+    "dispName":"House Stark",
+    "surname":"Stark",
+    "home":"Winterfell",
+    "noble":true
+  },
+  {
+    "name":"HouseLannister",
+    "dispName":"House Lannister",
+    "surname":"Lannister",
+    "home":"CasterlyRock",
+    "noble":true
+  },
+  {
+    "name":"HouseBaratheon",
+    "dispName":"House Baratheon",
+    "surname":"Baratheon",
+    "home":"StormsEnd",
+    "noble":true
+  }
+]
