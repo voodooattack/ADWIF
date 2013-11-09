@@ -1,0 +1,105 @@
+[
+  {
+    "name":"Ranged",
+    "description": "Skill at aiming missiles."
+  },
+  {
+    "name":"Archery",
+    "description": "Skill at using the bow and arrow.",
+    "dependencies": ["Ranged"]
+  },
+  {
+    "name":"Crossbow",
+    "description": "Skill at using crossbows and bolts.",
+    "dependencies": ["Ranged"]
+  },
+  {
+    "name":"Throwing",
+    "description": "Skill at throwing things.",
+    "dependencies": ["Ranged"]
+  },
+  {
+    "name":"Fighting",
+    "description": "General skill at fighting."
+  },
+  {
+    "name":"Melee",
+    "description":"Skill at using melee weapons.",
+    "dependencies": ["Fighting"]
+  },
+  {
+    "name":"Swords",
+    "description": "Skill at using one-handed swords.",
+    "dependencies": ["Melee"]
+  },
+  {
+    "name":"Axes",
+    "description": "Skill at using axes, hatchets, and cleavers.",
+    "dependencies": ["Melee"]
+  },
+  {
+    "name":"Shields",
+    "description": "Skill at wielding shields and bucklers.",
+    "dependencies": ["Melee"]
+  },
+  {
+    "name":"DualWielding",
+    "dispName": "Dual-Wielding",
+    "description": "Skill at wielding two weapons.",
+    "dependencies": ["Melee"]
+  },
+  {
+    "name":"HandToHand",
+    "dispName": "Hand-To-Hand Combat",
+    "description": "Skill at using the body to attack foes.",
+    "dependencies": ["Fighting"]
+  },
+  {
+    "name":"Crafting",
+    "description": "Skill at creating things."
+  },
+  {
+    "name":"Carpentry",
+    "description": "Skill at constructing buildings and furniture.",
+    "dependencies": ["Crafting"],
+    "activeSkill": true
+  },
+  {
+    "name":"Herbalism",
+    "description": "Skill at the collection and identification of herbs and plants.",
+    "dependencies": ["Crafting"],
+    "activeSkill": true
+  },
+  {
+    "name":"Alchemy",
+    "description": "Skill at producing alchemical concoctions and potions.",
+    "dependencies": ["Herbalism"],
+    "activeSkill": true
+  },
+  {
+    "name":"Cooking",
+    "description": "Skill at creating cooked meals.",
+    "dependencies": ["Crafting"],
+    "activeSkill": true
+  },
+  {
+    "name":"Smithing",
+    "description": "Skill at shaping metal.",
+    "dependencies": ["Crafting"],
+    "activeSkill": true
+  },
+  {
+    "name":"Lore",
+    "description": "Your general knowledge of the world, its people, objects, and places."
+  },
+  {
+    "name":"Appraising",
+    "description": "Skill at estimating the value of objects.",
+    "dependencies": ["Lore"]
+  },
+  {
+    "name":"Haggling",
+    "description": "Skill at selling and buying things.",
+    "dependencies": ["Appraising"]
+  }
+]
