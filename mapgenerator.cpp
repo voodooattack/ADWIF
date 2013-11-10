@@ -67,6 +67,7 @@ namespace ADWIF
       return;
 
     std::uniform_int_distribution<int> ud(0, biome->materials.size()-1);
+    std::bernoulli_distribution bd(0.01);
 
     for (unsigned int yy = offy; yy < offy + myChunkSizeY; yy++)
     {
@@ -75,7 +76,10 @@ namespace ADWIF
         std::string mat = biome->materials[ud(myRandomEngine)];
         std::uniform_int_distribution<int> ud2(0, myGame->materials()[mat]->disp[TerrainType::Floor].size() - 1);
         MapCell c;
-        c.type = TerrainType::Floor;
+        if (!bd(myRandomEngine))
+          c.type = TerrainType::Floor;
+        else
+          c.type = TerrainType::Wall;
         c.material = mat;
         c.symIdx = ud2(myRandomEngine);
         c.biome = biome->name;

@@ -31,6 +31,8 @@ int main(int argc, char ** argv)
 {
   //signal(SIGINT, sig_handler);      /* arrange interrupts to terminate */
 
+  std::ios_base::sync_with_stdio (false);
+  
   setlocale(LC_CTYPE, "");
 
   PhysFS::init(argv[0]);

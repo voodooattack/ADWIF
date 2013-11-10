@@ -259,10 +259,10 @@ namespace ADWIF
 
   void Game::createMap()
   {
-    myCacheStream.open(saveDir + dirSep + "cache",
+    myCacheStream.open(saveDir + dirSep + "index",
                        std::ios_base::out | std::ios_base::trunc);
     myCacheStream.close();
-    myCacheStream.open(saveDir + dirSep + "cache",
+    myCacheStream.open(saveDir + dirSep + "index",
                        std::ios_base::binary | std::ios_base::in | std::ios_base::out);
 
     MapCell bg;
@@ -272,15 +272,15 @@ namespace ADWIF
     bg.symIdx = 0;
 
     myBank.reset(new MapBank(myCacheStream));
-    myMap.reset(new Map(myBank, saveDir + dirSep + "map", false, 512, 512, 512, bg));
+    myMap.reset(new Map(myBank, saveDir + dirSep + "map", false, 1024, 1024, 1024, bg));
   }
 
   void Game::loadMap()
   {
-    myCacheStream.open(saveDir + dirSep + "cache",
+    myCacheStream.open(saveDir + dirSep + "index",
                        std::ios_base::out | std::ios_base::app);
     myCacheStream.close();
-    myCacheStream.open(saveDir + dirSep + "cache",
+    myCacheStream.open(saveDir + dirSep + "index",
                        std::ios_base::binary | std::ios_base::in | std::ios_base::out);
 
     MapCell bg;
@@ -290,7 +290,7 @@ namespace ADWIF
     bg.symIdx = 0;
 
     myBank.reset(new MapBank(myCacheStream));
-    myMap.reset(new Map(myBank, saveDir + dirSep + "map", true, 512, 512, 512, bg));
+    myMap.reset(new Map(myBank, saveDir + dirSep + "map", true, 1024, 1024, 1024, bg));
   }
 
   void Game::saveMap()

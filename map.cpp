@@ -1,126 +1,27 @@
 #include "map.hpp"
 #include "map_p.hpp"
-#include <unordered_set>
 
 #include <boost/filesystem.hpp>
-#include <boost/functional/hash.hpp>
-#include <boost/serialization/serialization.hpp>
-#include <boost/archive/binary_oarchive.hpp>
-#include <boost/archive/binary_iarchive.hpp>
+#include <boost/iostreams/device/file.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/filter/bzip2.hpp>
+#include <boost/iostreams/copy.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include <openvdb/io/Stream.h>
 
+namespace iostreams = boost::iostreams;
 
 namespace ADWIF
 {
-  MapBank::MapBank(std::iostream & stream) : myStream(stream), myCache(), myAccessTimes()
-  {
-    if (!stream.good())
-      throw std::runtime_error("bad stream state initializing map bank");
-  }
-
-  const MapCell & MapBank::get(uint64_t hash)
-  {
-    auto cell = myCache.find(hash);
-    if (cell == myCache.end())
-    {
-      myCache[hash] = loadCell(hash);
-    }
-    myAccessTimes[hash] = myClock.now();
-    if (myCache.size() > 1024 * 1024)
-      prune();
-    return myCache[hash];
-  }
-
-  void MapBank::prune(bool pruneAll)
-  {
-    std::unordered_map<uint64_t, MapCell> toStore;
-    auto i = myAccessTimes.begin();
-    while (i != myAccessTimes.end())
-    {
-      if (pruneAll || myClock.now() - i->second > std::chrono::seconds(4))
-      {
-        auto item = myCache.find(i->first);
-        toStore.insert({item->first, item->second});
-        myCache.erase(myCache.find(i->first));
-        i = myAccessTimes.erase(i);
-      } else ++i;
-    }
-    myStream.seekg(std::ios_base::beg);
-    myStream.seekp(std::ios_base::beg);
-    while (!toStore.empty())
-    {
-      uint64_t fhash;// = read<uint64_t>(myStream);
-      uint32_t size; // = read<uint32_t>(myStream);
-      //
-      if (read<uint64_t>(myStream, fhash) && read<uint32_t>(myStream, size))
-      {
-        myStream.seekg(size, std::ios_base::cur);
-        toStore.erase(fhash);
-      }
-      else
-      {
-        myStream.clear();
-        myStream.seekp(myStream.tellg(), std::ios_base::beg);
-        for (auto const & i : toStore)
-        {
-          write<uint64_t>(myStream, i.first);
-          std::ostringstream ss(std::ios_base::binary);
-          {
-            boost::archive::binary_oarchive io(ss, boost::archive::no_header);
-            io & i.second;
-          }
-          const std::string str = ss.str();
-          write<std::string::value_type,uint32_t>(myStream, str);
-        }
-        break;
-      }
-    }
-  }
-
-  MapCell MapBank::loadCell(uint64_t hash)
-  {
-    myStream.seekg(std::ios_base::beg);
-    MapCell cell;
-
-    while (myStream.good())
-    {
-      uint64_t fhash;
-      uint32_t size;
-      if (!read<uint64_t>(myStream, fhash) || !read<uint32_t>(myStream, size))
-        throw std::runtime_error("malformed map bank");
-
-      if (fhash == hash)
-      {
-        boost::archive::binary_iarchive ia(myStream, boost::archive::no_header);
-        ia & cell;
-        return std::move(cell);
-      }
-      else
-        myStream.seekg(size, std::ios_base::cur);
-    }
-
-    throw std::runtime_error("stream error finding cell " + boost::lexical_cast<std::string>(hash));
-    //return MapCell();
-  }
-
-  uint64_t MapBank::put(const MapCell & cell)
-  {
-    uint64_t hash = cell.hash();
-    myAccessTimes[hash] = myClock.now();
-    if (myCache.find(hash) == myCache.end())
-      myCache[hash] = cell;
-    return hash;
-  }
-
   MapImpl::MapImpl(Map * parent, std::shared_ptr<MapBank> & bank,
                    const std::string & mapPath, bool load, unsigned int chunkSizeX,
                    unsigned int chunkSizeY, unsigned int chunkSizeZ,
                    const MapCell & bgValue):
-    myMap(parent), myGrids(), myBank(bank), myChunkSize(chunkSizeX, chunkSizeY, chunkSizeZ),
-    myAccessTolerance(2000000), myBackgroundValue(0), myMapPath(mapPath), myClock(),
-    myAccessCounter(0), myMemThresholdMB(800), myDurationThreshold(boost::chrono::minutes(10))
+    myMap(parent), myChunks(), myBank(bank), myChunkSize(chunkSizeX, chunkSizeY, chunkSizeZ),
+    myAccessTolerance(200000), myBackgroundValue(0), myMapPath(mapPath), myClock(),
+    myAccessCounter(0), myMemThresholdMB(800), myDurationThreshold(boost::chrono::minutes(1)),
+    myService(), myThreads(), myServiceLock()
   {
     if (!myInitialisedFlag)
     {
@@ -134,15 +35,24 @@ namespace ADWIF
       boost::filesystem::remove_all(myMapPath);
       boost::filesystem::create_directory(myMapPath);
     }
+    myServiceLock.reset(new boost::asio::io_service::work(myService));
+    int nthreads = boost::thread::hardware_concurrency() - 1;
+    /* if (nthreads < 1) */ nthreads = 2;
+    while(nthreads--)
+      myThreads.create_thread(boost::bind(&boost::asio::io_service::run, &myService));
+    myService.post(boost::bind(&MapImpl::pruneTask, this));
   }
 
   MapImpl::~MapImpl()
   {
+    myServiceLock.reset();
+    myService.stop();
+    myThreads.join_all();
   }
 
   const MapCell & MapImpl::get(int x, int y, int z) const
   {
-    std::shared_ptr<GridType::Accessor> grid = getChunkAccessor(x, y, z)->accessor;
+    std::shared_ptr<GridType::Accessor> grid = getChunk(x, y, z)->accessor;
     if (myAccessCounter++ % myAccessTolerance == 0)
       prune(false);
     return myBank->get(grid->getValue(ovdb::Coord(x, y, z)));
@@ -152,46 +62,68 @@ namespace ADWIF
   {
     uint64_t hash = myBank->put(cell);
 
-    std::shared_ptr<GridEntry> grid = getChunkAccessor(x, y, z);
+    std::shared_ptr<Chunk> grid = getChunk(x, y, z);
 
     if (hash == myBackgroundValue)
       grid->accessor->setValueOff(ovdb::Coord(x, y, z), hash);
     else
       grid->accessor->setValue(ovdb::Coord(x, y, z), hash);
 
-    myAccessCounter++;
+   myAccessCounter++;
 
-    if (myAccessCounter % myAccessTolerance == 0)
-      grid->memUse = grid->grid->memUsage();
-
-    if (!myGrids.empty() && (myAccessCounter % myAccessTolerance == 0))
+    if (!myChunks.empty() && (myAccessCounter % myAccessTolerance == 0))
     {
       prune(false);
     }
   }
 
+  void MapImpl::pruneTask()
+  {
+    //prune(false);
+    //boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+    //myService.post(boost::bind(&MapImpl::pruneTask, this));
+  }
+
   void MapImpl::prune(bool pruneAll) const
   {
-    if (myGrids.size() <= 1 && !pruneAll) return;
+    if (myChunks.size() <= 1 && !pruneAll) return;
 
-    std::vector<std::shared_ptr<GridEntry>> toStore;
-    std::vector<std::pair<ovdb::Vec3I, std::shared_ptr<GridEntry>>> accessTimesSorted;
-    {
-      accessTimesSorted.assign(myGrids.begin(), myGrids.end());
-    }
+    boost::recursive_mutex::scoped_lock guard(myLock);
+
+    std::vector<std::pair<ovdb::Vec3I, std::shared_ptr<Chunk>>> accessTimesSorted;
+    accessTimesSorted.assign(myChunks.begin(), myChunks.end());
+
+    accessTimesSorted.erase(std::remove_if(accessTimesSorted.begin(), accessTimesSorted.end(),
+                            [](const std::pair<ovdb::Vec3I, std::shared_ptr<Chunk>> pair)
+                            {
+                              return !pair.second;
+                            }));
 
     std::sort(accessTimesSorted.begin(), accessTimesSorted.end(),
-              [](const std::pair<ovdb::Vec3I, std::shared_ptr<GridEntry>> & first,
-                 const std::pair<ovdb::Vec3I, std::shared_ptr<GridEntry>> & second)
+              [](const std::pair<ovdb::Vec3I, std::shared_ptr<Chunk>> & first,
+                 const std::pair<ovdb::Vec3I, std::shared_ptr<Chunk>> & second)
     {
       return first.second->lastAccess < second.second->lastAccess;
     });
 
-    unsigned long int memUse = myMemThresholdMB ? getMemUsage() / (1024 * 1024) : 0;
-/*    for(auto const & i : myGrids)
-      memUse += i.second->memUse;
-    memUse /= 1024 * 1024; */
-    unsigned long int freed = memUse;
+    unsigned long int memUse = 0;
+
+    if (myMemThresholdMB)
+    {
+      for(auto const & i : accessTimesSorted)
+      {
+        if (i.second)
+        {
+          boost::mutex::scoped_lock guard(i.second->lock);
+          if (i.second->grid && i.second)
+            memUse += i.second->grid->memUsage();
+        }
+      }
+    }
+
+    memUse /= (1024 * 1024);
+
+//    unsigned long int freed = memUse;
 
     {
       auto i = accessTimesSorted.begin();
@@ -199,36 +131,28 @@ namespace ADWIF
       {
         if (pruneAll || myClock.now() - i->second->lastAccess > myDurationThreshold || (memUse > myMemThresholdMB))
         {
-          auto item = myGrids.find(i->first);
-          toStore.push_back(item->second);
-          myGrids.erase(myGrids.find(i->first));
-          i = accessTimesSorted.erase(i);
-          if (myMemThresholdMB && (freed -= item->second->grid->memUsage()) <= 0)
-            break;
+          auto item = myChunks.find(i->first);
+          myChunks.erase(item);
+          boost::mutex::scoped_lock guard(item->second->lock);
+          if (item->second->grid)
+          {
+            myService.post(boost::bind(&MapImpl::saveChunk, this, item->second));
+            i = accessTimesSorted.erase(i);
+/*            if (myMemThresholdMB)
+            {
+              freed -= item->second->grid->memUsage();
+              if (freed <= myMemThresholdMB)
+                break;
+            } */
+          } else ++i;
         } else ++i;
       }
     }
 
-    for (auto & i : toStore)
-    {
-      std::shared_ptr<ovdb::io::File> file;
-      if (i->file)
-        file = i->file;
-      else
-      {
-        std::string gridName = i->fileName;
-        file.reset(new ovdb::io::File(myMapPath + dirSep + gridName));
-        i->file = file;
-      }
-      if (file->isOpen())
-        file->close();
-      std::vector<GridType::Ptr> gv = { i->grid };
-      file->setCompressionEnabled(true);
-      file->write(gv);
-      file->close();
-    }
-
     myBank->prune(pruneAll);
+
+    if(memUse > myMemThresholdMB)
+      myService.poll();
   }
 
   std::string MapImpl::getChunkName(const ovdb::Vec3I & v) const
@@ -240,48 +164,70 @@ namespace ADWIF
     return boost::str( boost::format("%x") % hash );
   }
 
-  std::shared_ptr<MapImpl::GridEntry> & MapImpl::getChunkAccessor(int x, int y, int z) const
+  std::shared_ptr<MapImpl::Chunk> & MapImpl::getChunk(int x, int y, int z) const
   {
     ovdb::Vec3I vec(x, y, z);
     vec /= myChunkSize;
     GridType::Ptr grid;
 
-    if (myGrids[vec])
-      grid = myGrids[vec]->grid;
+    if (myChunks.find(vec) != myChunks.end())
+    {
+      grid = myChunks[vec]->grid;
+    }
     else
     {
-      myGrids[vec].reset(new GridEntry);
-      myGrids[vec]->fileName = getChunkName(vec);
+      myChunks[vec].reset(new Chunk);
+      myChunks[vec]->fileName = getChunkName(vec);
     }
 
-    myGrids[vec]->lastAccess = myClock.now();
+    myChunks[vec]->lastAccess = myClock.now();
 
     if (!grid)
     {
-      const std::string & gridName = myGrids[vec]->fileName;
-      if (myGrids[vec]->file)
-      {
-        if (myGrids[vec]->file->isOpen()) myGrids[vec]->file->open();
-        grid = ovdb::gridPtrCast<GridType>(myGrids[vec]->file->readGrid(gridName));
-      }
-      else if (boost::filesystem::exists(myMapPath + dirSep + gridName))
-      {
-        std::shared_ptr<ovdb::io::File> file(new ovdb::io::File(myMapPath + dirSep + gridName));
-        file->open();
-        grid = ovdb::gridPtrCast<GridType>(file->readGrid(gridName));
-        myGrids[vec]->file = file;
-      }
-      else
-      {
-        grid = GridType::create(myBackgroundValue);
-        grid->setName(gridName);
-      }
+      loadChunk(myChunks[vec]);
     }
 
-    myGrids[vec]->grid = grid;
-    myGrids[vec]->accessor = std::shared_ptr<GridType::Accessor>(new GridType::Accessor(grid->getAccessor()));
+    return myChunks[vec];
+  }
 
-    return myGrids[vec];
+  void MapImpl::loadChunk(std::shared_ptr<Chunk> & chunk) const
+  {
+    boost::mutex::scoped_lock guard(chunk->lock);
+    if (boost::filesystem::exists(myMapPath + dirSep + chunk->fileName) &&
+        boost::filesystem::file_size(myMapPath + dirSep + chunk->fileName) > 0)
+    {
+      iostreams::file_source fs(myMapPath + dirSep + chunk->fileName);
+      iostreams::filtering_istream is;
+      is.push(iostreams::bzip2_decompressor());
+      is.push(fs);
+      ovdb::io::Stream ss(is);
+      ss.setCompressionEnabled(false);
+      ovdb::GridPtrVecPtr vc = ss.getGrids();
+      chunk->grid = ovdb::gridPtrCast<GridType>(vc->operator[](0));
+    }
+    else
+    {
+      chunk->grid = GridType::create(myBackgroundValue);
+      chunk->grid->setName(chunk->fileName);
+    }
+    chunk->accessor.reset(new GridType::Accessor(chunk->grid->getAccessor()));
+  }
+
+  void MapImpl::saveChunk(std::shared_ptr<Chunk> & chunk) const
+  {
+    boost::mutex::scoped_lock guard(chunk->lock);
+    if (!chunk->grid)
+      return;
+    iostreams::file_sink fs(myMapPath + dirSep + chunk->fileName);
+    iostreams::filtering_ostream os;
+    os.push(iostreams::bzip2_compressor());
+    os.push(fs);
+    ovdb::io::Stream ss;
+    ss.setCompressionEnabled(false);
+    ovdb::GridPtrVec vc = { chunk->grid };
+    ss.write(os, vc);
+    chunk->grid.reset();
+    chunk->accessor.reset();
   }
 
   const MapCell & MapImpl::background() const { return myBank->get(myBackgroundValue); }

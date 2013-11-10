@@ -3,7 +3,7 @@
     "name":"Dirt",
     "disp":{
       "Floor": [{ "sym":"." }, { "sym":"," }, { "sym":"`" }, { "sym":";" }],
-      "Wall":  [{ "sym":"#", "style":{ "bgcolour":"Yellow" }}],
+      "Wall":  [{ "sym":"#", "usym":"░", "style":{ "fgcolour":"Yellow", "bgcolour":"Black" }}],
       "RampU": [{ "sym":"^", "usym":"▴" }],
       "RampD": [{ "sym":"v", "usym":"▾" }]
     },
@@ -13,7 +13,7 @@
     "name":"Snow",
     "disp":{
       "Floor": [{ "sym":"." }, { "sym":"," }, { "sym":"`" }, { "sym":";" }],
-      "Wall":  [{ "sym":"#", "style":{ "bgcolour":"White" }}],
+      "Wall":  [{ "sym":"#", "usym":"░", "style":{ "fgcolour":"Black", "bgcolour":"White" }}],
       "RampU": [{ "sym":"^", "usym":"▴" }],
       "RampD": [{ "sym":"v", "usym":"▾" }]
     },
@@ -23,7 +23,7 @@
     "name":"Ice",
     "disp":{
       "Floor": [{ "sym":"." }, { "sym":"," }, { "sym":"`" }, { "sym":";" }],
-      "Wall":  [{ "sym":"#", "style":{ "bgcolour":"Cyan" }}],
+      "Wall":  [{ "sym":"#", "usym":"░", "style":{ "fgcolour":"Cyan", "bgcolour":"Black" }}],
       "RampU": [{ "sym":"^", "usym":"▴" }],
       "RampD": [{ "sym":"v", "usym":"▾" }]
     },
@@ -33,7 +33,7 @@
     "name":"Sand",
     "disp":{
       "Floor": [{ "sym":"," }, { "sym":"." }, { "sym":"`" }],
-      "Wall":  [{ "sym":"~", "style":{ "bgcolour":"Yellow" }}],
+      "Wall":  [{ "sym":"~", "usym":"░", "style":{ "fgcolour":"White", "bgcolour":"Yellow" }}],
       "RampU": [{ "sym":"^", "usym":"▴" }],
       "RampD": [{ "sym":"v", "usym":"▾" }]
     },
@@ -43,7 +43,7 @@
     "name": "Rock",
     "disp":{
       "Floor": [{ "sym":"," }, { "sym":"." }, { "sym":"`" }],
-      "Wall":  [{ "sym":"#", "style":{ "bgcolour":"White" }}],
+      "Wall":  [{ "sym":"#", "usym":"░", "style":{ "bgcolour":"White" }}],
       "RampU": [{ "sym":"^", "usym":"▴" }],
       "RampD": [{ "sym":"v", "usym":"▾" }]
     },
@@ -53,7 +53,7 @@
     "name": "Water",
     "disp":{
       "Floor": [{ "sym":"~" }],
-      "Wall":  [{ "sym":"~", "style":{ "bgcolour":"Blue", "attributes":["Bold"] }}],
+      "Wall":  [{ "sym":"~", "usym":"░", "style":{ "bgcolour":"Blue", "attributes":["Bold"] }}],
       "RampU": [{ "sym":"^", "usym":"▴" }],
       "RampD": [{ "sym":"^", "usym":"▾" }]
     },
@@ -64,7 +64,7 @@
     "name": "SaltWater",
     "disp":{
       "Floor": [{ "sym":"~" }],
-      "Wall":  [{ "sym":"~", "style":{ "fgcolour":"White", "bgcolour":"Blue", "attributes":["Dim"] }}],
+      "Wall":  [{ "sym":"~", "usym":"░", "style":{ "fgcolour":"White", "bgcolour":"Blue", "attributes":["Dim"] }}],
       "RampU": [{ "sym":"^", "usym":"▴", "style":{ "attributes":["Bold"] }}],
       "RampD": [{ "sym":"v", "usym":"▾", "style":{ "attributes":["Bold"] }}]
     },

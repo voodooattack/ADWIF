@@ -13,6 +13,7 @@
 
 #include <boost/thread.hpp>
 #include <boost/lockfree/queue.hpp>
+#include <boost/asio/io_service.hpp>
 
 #include "map.hpp"
 
@@ -46,14 +47,13 @@ namespace ADWIF
     using time_point = clock_type::time_point;
     using duration_type = clock_type::duration;
 
-    struct GridEntry
+    struct Chunk
     {
       GridType::Ptr grid;
       std::shared_ptr<GridType::Accessor> accessor;
-      std::shared_ptr<ovdb::io::File> file;
       time_point lastAccess;
       std::string fileName;
-      unsigned long int memUse;
+      boost::mutex lock;
     };
 
   public:
@@ -68,15 +68,29 @@ namespace ADWIF
 
     uint64_t getVoxelCount() const {
       uint64_t count = 0;
-      for(auto const & i : myGrids)
-        count += i.second->grid->activeVoxelCount();
+      boost::recursive_mutex::scoped_lock guard(myLock);
+      for(auto const & i : myChunks)
+        if (i.second)
+        {
+          boost::mutex::scoped_lock guard(i.second->lock);
+          if (i.second->grid)
+            count += i.second->grid->activeVoxelCount();
+        }
       return count;
     }
 
-    uint64_t getMemUsage() const {
-      uint64_t count = 0;
-      for(auto const & i : myGrids)
-        count += i.second->grid->memUsage();
+    unsigned long int getMemUsage() const {
+      unsigned long int count = 0;
+      boost::recursive_mutex::scoped_lock guard(myLock);
+      for(auto const & i : myChunks)
+      {
+        if (i.second)
+        {
+          boost::mutex::scoped_lock guard(i.second->lock);
+          if (i.second->grid && i.second)
+            count += i.second->grid->memUsage();
+        }
+      }
       return count;
     }
 
@@ -86,17 +100,20 @@ namespace ADWIF
 
   private:
     std::string getChunkName(const ovdb::Vec3I & v) const;
-    std::shared_ptr<GridEntry> & getChunkAccessor(int x, int y, int z) const;
+    std::shared_ptr<Chunk> & getChunk(int x, int y, int z) const;
 
-    void pruneThread();
+    void loadChunk(std::shared_ptr<Chunk> & chunk) const;
+    void saveChunk(std::shared_ptr<Chunk> & chunk) const;
+
+    void pruneTask();
 
   private:
 
 
-    typedef std::unordered_map<ovdb::Vec3I, std::shared_ptr<GridEntry>> GridMap;
+    typedef std::unordered_map<ovdb::Vec3I, std::shared_ptr<Chunk>> GridMap;
 
     class Map * const myMap;
-    mutable GridMap myGrids;
+    mutable GridMap myChunks;
     std::shared_ptr<MapBank> myBank;
     ovdb::Vec3I myChunkSize;
     unsigned long int myAccessTolerance;
@@ -106,6 +123,12 @@ namespace ADWIF
     mutable unsigned long int myAccessCounter;
     unsigned long int myMemThresholdMB;
     duration_type myDurationThreshold;
+    mutable boost::asio::io_service myService;
+    boost::thread_group myThreads;
+    std::shared_ptr<boost::asio::io_service::work> myServiceLock;
+    mutable boost::recursive_mutex myLock;
+    unsigned long int myMemUsage;
+
     static bool myInitialisedFlag;
   };
 }

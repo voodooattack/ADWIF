@@ -23,7 +23,7 @@ namespace ADWIF
 
   MapGenState::~MapGenState() { myEngine->delay(50); myEngine->input()->setTimeout(0); }
 
-  fipImage & loadImage(const std::string & path, fipImage & image)
+  fipImage & loadImageFromFile(const std::string & path, fipImage & image)
   {
     PHYSFS_File * file = PHYSFS_openRead(path.c_str());
     FreeImageIO io = {
@@ -102,8 +102,8 @@ namespace ADWIF
     fipImage mapImg;
     fipImage hmapImg;
 
-    loadImage("/map/map.png", mapImg);
-    loadImage("/map/heightmap.png", hmapImg);
+    loadImageFromFile("/map/map.png", mapImg);
+    loadImageFromFile("/map/heightmap.png", hmapImg);
 
     mapImg.flipVertical();
     hmapImg.flipVertical();
@@ -111,8 +111,8 @@ namespace ADWIF
     myGenerator.mapImage(mapImg);
     myGenerator.heightmapImage(hmapImg);
 
-    myGenerator.chunkSizeX(512);
-    myGenerator.chunkSizeY(512);
+    myGenerator.chunkSizeX(1024);
+    myGenerator.chunkSizeY(1024);
 
     //myViewOffX = (mapImg.getWidth() / 2) * myGenerator.chunkSizeX();
     //myViewOffY = (mapImg.getHeight() / 2) * myGenerator.chunkSizeY();
