@@ -60,7 +60,7 @@ find_package(Boost 1.54.0 COMPONENTS serialization filesystem system iostreams r
 include_directories(${PROJECT_SOURCE_DIR} ${CURSES_INCLUDE_DIR} ${PHYSFS_INCLUDE_DIR} ${V8_INCLUDE_DIR} ${Boost_INCLUDE_DIRS} ${HALF_INCLUDE_DIRS}
                     ${PHYSFS_CPP_ROOT}/include ${JSONCPP_INCLUDE_DIR} ${OPENVDB_INCLUDE_DIRS} ${TBB_INCLUDE_DIRS} ${UTF8CPP_INCLUDE_DIR}
                     ${FREEIMAGE_INCLUDE_PATH})
-add_executable(adwif mapeditorstate.cpp mapgenerator.cpp mapgenstate.cpp item.cpp map.cpp fileutils.cpp jsonutils.cpp renderer.cpp animationutils.cpp util.cpp scripting.cpp game.cpp player.cpp newgamestate.cpp introanimation.cpp animation.cpp mainmenustate.cpp introstate.cpp engine.cpp curses.cpp main.cpp)
+add_executable(adwif imageutils.cpp serialisationutils.cpp mapbank.cpp mapeditorstate.cpp mapgenerator.cpp mapgenstate.cpp item.cpp map.cpp fileutils.cpp jsonutils.cpp renderer.cpp animationutils.cpp util.cpp scripting.cpp game.cpp player.cpp newgamestate.cpp introanimation.cpp animation.cpp mainmenustate.cpp introstate.cpp engine.cpp curses.cpp main.cpp)
 add_dependencies(adwif physfs++)
 target_link_libraries(adwif ${CURSES_LIBRARIES} ${PHYSFS_LIBRARY} ${V8_LIBRARIES} ${Boost_LIBRARIES} ${HALF_LIBRARIES} ${FREEIMAGE_LIBRARIES}
                       ${CMAKE_THREAD_LIBS_INIT} ${JSONCPP_LIBRARIES} ${OPENVDB_LIBRARIES} ${TBB_LIBRARIES} physfs++)

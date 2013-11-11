@@ -11,7 +11,7 @@ namespace ADWIF
   MapEditorState::MapEditorState(std::shared_ptr<ADWIF::Engine> & engine): myEngine(engine)
   {
     myGame.reset(new Game(engine));
-    myGenerator.reset(new MapGenerator(myGame));
+    //myGenerator.reset(new MapGenerator(myGame));
     myEngine->delay(200);
   }
 

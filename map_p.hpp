@@ -14,6 +14,7 @@
 #include <boost/thread.hpp>
 #include <boost/lockfree/queue.hpp>
 #include <boost/asio/io_service.hpp>
+#include <boost/asio/deadline_timer.hpp>
 
 #include "map.hpp"
 
@@ -53,7 +54,7 @@ namespace ADWIF
       std::shared_ptr<GridType::Accessor> accessor;
       time_point lastAccess;
       std::string fileName;
-      boost::mutex lock;
+      boost::recursive_mutex lock;
     };
 
   public:
@@ -72,7 +73,7 @@ namespace ADWIF
       for(auto const & i : myChunks)
         if (i.second)
         {
-          boost::mutex::scoped_lock guard(i.second->lock);
+          boost::recursive_mutex::scoped_lock guard(i.second->lock);
           if (i.second->grid)
             count += i.second->grid->activeVoxelCount();
         }
@@ -86,7 +87,7 @@ namespace ADWIF
       {
         if (i.second)
         {
-          boost::mutex::scoped_lock guard(i.second->lock);
+          boost::recursive_mutex::scoped_lock guard(i.second->lock);
           if (i.second->grid && i.second)
             count += i.second->grid->memUsage();
         }
@@ -127,7 +128,7 @@ namespace ADWIF
     boost::thread_group myThreads;
     std::shared_ptr<boost::asio::io_service::work> myServiceLock;
     mutable boost::recursive_mutex myLock;
-    unsigned long int myMemUsage;
+    mutable boost::atomic_bool myPruningInProgressFlag;
 
     static bool myInitialisedFlag;
   };

@@ -1,4 +1,5 @@
 #include "game.hpp"
+#include "adwif.hpp"
 #include "engine.hpp"
 #include "player.hpp"
 #include "renderer.hpp"
@@ -8,6 +9,9 @@
 #include "jsonutils.hpp"
 #include "introanimation.hpp"
 #include "map.hpp"
+#include "mapgenerator.hpp"
+#include "serialisationutils.hpp"
+#include "imageutils.hpp"
 
 #include <string>
 #include <iostream>
@@ -15,16 +19,24 @@
 #include <sstream>
 #include <unistd.h>
 #include <utf8.h>
-#include "adwif.hpp"
+
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/array.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/serialization/shared_ptr.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/device/file.hpp>
+#include <boost/iostreams/filter/bzip2.hpp>
 
 namespace ADWIF
 {
 
   Game::Game(std::shared_ptr<ADWIF::Engine> & engine): myEngine(engine), myPlayer(nullptr), myMap(nullptr),
-    myBank(nullptr), myCacheStream(), myRaces(), myProfessions(), mySkills(), myFactions(),
+    myBank(nullptr), myIndexStream(), myRaces(), myProfessions(), mySkills(), myFactions(),
     myMaterials(), myBiomes()
   {
-
   }
 
   Game::~Game()
@@ -259,10 +271,10 @@ namespace ADWIF
 
   void Game::createMap()
   {
-    myCacheStream.open(saveDir + dirSep + "index",
+    myIndexStream.open(saveDir + dirSep + "index",
                        std::ios_base::out | std::ios_base::trunc);
-    myCacheStream.close();
-    myCacheStream.open(saveDir + dirSep + "index",
+    myIndexStream.close();
+    myIndexStream.open(saveDir + dirSep + "index",
                        std::ios_base::binary | std::ios_base::in | std::ios_base::out);
 
     MapCell bg;
@@ -271,16 +283,39 @@ namespace ADWIF
     bg.material = "Air";
     bg.symIdx = 0;
 
-    myBank.reset(new MapBank(myCacheStream));
+    myBank.reset(new MapBank(myIndexStream));
     myMap.reset(new Map(myBank, saveDir + dirSep + "map", false, 1024, 1024, 1024, bg));
+
+    auto this_ = shared_from_this();
+    myGenerator.reset(new MapGenerator(this_, false));
+
+    fipImage mapImg;
+    fipImage hmapImg;
+
+    loadImageFromPhysFS("/map/map.png", mapImg);
+    loadImageFromPhysFS("/map/heightmap.png", hmapImg);
+
+    mapImg.flipVertical();
+    hmapImg.flipVertical();
+
+    myGenerator->mapImage(mapImg);
+    myGenerator->heightmapImage(hmapImg);
+
+    myGenerator->chunkSizeX(1024);
+    myGenerator->chunkSizeY(1024);
+
+    if (boost::filesystem::exists(saveDir + dirSep + "status"))
+      boost::filesystem::remove(saveDir + dirSep + "status");
+
+    myGenerator->init();
   }
 
   void Game::loadMap()
   {
-    myCacheStream.open(saveDir + dirSep + "index",
+    myIndexStream.open(saveDir + dirSep + "index",
                        std::ios_base::out | std::ios_base::app);
-    myCacheStream.close();
-    myCacheStream.open(saveDir + dirSep + "index",
+    myIndexStream.close();
+    myIndexStream.open(saveDir + dirSep + "index",
                        std::ios_base::binary | std::ios_base::in | std::ios_base::out);
 
     MapCell bg;
@@ -289,14 +324,38 @@ namespace ADWIF
     bg.material = "Air";
     bg.symIdx = 0;
 
-    myBank.reset(new MapBank(myCacheStream));
+    myBank.reset(new MapBank(myIndexStream));
     myMap.reset(new Map(myBank, saveDir + dirSep + "map", true, 1024, 1024, 1024, bg));
+
+    auto this_ = shared_from_this();
+    myGenerator.reset(new MapGenerator(this_, true));
+
+    if (boost::filesystem::exists(saveDir + dirSep + "generator"))
+    {
+      boost::iostreams::file_source fs(saveDir + dirSep + "generator");
+      boost::iostreams::filtering_istream os;
+      os.push(boost::iostreams::bzip2_decompressor());
+      os.push(fs);
+      boost::archive::binary_iarchive ia(os);
+      ia & *myGenerator;
+    }
+
+    myGenerator->init();
   }
 
   void Game::saveMap()
   {
     myMap->save();
     myBank->prune(true);
+
+    boost::iostreams::file_sink fs(saveDir + dirSep + "generator");
+    boost::iostreams::filtering_ostream os;
+    os.push(boost::iostreams::bzip2_compressor());
+    os.push(fs);
+    boost::archive::binary_oarchive oa(os);
+    oa & *myGenerator;
+
+    myGenerator->notifySave();
   }
 
   void Game::loadSkills(const Json::Value & skills)

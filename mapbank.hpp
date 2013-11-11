@@ -61,7 +61,7 @@ namespace ADWIF
 
   struct MapCell: public ItemContainer
   {
-    MapCell(): type(TerrainType::Floor), structure(None), material(), smaterial(), biome(), symIdx(0), visible(true), contents() {}
+    MapCell(): type(TerrainType::Hole), structure(None), material("Air"), smaterial(), biome(), symIdx(0), visible(true), contents() {}
     ~MapCell() { }
 
     TerrainType type;

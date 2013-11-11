@@ -24,8 +24,6 @@ namespace ADWIF
   private:
     std::shared_ptr<class Engine> myEngine;
     std::shared_ptr<class Game> myGame;
-    MapGenerator myGenerator;
-    std::mt19937 myRandomEngine;
     int myViewOffX, myViewOffY;
   };
 }

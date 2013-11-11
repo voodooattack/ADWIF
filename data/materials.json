@@ -3,7 +3,7 @@
     "name":"Dirt",
     "disp":{
       "Floor": [{ "sym":"." }, { "sym":"," }, { "sym":"`" }, { "sym":";" }],
-      "Wall":  [{ "sym":"#", "usym":"░", "style":{ "fgcolour":"Yellow", "bgcolour":"Black" }}],
+      "Wall":  [{ "sym":"#", "usym":"░", "style":{ "fgcolour":"Yellow", "bgcolour":"Yellow", "attributes":["Bold"] }}],
       "RampU": [{ "sym":"^", "usym":"▴" }],
       "RampD": [{ "sym":"v", "usym":"▾" }]
     },
@@ -13,7 +13,7 @@
     "name":"Snow",
     "disp":{
       "Floor": [{ "sym":"." }, { "sym":"," }, { "sym":"`" }, { "sym":";" }],
-      "Wall":  [{ "sym":"#", "usym":"░", "style":{ "fgcolour":"Black", "bgcolour":"White" }}],
+      "Wall":  [{ "sym":"#", "usym":"░", "style":{ "fgcolour":"Black", "bgcolour":"White" }, "attributes":["Bold"] }],
       "RampU": [{ "sym":"^", "usym":"▴" }],
       "RampD": [{ "sym":"v", "usym":"▾" }]
     },
@@ -23,7 +23,7 @@
     "name":"Ice",
     "disp":{
       "Floor": [{ "sym":"." }, { "sym":"," }, { "sym":"`" }, { "sym":";" }],
-      "Wall":  [{ "sym":"#", "usym":"░", "style":{ "fgcolour":"Cyan", "bgcolour":"Black" }}],
+      "Wall":  [{ "sym":"#", "usym":"░", "style":{ "fgcolour":"Cyan", "bgcolour":"Cyan", "attributes":["Bold"] }}],
       "RampU": [{ "sym":"^", "usym":"▴" }],
       "RampD": [{ "sym":"v", "usym":"▾" }]
     },

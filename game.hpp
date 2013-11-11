@@ -112,7 +112,7 @@ namespace ADWIF
     static Biome * parse(const Json::Value & value);
   };
 
-  class Game
+  class Game: public std::enable_shared_from_this<Game>
   {
   public:
     Game(std::shared_ptr<class Engine> & engine);
@@ -143,6 +143,9 @@ namespace ADWIF
 
     std::shared_ptr<class MapBank> & mapbank() { return myBank; }
     void mapbank(std::shared_ptr<MapBank> & mapbank) { myBank = mapbank; }
+
+    std::shared_ptr<class MapGenerator> generator() { return myGenerator; }
+    void generator(std::shared_ptr<class MapGenerator> & generator) { myGenerator = generator; }
 
     std::map<std::string, Race *> & races() { return myRaces; }
     std::map<std::string, Profession *> & professions() { return myProfessions; }
@@ -175,7 +178,7 @@ namespace ADWIF
     std::shared_ptr<class Map> myMap;
     std::shared_ptr<class MapBank> myBank;
 
-    std::fstream myCacheStream;
+    std::fstream myIndexStream;
 
     std::map<std::string, Race *> myRaces;
     std::map<std::string, Profession *> myProfessions;
@@ -183,6 +186,8 @@ namespace ADWIF
     std::map<std::string, Faction *> myFactions;
     std::map<std::string, Material *> myMaterials;
     std::map<std::string, Biome *> myBiomes;
+
+    std::shared_ptr<class MapGenerator> myGenerator;
   };
 }
 
