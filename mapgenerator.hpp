@@ -68,7 +68,7 @@ namespace ADWIF
     {
 
     }
-    void generateOne(unsigned int x, unsigned int y);
+    void generateOne(unsigned int x, unsigned int y, bool regenerate = false);
 
     template<class Archive>
     void serialize(Archive & ar, const unsigned int version)

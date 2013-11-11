@@ -28,6 +28,7 @@
 
 #include <physfs.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/lexical_cast.hpp>
 #include <fstream>
 #include <stdio.h>
 
@@ -46,31 +47,37 @@ namespace ADWIF
 
   void MapGenState::init()
   {
-    if (boost::filesystem::exists(saveDir + dirSep + "map"))
-      myGame->loadMap();
-    else
-      myGame->createMap();
-
     //myViewOffX = (mapImg.getWidth() / 2) * myGame->generator()->chunkSizeX();
     //myViewOffY = (mapImg.getHeight() / 2) * myGame->generator()->chunkSizeY();
 
-    myGame->generator()->generateOne(myViewOffX / myGame->generator()->chunkSizeX(),
-                            myViewOffY / myGame->generator()->chunkSizeY());
+    if (boost::filesystem::exists(saveDir + dirSep + "map"))
+      myGame->loadMap();
+    else
+    {
+      myGame->createMap();
+      myGame->generator()->generateOne(myViewOffX / myGame->generator()->chunkSizeX(),
+                                       myViewOffY / myGame->generator()->chunkSizeY());
+    }
   }
 
   void MapGenState::step()
   {
-    myEngine->renderer()->clear();
+    //myEngine->renderer()->clear();
     myEngine->renderer()->drawRegion(myViewOffX, myViewOffY, 0, myEngine->renderer()->width(), myEngine->renderer()->height(),
                                      0, 0, myGame.get(), myGame->map().get());
     myEngine->renderer()->style(White, Black, Style::Bold);
     myEngine->renderer()->drawChar(myEngine->renderer()->width() / 2, myEngine->renderer()->height() / 2, '@');
+    std::string str = "Position: " + boost::lexical_cast<std::string>(myViewOffX) + "x" + boost::lexical_cast<std::string>(myViewOffY);
+    myEngine->renderer()->startWindow(1,1,myEngine->renderer()->width() - 2, 1);
+    myEngine->renderer()->style(White, Black, Style::Bold);
+    myEngine->renderer()->drawText(0,0, str + std::string(myEngine->renderer()->width() - 2 - str.size(),  ' '));
+    myEngine->renderer()->endWindow();
   }
 
-  void MapGenState::consume(int key) {
-//     std::stringstream ss;
-//     ss << key;
-//     myGame->engine()->reportError(true, ss.str());
+  void MapGenState::consume(int key)
+  {
+    int chunkX = (myViewOffX + myEngine->renderer()->width() / 2) / myGame->generator()->chunkSizeX();
+    int chunkY = (myViewOffY + myEngine->renderer()->height() / 2) / myGame->generator()->chunkSizeY();
     if (key == Key::Escape)
     {
       myGame->saveMap();
@@ -79,26 +86,22 @@ namespace ADWIF
     else if (key == Key::Up)
     {
       myViewOffY -= 10;
-      myGame->generator()->generateOne((myViewOffX + myEngine->renderer()->width() / 2) / myGame->generator()->chunkSizeX(),
-                              (myViewOffY + myEngine->renderer()->height() / 2) / myGame->generator()->chunkSizeY());
+      myGame->generator()->generateOne(chunkX, chunkY);
     }
     else if (key == Key::Down)
     {
       myViewOffY += 10;
-      myGame->generator()->generateOne((myViewOffX + myEngine->renderer()->width() / 2) / myGame->generator()->chunkSizeX(),
-                              (myViewOffY + myEngine->renderer()->height() / 2) / myGame->generator()->chunkSizeY());
+      myGame->generator()->generateOne(chunkX, chunkY);
     }
     else if (key == Key::Left)
     {
       myViewOffX -= 10;
-      myGame->generator()->generateOne((myViewOffX + myEngine->renderer()->width() / 2) / myGame->generator()->chunkSizeX(),
-                              (myViewOffY + myEngine->renderer()->height() / 2) / myGame->generator()->chunkSizeY());
+      myGame->generator()->generateOne(chunkX, chunkY);
     }
     else if (key == Key::Right)
     {
       myViewOffX += 10;
-      myGame->generator()->generateOne((myViewOffX + myEngine->renderer()->width() / 2) / myGame->generator()->chunkSizeX(),
-                              (myViewOffY + myEngine->renderer()->height() / 2) / myGame->generator()->chunkSizeY());
+      myGame->generator()->generateOne(chunkX, chunkY);
     }
     else if (key == 'c')
       myGame->createMap();

@@ -72,22 +72,28 @@ namespace ADWIF
 
   const MapCell & MapImpl::get(int x, int y, int z) const
   {
-    std::shared_ptr<GridType::Accessor> grid = getChunk(x, y, z)->accessor;
+    std::shared_ptr<Chunk> chunk = getChunk(x, y, z);
+    boost::recursive_mutex::scoped_lock guard(chunk->lock);
+    if(!chunk->accessor)
+      loadChunk(chunk);
     if (myAccessCounter++ % myAccessTolerance == 0)
       prune(false);
-    return myBank->get(grid->getValue(ovdb::Coord(x, y, z)));
+    return myBank->get(chunk->accessor->getValue(ovdb::Coord(x, y, z)));
   }
 
   void MapImpl::set(int x, int y, int z, const MapCell & cell)
   {
     uint64_t hash = myBank->put(cell);
 
-    std::shared_ptr<Chunk> grid = getChunk(x, y, z);
+    std::shared_ptr<Chunk> chunk = getChunk(x, y, z);
+    boost::recursive_mutex::scoped_lock guard(chunk->lock);
+    if(!chunk->accessor)
+      loadChunk(chunk);
 
     if (hash == myBackgroundValue)
-      grid->accessor->setValueOff(ovdb::Coord(x, y, z), hash);
+      chunk->accessor->setValueOff(ovdb::Coord(x, y, z), hash);
     else
-      grid->accessor->setValue(ovdb::Coord(x, y, z), hash);
+      chunk->accessor->setValue(ovdb::Coord(x, y, z), hash);
 
    myAccessCounter++;
 
@@ -114,7 +120,7 @@ namespace ADWIF
 
   void MapImpl::prune(bool pruneAll) const
   {
-    if (myChunks.size() <= 1 && !pruneAll) return;
+    //if (myChunks.size() <= 1 && !pruneAll) return;
 
     bool isPruning = false;
 
@@ -126,37 +132,39 @@ namespace ADWIF
 
     boost::recursive_mutex::scoped_lock guard(myLock);
 
-    std::vector<std::pair<ovdb::Vec3I, std::shared_ptr<Chunk>>> accessTimesSorted;
+    std::vector<std::pair<Vec3Type, std::shared_ptr<Chunk>>> accessTimesSorted;
     accessTimesSorted.assign(myChunks.begin(), myChunks.end());
 
     accessTimesSorted.erase(std::remove_if(accessTimesSorted.begin(), accessTimesSorted.end(),
-                            [](const std::pair<ovdb::Vec3I, std::shared_ptr<Chunk>> pair)
+                            [](const std::pair<Vec3Type, std::shared_ptr<Chunk>> pair)
                             {
-                              return !pair.second;
-                            }));
+                              //if (!pair.second || !pair.second->grid)
+                                // std::cerr << "discarding (empty): " << pair.second->pos << std::endl;
+                              return !pair.second || !pair.second->grid;
+                            }), accessTimesSorted.end());
 
     std::sort(accessTimesSorted.begin(), accessTimesSorted.end(),
-              [](const std::pair<ovdb::Vec3I, std::shared_ptr<Chunk>> & first,
-                 const std::pair<ovdb::Vec3I, std::shared_ptr<Chunk>> & second)
+              [](const std::pair<Vec3Type, std::shared_ptr<Chunk>> & first,
+                 const std::pair<Vec3Type, std::shared_ptr<Chunk>> & second)
     {
       return first.second->lastAccess < second.second->lastAccess;
     });
 
     unsigned long int memUse = 0;
 
-    std::map<ovdb::Vec3I, unsigned long int> memoryMap;
+    std::map<Vec3Type, unsigned long int> memoryMap;
 
     if (!pruneAll && myMemThresholdMB)
     {
       std::transform(accessTimesSorted.begin(), accessTimesSorted.end(), std::inserter(memoryMap, memoryMap.begin()),
-                     [](const std::pair<ovdb::Vec3I, std::shared_ptr<Chunk>> pair) {
+                     [](const std::pair<Vec3Type, std::shared_ptr<Chunk>> pair) {
                        boost::recursive_mutex::scoped_lock guard(pair.second->lock);
                        return std::make_pair(pair.first, pair.second->grid ? pair.second->grid->memUsage() : 0);
                      });
 
       memUse = std::accumulate(memoryMap.begin(), memoryMap.end(), memUse,
                                [](unsigned long int sum,
-                                  const std::pair<ovdb::Vec3I, unsigned long int> second)
+                                  const std::pair<Vec3Type, unsigned long int> second)
                               {
                                  return sum + second.second;
                               });
@@ -171,30 +179,27 @@ namespace ADWIF
       auto i = accessTimesSorted.begin();
       while (i != accessTimesSorted.end())
       {
+        // std::cerr << "pruning: " << i->second->pos << std::endl;
         if (pruneAll || myClock.now() - i->second->lastAccess > myDurationThreshold || (memUse > myMemThresholdMB))
         {
+          // std::cerr << "scheduling save operation for: " << i->second->pos << std::endl;
           auto item = myChunks.find(i->first);
 //           if (pruneAll)
 //             myChunks.erase(item);
           boost::recursive_mutex::scoped_lock guard(item->second->lock);
-          if (item->second->grid)
+          myService.post(boost::bind(&MapImpl::saveChunk, this, item->second));
+          posted++;
+          if (!pruneAll && myMemThresholdMB)
           {
-            myService.post(boost::bind(&MapImpl::saveChunk, this, item->second));
-            posted++;
-            i = accessTimesSorted.erase(i);
-            if (!pruneAll && myMemThresholdMB)
-            {
-              freed += memoryMap.find(item->first)->second / (1024 * 1024);
-              if (memUse - freed < myMemThresholdMB * 0.70)
-                break;
-            }
-          } else ++i;
+            freed += memoryMap.find(item->first)->second / (1024 * 1024);
+            if (memUse - freed < myMemThresholdMB * 0.70)
+              break;
+          }
+          i = accessTimesSorted.erase(i);
         }
         else ++i;
       }
     }
-
-    myBank->prune(pruneAll);
 
     if (posted > boost::thread::hardware_concurrency()-1)
       myService.poll();
@@ -202,37 +207,31 @@ namespace ADWIF
     myPruningInProgressFlag.store(false);
   }
 
-  std::string MapImpl::getChunkName(const ovdb::Vec3I & v) const
+  std::string MapImpl::getChunkName(const Vec3Type & v) const
   {
 //     unsigned long int hash = 0; // myBackgroundValue; // if this is enabled it'll invalidate the map if bg data change
 //     boost::hash_combine(hash, v.x());
 //     boost::hash_combine(hash, v.y());
 //     boost::hash_combine(hash, v.z());
 //     return boost::str( boost::format("%x") % hash );
-    return boost::str(boost::format("%p.%p.%p") % v.x() % v.y() % v.z());
+    return boost::str(boost::format("%i.%i.%i") % v.x() % v.y() % v.z());
   }
 
   std::shared_ptr<MapImpl::Chunk> & MapImpl::getChunk(int x, int y, int z) const
   {
-    ovdb::Vec3I vec(x, y, z);
+    Vec3Type vec(x, y, z);
     vec /= myChunkSize;
-    GridType::Ptr grid;
 
     if (myChunks.find(vec) != myChunks.end())
     {
-      grid = myChunks[vec]->grid;
+      myChunks[vec]->lastAccess = myClock.now();
+      return myChunks[vec];
     }
     else
     {
       myChunks[vec].reset(new Chunk);
+      myChunks[vec]->pos = vec;
       myChunks[vec]->fileName = getChunkName(vec);
-    }
-
-    myChunks[vec]->lastAccess = myClock.now();
-
-    if (!grid)
-    {
-      loadChunk(myChunks[vec]);
     }
 
     return myChunks[vec];
@@ -240,6 +239,7 @@ namespace ADWIF
 
   void MapImpl::loadChunk(std::shared_ptr<Chunk> & chunk) const
   {
+    // std::cerr << "loading: " << chunk->pos << std::endl;
     boost::recursive_mutex::scoped_lock guard(chunk->lock);
     if (boost::filesystem::exists(myMapPath + dirSep + chunk->fileName) &&
         boost::filesystem::file_size(myMapPath + dirSep + chunk->fileName))
@@ -257,12 +257,15 @@ namespace ADWIF
     {
       chunk->grid = GridType::create(myBackgroundValue);
       chunk->grid->setName(chunk->fileName);
+      // std::cerr << "created: " << chunk->pos << std::endl;
     }
     chunk->accessor.reset(new GridType::Accessor(chunk->grid->getAccessor()));
+    chunk->lastAccess = myClock.now();
   }
 
   void MapImpl::saveChunk(std::shared_ptr<Chunk> & chunk) const
   {
+    // std::cerr << "saving: " << chunk->pos << std::endl;
     boost::recursive_mutex::scoped_lock guard(chunk->lock);
     if (!chunk->grid)
       return;

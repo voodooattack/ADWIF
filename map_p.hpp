@@ -39,11 +39,13 @@
 
 namespace ovdb = openvdb::v1_1;
 
+typedef ovdb::Vec3i Vec3Type;
+
 namespace std
 {
-  template <> struct hash<ovdb::Vec3I>
+  template <> struct hash<Vec3Type>
   {
-    size_t operator()(const ovdb::Vec3I & vec) const
+    size_t operator()(const Vec3Type & vec) const
     {
       size_t h = 0;
       boost::hash_combine(h, vec.x());
@@ -69,6 +71,7 @@ namespace ADWIF
 
     struct Chunk
     {
+      Vec3Type pos;
       GridType::Ptr grid;
       std::shared_ptr<GridType::Accessor> accessor;
       time_point lastAccess;
@@ -119,7 +122,7 @@ namespace ADWIF
     void prune(bool pruneAll = false) const;
 
   private:
-    std::string getChunkName(const ovdb::Vec3I & v) const;
+    std::string getChunkName(const Vec3Type & v) const;
     std::shared_ptr<Chunk> & getChunk(int x, int y, int z) const;
 
     void loadChunk(std::shared_ptr<Chunk> & chunk) const;
@@ -130,12 +133,12 @@ namespace ADWIF
   private:
 
 
-    typedef std::unordered_map<ovdb::Vec3I, std::shared_ptr<Chunk>> GridMap;
+    typedef std::unordered_map<Vec3Type, std::shared_ptr<Chunk>> GridMap;
 
     class Map * const myMap;
     mutable GridMap myChunks;
     std::shared_ptr<MapBank> myBank;
-    ovdb::Vec3I myChunkSize;
+    Vec3Type myChunkSize;
     unsigned long int myAccessTolerance;
     uint64_t myBackgroundValue;
     std::string myMapPath;

@@ -96,11 +96,11 @@ namespace ADWIF
       }
   }
 
-  void MapGenerator::generateOne(unsigned int x, unsigned int y)
+  void MapGenerator::generateOne(unsigned int x, unsigned int y, bool regenerate)
   {
     if (x < 0 || y < 0 || x >= myHeight || y >= myWidth)
       return;
-    if (myGenerationMap[x][y])
+    if (!regenerate && myGenerationMap[x][y])
       return;
 
     unsigned int offx = x * myChunkSizeX, offy = y * myChunkSizeY;
@@ -125,9 +125,9 @@ namespace ADWIF
 
         if (c.type == TerrainType::RampU)
         {
-
+          continue;
         }
-        if (!bd(myRandomEngine))
+        else if (!bd(myRandomEngine))
           c.type = TerrainType::Floor;
         else
         {
