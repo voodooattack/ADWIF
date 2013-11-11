@@ -39,8 +39,9 @@ namespace ADWIF
                    const MapCell & bgValue):
     myMap(parent), myChunks(), myBank(bank), myChunkSize(chunkSizeX, chunkSizeY, chunkSizeZ),
     myAccessTolerance(200000), myBackgroundValue(0), myMapPath(mapPath), myClock(),
-    myAccessCounter(0), myMemThresholdMB(800), myDurationThreshold(boost::chrono::seconds(20)),
-    myService(), myThreads(), myServiceLock()
+    myAccessCounter(0), myMemThresholdMB(800), myDurationThreshold(boost::chrono::seconds(10)),
+    myPruningInterval(boost::chrono::seconds(1)), myService(), myThreads(), myServiceLock(),
+    myLock(), myPruningInProgressFlag(), myPruneTimer(myService)
   {
     if (!myInitialisedFlag)
     {
@@ -59,7 +60,8 @@ namespace ADWIF
     if (nthreads < 1) nthreads = 1;
     while(nthreads--)
       myThreads.create_thread(boost::bind(&boost::asio::io_service::run, &myService));
-    myService.post(boost::bind(&MapImpl::pruneTask, this));
+    myPruneTimer.expires_from_now(myPruningInterval);
+    myPruneTimer.async_wait(boost::bind(&MapImpl::pruneTask, this));
     myPruningInProgressFlag.store(false);
   }
 
@@ -95,45 +97,28 @@ namespace ADWIF
     else
       chunk->accessor->setValue(ovdb::Coord(x, y, z), hash);
 
-   myAccessCounter++;
-
-    if (!myChunks.empty() && (myAccessCounter % myAccessTolerance == 0))
-    {
+    if (!myChunks.empty() && (myAccessCounter++ % myAccessTolerance == 0))
       prune(false);
-    }
   }
 
   void MapImpl::pruneTask()
   {
-    auto begin = myClock.now();
-    while(myClock.now() - begin < myDurationThreshold && !myService.stopped())
-    {
-      myService.poll_one();
-      boost::this_thread::sleep_for(boost::chrono::milliseconds(10));
-    }
-    if (!myService.stopped())
-    {
-      prune(false);
-      myService.post(boost::bind(&MapImpl::pruneTask, this));
-    }
+    prune(false);
+    myPruneTimer.expires_from_now(myPruningInterval);
+    myPruneTimer.async_wait(boost::bind(&MapImpl::pruneTask, this));
   }
 
   void MapImpl::prune(bool pruneAll) const
   {
-    //if (myChunks.size() <= 1 && !pruneAll) return;
-
     bool isPruning = false;
 
-//     if (pruneAll)
-      while (!myPruningInProgressFlag.compare_exchange_weak(isPruning, true)) myService.poll_one();
-//     else
-//       if (!myPruningInProgressFlag.compare_exchange_strong(isPruning, true));
-//        return;
-
-    boost::recursive_mutex::scoped_lock guard(myLock);
+    while (!myPruningInProgressFlag.compare_exchange_weak(isPruning, true)) myService.poll_one();
 
     std::vector<std::pair<Vec3Type, std::shared_ptr<Chunk>>> accessTimesSorted;
-    accessTimesSorted.assign(myChunks.begin(), myChunks.end());
+    {
+      boost::recursive_mutex::scoped_lock guard(myLock);
+      accessTimesSorted.assign(myChunks.begin(), myChunks.end());
+    }
 
     accessTimesSorted.erase(std::remove_if(accessTimesSorted.begin(), accessTimesSorted.end(),
                             [](const std::pair<Vec3Type, std::shared_ptr<Chunk>> pair)
@@ -183,15 +168,11 @@ namespace ADWIF
         if (pruneAll || myClock.now() - i->second->lastAccess > myDurationThreshold || (memUse > myMemThresholdMB))
         {
           // std::cerr << "scheduling save operation for: " << i->second->pos << std::endl;
-          auto item = myChunks.find(i->first);
-//           if (pruneAll)
-//             myChunks.erase(item);
-          boost::recursive_mutex::scoped_lock guard(item->second->lock);
-          myService.post(boost::bind(&MapImpl::saveChunk, this, item->second));
+          myService.post(boost::bind(&MapImpl::saveChunk, this, i->second));
           posted++;
           if (!pruneAll && myMemThresholdMB)
           {
-            freed += memoryMap.find(item->first)->second / (1024 * 1024);
+            freed += memoryMap.find(i->first)->second / (1024 * 1024);
             if (memUse - freed < myMemThresholdMB * 0.70)
               break;
           }
@@ -221,6 +202,8 @@ namespace ADWIF
   {
     Vec3Type vec(x, y, z);
     vec /= myChunkSize;
+
+    boost::recursive_mutex::scoped_lock guard(myLock);
 
     if (myChunks.find(vec) != myChunks.end())
     {
@@ -252,6 +235,7 @@ namespace ADWIF
       ss.setCompressionEnabled(false);
       ovdb::GridPtrVecPtr vc = ss.getGrids();
       chunk->grid = ovdb::gridPtrCast<GridType>(vc->operator[](0));
+      // std::cerr << "loaded: " << chunk->pos << std::endl;
     }
     else
     {
@@ -279,6 +263,7 @@ namespace ADWIF
     ss.write(os, vc);
     chunk->accessor.reset();
     chunk->grid.reset();
+    // std::cerr << "saved: " << chunk->pos << std::endl;
   }
 
   const MapCell & MapImpl::background() const { return myBank->get(myBackgroundValue); }

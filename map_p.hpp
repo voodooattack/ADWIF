@@ -33,7 +33,7 @@
 #include <boost/thread.hpp>
 #include <boost/lockfree/queue.hpp>
 #include <boost/asio/io_service.hpp>
-#include <boost/asio/deadline_timer.hpp>
+#include <boost/asio/basic_waitable_timer.hpp>
 
 #include "map.hpp"
 
@@ -146,11 +146,13 @@ namespace ADWIF
     mutable unsigned long int myAccessCounter;
     unsigned long int myMemThresholdMB;
     duration_type myDurationThreshold;
+    duration_type myPruningInterval;
     mutable boost::asio::io_service myService;
     boost::thread_group myThreads;
     std::shared_ptr<boost::asio::io_service::work> myServiceLock;
     mutable boost::recursive_mutex myLock;
     mutable boost::atomic_bool myPruningInProgressFlag;
+    boost::asio::basic_waitable_timer<clock_type> myPruneTimer;
 
     static bool myInitialisedFlag;
   };
