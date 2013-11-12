@@ -37,7 +37,7 @@
 
 namespace ADWIF
 {
-  MapGenerator::MapGenerator(std::shared_ptr<Game> & game, bool load):
+  MapGenerator::MapGenerator(const std::shared_ptr<Game> & game, bool load):
     myGame(game), myMapImg(), myHeightMap(), myChunkSizeX(32), myChunkSizeY(32),
     myColourIndex(), myRandomEngine(), myGenerationMap(), myBiomeMap(),
     myInitialisedFlag(false)

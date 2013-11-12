@@ -28,7 +28,7 @@ namespace ADWIF
   class Engine
   {
   public:
-    Engine(std::shared_ptr<class Renderer> renderer, std::shared_ptr<class Input> input);
+    Engine(const std::shared_ptr<class Renderer> renderer, const std::shared_ptr<class Input> input);
     ~Engine();
 
     std::shared_ptr<class Renderer> renderer() const { return myRenderer; }

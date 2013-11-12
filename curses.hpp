@@ -68,7 +68,7 @@ namespace ADWIF
   class CursesInput: public Input
   {
   public:
-    CursesInput(std::shared_ptr<class Renderer> & renderer): myRenderer(std::dynamic_pointer_cast<CursesRenderer>(renderer)) { }
+    CursesInput(const std::shared_ptr<class Renderer> & renderer): myRenderer(std::dynamic_pointer_cast<CursesRenderer>(renderer)) { }
     virtual bool init() { return true; }
     virtual void shutdown() { }
     virtual int key();

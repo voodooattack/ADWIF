@@ -77,10 +77,11 @@ namespace ADWIF
       time_point lastAccess;
       std::string fileName;
       boost::recursive_mutex lock;
+      bool dirty;
     };
 
   public:
-    MapImpl(Map * parent, std::shared_ptr<MapBank> & bank, const std::string & mapPath, bool load, unsigned int chunkSizeX,
+    MapImpl(Map * parent, const std::shared_ptr<MapBank> & bank, const std::string & mapPath, bool load, unsigned int chunkSizeX,
             unsigned int chunkSizeY, unsigned int chunkSizeZ, const MapCell & bgValue = MapCell());
     ~MapImpl();
 

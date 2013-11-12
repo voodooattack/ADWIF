@@ -32,11 +32,12 @@ namespace ADWIF
   class MapGenState: public GameState
   {
   public:
-    MapGenState(std::shared_ptr<class Engine> & engine, std::shared_ptr<class Game> & game);
+    MapGenState(const std::shared_ptr<class Engine> & engine, std::shared_ptr<class Game> & game);
     virtual ~MapGenState();
 
     virtual void init();
     virtual void step();
+    virtual void resize() { step(); }
     virtual void consume(int key);
     virtual void activate();
 

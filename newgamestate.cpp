@@ -46,7 +46,7 @@ namespace ADWIF
     '"', ';', ':', '>', '<', '~', '\\', '\'',
   }; */
 
-  NewGameState::NewGameState(std::shared_ptr<ADWIF::Engine> & engine) :
+  NewGameState::NewGameState(const std::shared_ptr<ADWIF::Engine> & engine) :
     myEngine(engine), myGame(nullptr), myPlayer(nullptr), myRacesAnimation(engine->renderer()),
     myGenderAnimation(engine->renderer()), myFactionsAnimation(engine->renderer()),
     myProfessionsAnimation(engine->renderer()), myCurrentAnimation(&myGenderAnimation),

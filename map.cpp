@@ -33,13 +33,13 @@ namespace iostreams = boost::iostreams;
 
 namespace ADWIF
 {
-  MapImpl::MapImpl(Map * parent, std::shared_ptr<MapBank> & bank,
+  MapImpl::MapImpl(Map * parent, const std::shared_ptr<MapBank> & bank,
                    const std::string & mapPath, bool load, unsigned int chunkSizeX,
                    unsigned int chunkSizeY, unsigned int chunkSizeZ,
                    const MapCell & bgValue):
     myMap(parent), myChunks(), myBank(bank), myChunkSize(chunkSizeX, chunkSizeY, chunkSizeZ),
     myAccessTolerance(200000), myBackgroundValue(0), myMapPath(mapPath), myClock(),
-    myAccessCounter(0), myMemThresholdMB(800), myDurationThreshold(boost::chrono::seconds(10)),
+    myAccessCounter(0), myMemThresholdMB(2048), myDurationThreshold(boost::chrono::minutes(1)),
     myPruningInterval(boost::chrono::seconds(1)), myService(), myThreads(), myServiceLock(),
     myLock(), myPruningInProgressFlag(), myPruneTimer(myService)
   {
@@ -80,7 +80,7 @@ namespace ADWIF
       loadChunk(chunk);
     if (myAccessCounter++ % myAccessTolerance == 0)
       prune(false);
-    return myBank->get(chunk->accessor->getValue(ovdb::Coord(x, y, z)));
+    return myBank->get(chunk->accessor->getValue(ovdb::Coord(x % myChunkSize.x(), y % myChunkSize.y(), z % myChunkSize.z())));
   }
 
   void MapImpl::set(int x, int y, int z, const MapCell & cell)
@@ -93,9 +93,11 @@ namespace ADWIF
       loadChunk(chunk);
 
     if (hash == myBackgroundValue)
-      chunk->accessor->setValueOff(ovdb::Coord(x, y, z), hash);
+      chunk->accessor->setValueOff(ovdb::Coord(x % myChunkSize.x(), y % myChunkSize.y(), z % myChunkSize.z()), hash);
     else
-      chunk->accessor->setValue(ovdb::Coord(x, y, z), hash);
+      chunk->accessor->setValue(ovdb::Coord(x % myChunkSize.x(), y % myChunkSize.y(), z % myChunkSize.z()), hash);
+
+    chunk->dirty = true;
 
     if (!myChunks.empty() && (myAccessCounter++ % myAccessTolerance == 0))
       prune(false);
@@ -168,7 +170,13 @@ namespace ADWIF
         if (pruneAll || myClock.now() - i->second->lastAccess > myDurationThreshold || (memUse > myMemThresholdMB))
         {
           // std::cerr << "scheduling save operation for: " << i->second->pos << std::endl;
-          myService.post(boost::bind(&MapImpl::saveChunk, this, i->second));
+          if (i->second->dirty)
+            myService.post(boost::bind(&MapImpl::saveChunk, this, i->second));
+          else
+          {
+            i->second->grid.reset();
+            i->second->accessor.reset();
+          }
           posted++;
           if (!pruneAll && myMemThresholdMB)
           {
@@ -215,6 +223,7 @@ namespace ADWIF
       myChunks[vec].reset(new Chunk);
       myChunks[vec]->pos = vec;
       myChunks[vec]->fileName = getChunkName(vec);
+      myChunks[vec]->dirty = false;
     }
 
     return myChunks[vec];
@@ -245,10 +254,13 @@ namespace ADWIF
     }
     chunk->accessor.reset(new GridType::Accessor(chunk->grid->getAccessor()));
     chunk->lastAccess = myClock.now();
+    chunk->dirty = false;
   }
 
   void MapImpl::saveChunk(std::shared_ptr<Chunk> & chunk) const
   {
+    if (!chunk->dirty)
+      return;
     // std::cerr << "saving: " << chunk->pos << std::endl;
     boost::recursive_mutex::scoped_lock guard(chunk->lock);
     if (!chunk->grid)
@@ -263,6 +275,7 @@ namespace ADWIF
     ss.write(os, vc);
     chunk->accessor.reset();
     chunk->grid.reset();
+    chunk->dirty = false;
     // std::cerr << "saved: " << chunk->pos << std::endl;
   }
 
@@ -270,7 +283,7 @@ namespace ADWIF
 
   std::shared_ptr<MapBank> MapImpl::bank() const { return myBank; }
 
-  Map::Map(std::shared_ptr<MapBank> & bank, const std::string & mapPath, bool load, unsigned int chunkSizeX,
+  Map::Map(const std::shared_ptr<MapBank> & bank, const std::string & mapPath, bool load, unsigned int chunkSizeX,
            unsigned int chunkSizeY, unsigned int chunkSizeZ, const MapCell & bgValue): myImpl(nullptr)
   {
     myImpl = new MapImpl(this, bank, mapPath, load, chunkSizeX, chunkSizeY, chunkSizeZ, bgValue);

@@ -134,7 +134,7 @@ namespace ADWIF
   class Game: public std::enable_shared_from_this<Game>
   {
   public:
-    Game(std::shared_ptr<class Engine> & engine);
+    Game(const std::shared_ptr<class Engine> & engine);
     ~Game() ;
 
     void init();
@@ -152,19 +152,24 @@ namespace ADWIF
     void loadMap();
     void saveMap();
 
-    std::shared_ptr<class Engine> engine() { return myEngine; }
+    std::shared_ptr<class Engine> & engine() { return myEngine; }
+    const std::shared_ptr<class Engine> & engine() const { return myEngine; }
 
-    std::shared_ptr<class Player> player() const { return myPlayer; }
-    void player(std::shared_ptr<class Player> & player);
+    std::shared_ptr<class Player> & player() { return myPlayer; }
+    const std::shared_ptr<class Player> & player() const { return myPlayer; }
+    void player(const std::shared_ptr<class Player> & player);
 
-    std::shared_ptr<class Map> map() const { return myMap; }
-    void map(std::shared_ptr<class Map> & map) { myMap = map; }
+    std::shared_ptr<class Map> & map() { return myMap; }
+    const std::shared_ptr<class Map> & map() const { return myMap; }
+    void map(const std::shared_ptr<class Map> & map) { myMap = map; }
 
     std::shared_ptr<class MapBank> & mapbank() { return myBank; }
-    void mapbank(std::shared_ptr<MapBank> & mapbank) { myBank = mapbank; }
+    const std::shared_ptr<class MapBank> & mapbank() const { return myBank; }
+    void mapbank(const std::shared_ptr<MapBank> & mapbank) { myBank = mapbank; }
 
-    std::shared_ptr<class MapGenerator> generator() { return myGenerator; }
-    void generator(std::shared_ptr<class MapGenerator> & generator) { myGenerator = generator; }
+    std::shared_ptr<class MapGenerator> & generator() { return myGenerator; }
+    const std::shared_ptr<class MapGenerator> & generator() const { return myGenerator; }
+    void generator(const std::shared_ptr<class MapGenerator> & generator) { myGenerator = generator; }
 
     std::map<std::string, Race *> & races() { return myRaces; }
     std::map<std::string, Profession *> & professions() { return myProfessions; }

@@ -41,7 +41,7 @@ namespace ADWIF
   class MapGenerator
   {
   public:
-    MapGenerator(std::shared_ptr<class Game> & game, bool load);
+    MapGenerator(const std::shared_ptr<class Game> & game, bool load);
     ~MapGenerator();
 
     std::shared_ptr<class Game>  game() { return myGame; }

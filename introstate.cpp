@@ -31,7 +31,7 @@
 
 namespace ADWIF
 {
-  IntroState::IntroState(std::shared_ptr<Engine> & engine): myEngine(engine)
+  IntroState::IntroState(const std::shared_ptr<Engine> & engine): myEngine(engine)
   {
     myLogo = new Animation(myEngine->renderer());
     myCopyrightText = new Animation(myEngine->renderer());

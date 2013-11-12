@@ -31,7 +31,7 @@
 
 namespace ADWIF
 {
-  MainMenuState::MainMenuState(std::shared_ptr<ADWIF::Engine> & engine): myEngine(engine)
+  MainMenuState::MainMenuState(const std::shared_ptr<ADWIF::Engine> & engine): myEngine(engine)
   {
     myLogo = new Animation(myEngine->renderer());
     myMenu = new Animation(myEngine->renderer());

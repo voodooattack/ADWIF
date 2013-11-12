@@ -37,7 +37,7 @@ namespace ADWIF
       Female
     };
 
-    Player(std::shared_ptr<class Game> & game);
+    Player(const std::shared_ptr<class Game> & game);
 
     const std::string & name() const { return myName; }
     void name(const std::string & name) { myName = name; }

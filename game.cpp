@@ -52,7 +52,7 @@
 namespace ADWIF
 {
 
-  Game::Game(std::shared_ptr<ADWIF::Engine> & engine): myEngine(engine), myPlayer(nullptr), myMap(nullptr),
+  Game::Game(const std::shared_ptr<ADWIF::Engine> & engine): myEngine(engine), myPlayer(nullptr), myMap(nullptr),
     myBank(nullptr), myIndexStream(), myRaces(), myProfessions(), mySkills(), myFactions(),
     myMaterials(), myBiomes()
   {
@@ -63,7 +63,7 @@ namespace ADWIF
     clearData();
   }
 
-  void Game::player(std::shared_ptr<Player> & player)
+  void Game::player(const std::shared_ptr<Player> & player)
   {
     myPlayer = player;
   }
@@ -303,10 +303,9 @@ namespace ADWIF
     bg.symIdx = 0;
 
     myBank.reset(new MapBank(myIndexStream));
-    myMap.reset(new Map(myBank, saveDir + dirSep + "map", false, 1024, 1024, 1024, bg));
+    myMap.reset(new Map(myBank, saveDir + dirSep + "map", false, 512, 512, 512, bg));
 
-    auto this_ = shared_from_this();
-    myGenerator.reset(new MapGenerator(this_, false));
+    myGenerator.reset(new MapGenerator(shared_from_this(), false));
 
     fipImage mapImg;
     fipImage hmapImg;
@@ -320,8 +319,8 @@ namespace ADWIF
     myGenerator->mapImage(mapImg);
     myGenerator->heightmapImage(hmapImg);
 
-    myGenerator->chunkSizeX(1024);
-    myGenerator->chunkSizeY(1024);
+    myGenerator->chunkSizeX(800);
+    myGenerator->chunkSizeY(240);
 
     if (boost::filesystem::exists(saveDir + dirSep + "status"))
       boost::filesystem::remove(saveDir + dirSep + "status");
@@ -344,10 +343,9 @@ namespace ADWIF
     bg.symIdx = 0;
 
     myBank.reset(new MapBank(myIndexStream));
-    myMap.reset(new Map(myBank, saveDir + dirSep + "map", true, 1024, 1024, 1024, bg));
+    myMap.reset(new Map(myBank, saveDir + dirSep + "map", true, 512, 512, 512, bg));
 
-    auto this_ = shared_from_this();
-    myGenerator.reset(new MapGenerator(this_, true));
+    myGenerator.reset(new MapGenerator(shared_from_this(), true));
 
     if (boost::filesystem::exists(saveDir + dirSep + "generator"))
     {

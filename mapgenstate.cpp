@@ -34,7 +34,7 @@
 
 namespace ADWIF
 {
-  MapGenState::MapGenState(std::shared_ptr<ADWIF::Engine> & engine, std::shared_ptr<ADWIF::Game> & game):
+  MapGenState::MapGenState(const std::shared_ptr<ADWIF::Engine> & engine, std::shared_ptr<ADWIF::Game> & game):
     myEngine(engine), myGame(game), myViewOffX(0), myViewOffY(0)
   {
     myEngine->delay(30);
@@ -62,7 +62,7 @@ namespace ADWIF
 
   void MapGenState::step()
   {
-    //myEngine->renderer()->clear();
+    myEngine->renderer()->clear();
     myEngine->renderer()->drawRegion(myViewOffX, myViewOffY, 0, myEngine->renderer()->width(), myEngine->renderer()->height(),
                                      0, 0, myGame.get(), myGame->map().get());
     myEngine->renderer()->style(White, Black, Style::Bold);
@@ -85,22 +85,22 @@ namespace ADWIF
     }
     else if (key == Key::Up)
     {
-      myViewOffY -= 10;
+      myViewOffY -= 1;
       myGame->generator()->generateOne(chunkX, chunkY);
     }
     else if (key == Key::Down)
     {
-      myViewOffY += 10;
+      myViewOffY += 1;
       myGame->generator()->generateOne(chunkX, chunkY);
     }
     else if (key == Key::Left)
     {
-      myViewOffX -= 10;
+      myViewOffX -= 1;
       myGame->generator()->generateOne(chunkX, chunkY);
     }
     else if (key == Key::Right)
     {
-      myViewOffX += 10;
+      myViewOffX += 1;
       myGame->generator()->generateOne(chunkX, chunkY);
     }
     else if (key == 'c')

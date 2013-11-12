@@ -22,7 +22,7 @@
 
 namespace ADWIF
 {
-  Player::Player(std::shared_ptr<Game> & game):
+  Player::Player(const std::shared_ptr<Game> & game):
     myGame(game), myRace(nullptr), myFaction(nullptr), myProfession(nullptr), myName(), myGender(Male)
   {
 

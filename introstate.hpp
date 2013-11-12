@@ -29,7 +29,7 @@ namespace ADWIF
   class IntroState: public GameState
   {
   public:
-    IntroState(std::shared_ptr<class Engine> & engine);
+    IntroState(const std::shared_ptr<class Engine> & engine);
     virtual ~IntroState() ;
     virtual void init();
     virtual void step();

@@ -39,7 +39,7 @@ namespace ADWIF
       ShowOverview,
     };
   public:
-    NewGameState(std::shared_ptr<class Engine> & engine);
+    NewGameState(const std::shared_ptr<class Engine> & engine);
     virtual ~NewGameState();
     virtual void init();
     virtual void step();

@@ -27,7 +27,7 @@ namespace ADWIF
   class MainMenuState: public GameState
   {
   public:
-    MainMenuState(std::shared_ptr<class Engine> & engine) ;
+    MainMenuState(const std::shared_ptr<class Engine> & engine) ;
     ~MainMenuState();
 
     virtual void init();

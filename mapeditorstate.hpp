@@ -30,7 +30,7 @@ namespace ADWIF
   class MapEditorState: public GameState
   {
   public:
-    MapEditorState(std::shared_ptr<class Engine> & engine);
+    MapEditorState(const std::shared_ptr<class Engine> & engine);
     virtual ~MapEditorState();
 
     virtual void init();

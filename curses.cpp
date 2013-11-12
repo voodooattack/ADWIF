@@ -167,6 +167,7 @@ namespace ADWIF
 
   void CursesRenderer::drawChar(int x, int y, int c)
   {
+    //mvwadd_wchnstr(win(), y, x, (const cchar_t*)c, 1);
     mvwaddnwstr(win(), y, x, (const wchar_t*) &c, 1);
     //mvwaddchnstr(win(), y, x, (chtype*) &c, sizeof(c));
 /*    attr_t a;
