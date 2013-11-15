@@ -26,6 +26,7 @@
 #include <memory>
 #include <random>
 
+#include <boost/polygon/polygon.hpp>
 #include <boost/multi_array.hpp>
 
 #include <boost/serialization/shared_ptr.hpp>
@@ -38,6 +39,27 @@
 
 namespace ADWIF
 {
+  struct BiomeCell
+  {
+    std::string name;
+    int x, y;
+    double height;
+
+    template<class Archive>
+    void serialize(Archive & ar, const unsigned int version)
+    {
+      ar & name;
+      ar & x;
+      ar & y;
+      ar & height;
+    }
+
+    bool operator== (const BiomeCell & other) const
+    {
+      return x == other.x && y == other.y && height == other.height && name == other.name;
+    }
+  };
+
   class MapGenerator
   {
   public:
@@ -93,18 +115,12 @@ namespace ADWIF
 
   private:
 
-    struct BiomeCell
+    inline static uint32_t getPixelColour (int x, int y, const fipImage & img)
     {
-      std::string name;
-      double height;
-
-      template<class Archive>
-      void serialize(Archive & ar, const unsigned int version)
-      {
-        ar & name;
-        ar & height;
-      }
-    };
+      RGBQUAD pptc;
+      img.getPixelColor(x,y,&pptc);
+      return pptc.rgbBlue | pptc.rgbGreen << 8 | pptc.rgbRed << 16;
+    }
 
   private:
     std::shared_ptr<class Game> myGame;
@@ -117,6 +133,22 @@ namespace ADWIF
     boost::multi_array<BiomeCell, 2> myBiomeMap;
     unsigned int myHeight, myWidth;
     bool myInitialisedFlag;
+  };
+}
+
+namespace std
+{
+  template <> struct hash<ADWIF::BiomeCell>
+  {
+    size_t operator()(const ADWIF::BiomeCell & bc) const
+    {
+      size_t h = 0;
+      boost::hash_combine(h, bc.name);
+      boost::hash_combine(h, bc.x);
+      boost::hash_combine(h, bc.y);
+      boost::hash_combine(h, bc.height);
+      return h;
+    }
   };
 }
 

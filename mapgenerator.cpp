@@ -24,16 +24,26 @@
 #include "jsonutils.hpp"
 #include "util.hpp"
 
-#include <physfs.hpp>
 #include <string>
+#include <algorithm>
+#include <unordered_set>
+
+#include <physfs.hpp>
 
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/vector.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
-
 #include <boost/filesystem.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/polygon/polygon.hpp>
+#include <boost/polygon/voronoi.hpp>
+#include <boost/multi_array.hpp>
+#include <boost/optional.hpp>
+#include <boost/geometry.hpp>
+#include <boost/geometry/geometries/geometries.hpp>
+#include <boost/geometry/geometries/adapted/boost_polygon.hpp>
 
 namespace ADWIF
 {
@@ -51,11 +61,6 @@ namespace ADWIF
   {
     if (!myInitialisedFlag)
     {
-      for(auto const & b : myGame->biomes())
-        myColourIndex[b.second->mapColour] = b.second->name;
-      myHeight = myMapImg.getHeight();
-      myWidth = myMapImg.getWidth();
-      myGenerationMap.resize(boost::extents[myWidth][myHeight]);
       generateBiomeMap();
       myInitialisedFlag = true;
     }
@@ -63,6 +68,11 @@ namespace ADWIF
 
   void MapGenerator::generateBiomeMap()
   {
+    for(auto const & b : myGame->biomes())
+      myColourIndex[b.second->mapColour] = b.second->name;
+    myHeight = myMapImg.getHeight();
+    myWidth = myMapImg.getWidth();
+    myGenerationMap.resize(boost::extents[myWidth][myHeight]);
     RGBQUAD v, h;
     myBiomeMap.resize(boost::extents[myWidth][myHeight]);
     for(unsigned int y = 0; y < myHeight; y++)
@@ -78,13 +88,111 @@ namespace ADWIF
              << " at pixel " << std::dec << x << "x" << y << ", area not generated";
           myGame->engine()->reportError(false, ss.str());
           myGenerationMap[x][y] = false;
-          return;
+          //return;
         }
         double height = (h.rgbBlue | h.rgbGreen | h.rgbRed) / 256.0;
-        Biome * biome = myGame->biomes()[myColourIndex[colour]];
-        myBiomeMap[x][y].name = biome->name;
+        myBiomeMap[x][y].name = myColourIndex[colour];
+        myBiomeMap[x][y].x = x;
+        myBiomeMap[x][y].y = y;
         myBiomeMap[x][y].height = height;
       }
+
+      // Clustering algorithm for terrain features
+
+      using polygon = boost::polygon::polygon_with_holes_data<int>;
+      using point = boost::polygon::polygon_traits<polygon>::point_type;
+      using segment = boost::polygon::segment_data<int>;
+
+      boost::multi_array<bool,2> visited;
+      visited.resize(boost::extents[myWidth][myHeight]);
+
+      struct Cluster
+      {
+        std::string biome;
+        std::vector<point> points;
+        point centroid;
+        polygon poly;
+      };
+
+      std::vector<Cluster> clusters;
+
+//       int i = 0;
+
+      for(unsigned int y = 0; y < myHeight; y++)
+      {
+        for (unsigned int x = 0; x < myWidth; x++)
+        {
+          if (visited[x][y]) continue;
+
+          uint32_t colour = getPixelColour(x, y, myMapImg);
+
+//           fipImage img(myMapImg);
+
+          std::vector<point> points;
+          std::deque<point> q;
+
+          q.push_back(point(x,y));
+
+          while(!q.empty())
+          {
+            const point n = q.back(); q.pop_back();
+            uint32_t pcolour = getPixelColour(n.x(), n.y(), myMapImg);
+
+            if (!visited[n.x()][n.y()] && colour == pcolour)
+            {
+              visited[n.x()][n.y()] = true;
+
+              if (n.x() > 0) q.push_back(point(n.x() - 1,n.y()));
+              if (n.x() < (signed)myWidth - 1) q.push_back(point(n.x() + 1,n.y()));
+              if (n.y() > 0) q.push_back(point(n.x(),n.y() - 1));
+              if (n.y() < (signed)myHeight - 1) q.push_back(point(n.x(),n.y() + 1));
+
+              if (n.x() > 0 && n.y() > 0) q.push_back(point(n.x() - 1,n.y() - 1));
+              if (n.x() < (signed)myWidth - 1 && n.y() < (signed)myHeight - 1) q.push_back(point(n.x() + 1,n.y() + 1));
+              if (n.x() < (signed)myWidth - 1 && n.y() > 0) q.push_back(point(n.x() + 1,n.y() - 1));
+              if (n.x() > 0 && n.y() < (signed)myHeight - 1) q.push_back(point(n.x() - 1,n.y() + 1));
+
+//               RGBQUAD inner = { 0, 0, 255, 255 };
+//               img.setPixelColor(n.x(),n.y(), &inner);
+            }
+            else
+            {
+              if (colour != pcolour)
+              {
+                points.push_back(n);
+//                 RGBQUAD outer = { 0, 0, 0, 255 };
+//                 img.setPixelColor(n.x(),n.y(), &outer);
+              }
+            }
+          }
+
+          if (points.empty()) continue;
+
+          Cluster c;
+          c.biome = myBiomeMap[x][y].name;
+          c.points = points;
+          //c.poly.set(points.begin(), points.end());
+          //boost::polygon::center(c.centroid, c.poly);
+
+          clusters.push_back(c);
+
+//           std::string fileName = "png/" + boost::lexical_cast<std::string>(i++) + ".png";
+//           img.flipVertical();
+//           img.save(fileName.c_str());
+        }
+      }
+
+
+     for (unsigned int c = 0; c < clusters.size(); c++)
+     {
+       boost::polygon::polygon_data<int> poly;
+
+
+       std::cerr << clusters[c].biome << " [" << clusters[c].centroid.x() << "," << clusters[c].centroid.y() << "] { ";
+       for (const auto & p : clusters[c].poly)
+          std::cerr << "[" << p.x() << "," << p.y() << "] (" << myBiomeMap[p.x()][p.y()].name << "), ";
+       std::cerr << "}" << std::endl;
+     }
   }
 
   void MapGenerator::generateAll()

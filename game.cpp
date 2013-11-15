@@ -303,7 +303,7 @@ namespace ADWIF
     bg.symIdx = 0;
 
     myBank.reset(new MapBank(myIndexStream));
-    myMap.reset(new Map(myBank, saveDir + dirSep + "map", false, 512, 512, 512, bg));
+    myMap.reset(new Map(myBank, saveDir + dirSep + "map", false, 512, 512, 32, bg));
 
     myGenerator.reset(new MapGenerator(shared_from_this(), false));
 
@@ -343,7 +343,7 @@ namespace ADWIF
     bg.symIdx = 0;
 
     myBank.reset(new MapBank(myIndexStream));
-    myMap.reset(new Map(myBank, saveDir + dirSep + "map", true, 512, 512, 512, bg));
+    myMap.reset(new Map(myBank, saveDir + dirSep + "map", true, 512, 512, 32, bg));
 
     myGenerator.reset(new MapGenerator(shared_from_this(), true));
 

@@ -44,7 +44,7 @@ namespace ADWIF
   private:
     std::shared_ptr<class Engine> myEngine;
     std::shared_ptr<class Game> myGame;
-    int myViewOffX, myViewOffY;
+    int myViewOffX, myViewOffY, myViewOffZ;
   };
 }
 

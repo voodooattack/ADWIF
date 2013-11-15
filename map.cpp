@@ -75,7 +75,8 @@ namespace ADWIF
   const MapCell & MapImpl::get(int x, int y, int z) const
   {
     std::shared_ptr<Chunk> chunk = getChunk(x, y, z);
-    boost::recursive_mutex::scoped_lock guard(chunk->lock);
+    boost::recursive_mutex::scoped_try_lock guard(chunk->lock);
+    while (!guard.owns_lock() && !guard.try_lock()) myService.poll_one();
     if(!chunk->accessor)
       loadChunk(chunk);
     if (myAccessCounter++ % myAccessTolerance == 0)
@@ -88,7 +89,8 @@ namespace ADWIF
     uint64_t hash = myBank->put(cell);
 
     std::shared_ptr<Chunk> chunk = getChunk(x, y, z);
-    boost::recursive_mutex::scoped_lock guard(chunk->lock);
+    boost::recursive_mutex::scoped_try_lock guard(chunk->lock);
+    while (!guard.owns_lock() && !guard.try_lock()) myService.poll_one();
     if(!chunk->accessor)
       loadChunk(chunk);
 
@@ -118,7 +120,8 @@ namespace ADWIF
 
     std::vector<std::pair<Vec3Type, std::shared_ptr<Chunk>>> accessTimesSorted;
     {
-      boost::recursive_mutex::scoped_lock guard(myLock);
+      boost::recursive_mutex::scoped_try_lock guard(myLock);
+      while (!guard.owns_lock() && !guard.try_lock()) myService.poll_one();
       accessTimesSorted.assign(myChunks.begin(), myChunks.end());
     }
 
@@ -211,7 +214,8 @@ namespace ADWIF
     Vec3Type vec(x, y, z);
     vec /= myChunkSize;
 
-    boost::recursive_mutex::scoped_lock guard(myLock);
+    boost::recursive_mutex::scoped_try_lock guard(myLock);
+    while (!guard.owns_lock() && !guard.try_lock()) myService.poll_one();
 
     if (myChunks.find(vec) != myChunks.end())
     {
@@ -232,7 +236,8 @@ namespace ADWIF
   void MapImpl::loadChunk(std::shared_ptr<Chunk> & chunk) const
   {
     // std::cerr << "loading: " << chunk->pos << std::endl;
-    boost::recursive_mutex::scoped_lock guard(chunk->lock);
+    boost::recursive_mutex::scoped_try_lock guard(chunk->lock);
+    while (!guard.owns_lock() && !guard.try_lock()) myService.poll_one();
     if (boost::filesystem::exists(myMapPath + dirSep + chunk->fileName) &&
         boost::filesystem::file_size(myMapPath + dirSep + chunk->fileName))
     {
@@ -262,7 +267,8 @@ namespace ADWIF
     if (!chunk->dirty)
       return;
     // std::cerr << "saving: " << chunk->pos << std::endl;
-    boost::recursive_mutex::scoped_lock guard(chunk->lock);
+    boost::recursive_mutex::scoped_try_lock guard(chunk->lock);
+    while (!guard.owns_lock() && !guard.try_lock()) myService.poll_one();
     if (!chunk->grid)
       return;
     iostreams::file_sink fs(myMapPath + dirSep + chunk->fileName);
