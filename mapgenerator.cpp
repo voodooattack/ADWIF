@@ -30,6 +30,7 @@
 
 #include <physfs.hpp>
 
+#include <boost/container/flat_set.hpp>
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/vector.hpp>
@@ -44,6 +45,14 @@
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/geometries.hpp>
 #include <boost/geometry/geometries/adapted/boost_polygon.hpp>
+#include <boost/assign.hpp>
+
+template<class T>
+std::ostream & operator<< (std::ostream & os, const boost::polygon::point_data<T> & p)
+{
+  os << p.x() << "," << p.y();
+  return os;
+}
 
 namespace ADWIF
 {
@@ -68,6 +77,8 @@ namespace ADWIF
 
   void MapGenerator::generateBiomeMap()
   {
+    using boost::container::flat_set;
+
     for(auto const & b : myGame->biomes())
       myColourIndex[b.second->mapColour] = b.second->name;
     myHeight = myMapImg.getHeight();
@@ -99,9 +110,10 @@ namespace ADWIF
 
       // Clustering algorithm for terrain features
 
-      using polygon = boost::polygon::polygon_with_holes_data<int>;
+      using ptype = double;
+      using polygon = boost::polygon::polygon_with_holes_data<ptype>;
       using point = boost::polygon::polygon_traits<polygon>::point_type;
-      using segment = boost::polygon::segment_data<int>;
+      using segment = boost::polygon::segment_data<ptype>;
 
       boost::multi_array<bool,2> visited;
       visited.resize(boost::extents[myWidth][myHeight]);
@@ -109,14 +121,15 @@ namespace ADWIF
       struct Cluster
       {
         std::string biome;
-        std::vector<point> points;
+        flat_set<point> points;
         point centroid;
-        polygon poly;
       };
 
       std::vector<Cluster> clusters;
 
-//       int i = 0;
+      int i = 0;
+
+      boost::filesystem::remove_all("png/*");
 
       for(unsigned int y = 0; y < myHeight; y++)
       {
@@ -126,9 +139,9 @@ namespace ADWIF
 
           uint32_t colour = getPixelColour(x, y, myMapImg);
 
-//           fipImage img(myMapImg);
+          fipImage img(myMapImg);
 
-          std::vector<point> points;
+          flat_set<point> points;
           std::deque<point> q;
 
           q.push_back(point(x,y));
@@ -142,27 +155,39 @@ namespace ADWIF
             {
               visited[n.x()][n.y()] = true;
 
-              if (n.x() > 0) q.push_back(point(n.x() - 1,n.y()));
-              if (n.x() < (signed)myWidth - 1) q.push_back(point(n.x() + 1,n.y()));
-              if (n.y() > 0) q.push_back(point(n.x(),n.y() - 1));
-              if (n.y() < (signed)myHeight - 1) q.push_back(point(n.x(),n.y() + 1));
+              bool edge = false;
 
-              if (n.x() > 0 && n.y() > 0) q.push_back(point(n.x() - 1,n.y() - 1));
-              if (n.x() < (signed)myWidth - 1 && n.y() < (signed)myHeight - 1) q.push_back(point(n.x() + 1,n.y() + 1));
-              if (n.x() < (signed)myWidth - 1 && n.y() > 0) q.push_back(point(n.x() + 1,n.y() - 1));
-              if (n.x() > 0 && n.y() < (signed)myHeight - 1) q.push_back(point(n.x() - 1,n.y() + 1));
+              if (n.x() > 0) q.push_back(point(n.x() - 1,n.y())); else edge = true;
+              if (n.x() < (signed)myWidth - 1) q.push_back(point(n.x() + 1,n.y())); else edge = true;
+              if (n.y() > 0) q.push_back(point(n.x(),n.y() - 1)); else edge = true;
+              if (n.y() < (signed)myHeight - 1) q.push_back(point(n.x(),n.y() + 1)); else edge = true;
 
-//               RGBQUAD inner = { 0, 0, 255, 255 };
-//               img.setPixelColor(n.x(),n.y(), &inner);
-            }
-            else
-            {
-              if (colour != pcolour)
+              if (n.x() > 0 && n.y() > 0) q.push_back(point(n.x() - 1,n.y() - 1)); else edge = true;
+              if (n.x() < (signed)myWidth - 1 && n.y() < (signed)myHeight - 1) q.push_back(point(n.x() + 1,n.y() + 1)); else edge = true;
+              if (n.x() < (signed)myWidth - 1 && n.y() > 0) q.push_back(point(n.x() + 1,n.y() - 1)); else edge = true;
+              if (n.x() > 0 && n.y() < (signed)myHeight - 1) q.push_back(point(n.x() - 1,n.y() + 1)); else edge = true;
+
+              if (edge || ((int)n.x() % 2 == 0 && (int)n.y() % 2 == 0))
+              //if (edge)
               {
-                points.push_back(n);
-//                 RGBQUAD outer = { 0, 0, 0, 255 };
-//                 img.setPixelColor(n.x(),n.y(), &outer);
+                 points.insert(n);
+
+                 if (edge)
+                 {
+                   RGBQUAD outer = { 0, 0, 0, 255 };
+                   img.setPixelColor(n.x(),n.y(), &outer);
+                 } else {
+                   RGBQUAD inner = { 0, 0, 255, 255 };
+                   img.setPixelColor(n.x(),n.y(), &inner);
+                 }
               }
+            }
+            else if (colour != pcolour)
+            {
+              //points.insert(n);
+
+              RGBQUAD outer = { 0, 0, 0, 255 };
+              img.setPixelColor(n.x(),n.y(), &outer);
             }
           }
 
@@ -171,28 +196,211 @@ namespace ADWIF
           Cluster c;
           c.biome = myBiomeMap[x][y].name;
           c.points = points;
-          //c.poly.set(points.begin(), points.end());
-          //boost::polygon::center(c.centroid, c.poly);
+          polygon poly;
+          poly.set(points.begin(), points.end());
+          boost::polygon::center(c.centroid, poly);
 
           clusters.push_back(c);
 
-//           std::string fileName = "png/" + boost::lexical_cast<std::string>(i++) + ".png";
-//           img.flipVertical();
-//           img.save(fileName.c_str());
+          std::string fileName = "png/" + boost::lexical_cast<std::string>(i++) + ".png";
+          img.flipVertical();
+          img.save(fileName.c_str());
         }
       }
 
+      auto concaveHull = [](const flat_set<point> & in, polygon & poly, double alpha)
+      {
+        auto getCoords = [](const point & p1, const point & p2, double radius, bool dir) -> point
+        {
+          double midX = (p1.x() + p2.x()) / 2.0;
+          double midY = (p1.y() + p2.y()) / 2.0;
+          double dx = (p1.x() - p2.x()) / 2.0;
+          double dy = (p1.y() - p2.y()) / 2.0;
+          double dist = std::sqrt(dx * dx + dy * dy);
+          double pDist = std::sqrt(radius * radius - dist * dist);
+          double pdx, pdy;
+          if (dir) {
+            pdx = dy * pDist / dist;
+            pdy = -dx * pDist / dist;
+          } else {
+            pdx = -dy * pDist / dist;
+            pdy = dx * pDist / dist;
+          }
+          return point(midX + pdx, midY + pdy);
+        };
 
-     for (unsigned int c = 0; c < clusters.size(); c++)
-     {
-       boost::polygon::polygon_data<int> poly;
+        flat_set<segment> segments;
 
+        using voronoi_diagram = boost::polygon::voronoi_diagram<ptype>;
 
-       std::cerr << clusters[c].biome << " [" << clusters[c].centroid.x() << "," << clusters[c].centroid.y() << "] { ";
-       for (const auto & p : clusters[c].poly)
-          std::cerr << "[" << p.x() << "," << p.y() << "] (" << myBiomeMap[p.x()][p.y()].name << "), ";
-       std::cerr << "}" << std::endl;
-     }
+        voronoi_diagram vd;
+        boost::polygon::construct_voronoi(in.begin(), in.end(), &vd);
+
+        auto has_infinite_edge = [](const voronoi_diagram::cell_type & cell)
+        {
+          bool found = false;
+          const voronoi_diagram::edge_type * edge = cell.incident_edge();
+          do
+          {
+            if (found = edge->is_infinite())
+              break;
+          } while ((edge = edge->next()) != cell.incident_edge());
+          return found;
+        };
+
+        for (const voronoi_diagram::cell_type & c : vd.cells())
+        {
+          if (!c.contains_point()) continue;
+
+          const voronoi_diagram::edge_type * edge = c.incident_edge();
+          do
+          {
+            const voronoi_diagram::edge_type * twin = edge->twin();
+            if (twin->cell()->contains_point())
+            {
+              const point p1 = *(in.begin() + c.source_index()), p2 = *(in.begin() + twin->cell()->source_index());
+              const point pp1 = getCoords(p1,p2,alpha,false), pp2 = getCoords(p1,p2,alpha,true);
+              int e1 = 0, e2 = 0;
+              for (const point & p3 : in)
+              {
+                if (p3 == p1 || p3 == p2) continue;
+                if (boost::polygon::distance_squared(pp1, p3) < alpha) e1++;
+                if (boost::polygon::distance_squared(pp2, p3) < alpha) e2++;
+                if (e1 && e2) break;
+              }
+              std::cerr << "detecting " << p1 << " to " << p2 << " ";
+              if (!e1)
+              {
+                segments.insert(segment(p1, p2));
+                std::cerr << "(" << p1 << " -> " << p2 << ") ";
+              }
+              if (!e2)
+              {
+                segments.insert(segment(p2, p1));
+                std::cerr << "(" << p1 << " <- " << p2 << ") ";
+              }
+              std::cerr << std::endl;
+            }
+          } while ((edge = edge->next()) != c.incident_edge());
+        }
+
+        auto nextSegment = [&](const segment & seg, segment & next)
+        {
+          auto it = std::find_if(segments.begin(), segments.end(),
+            [&](const segment & s) { return s.low() == seg.high(); });
+          if (it != segments.end())
+          {
+            next = *it;
+            return true;
+          }
+          else
+            return false;
+        };
+
+        std::vector<polygon> discovered;
+        std::vector<point> pointsIndexed;
+
+        std::map<segment, bool> searched;
+        flat_set<segment>::iterator start = segments.begin();
+        segment prev = *start, cur = *++start, next;
+
+        bool foundN = true;
+        unsigned int i = 0;
+
+        pointsIndexed.push_back(prev.low());
+
+        while(foundN && start != segments.end())
+        {
+          foundN = nextSegment(cur, next);
+          searched[cur] = true;
+          if (next == *start)
+          {
+            //break;
+            discovered.push_back(polygon(pointsIndexed.begin(), pointsIndexed.end()));
+            pointsIndexed.clear();
+            i = 0;
+            start = segments.begin();
+            while (searched[*++start]);
+            prev = *start;
+            pointsIndexed.push_back(prev.low());
+            cur = *start++;
+            continue;
+          }
+          //if (cur.low().x() != prev.low().x() && cur.low().y() != prev.low().y())
+            pointsIndexed.push_back(cur.low());
+          prev = cur;
+          cur = next;
+        }
+
+        if (foundN)
+          pointsIndexed.push_back(cur.high());
+
+        //if (pointsIndexed.size())
+//          discovered.push_back(polygon(pointsIndexed.begin(), pointsIndexed.end()));
+
+        std::cerr << "discovered: " << discovered.size() << " holes" << std::endl;
+
+        poly.set(pointsIndexed.begin(), pointsIndexed.end());
+        poly.set_holes(discovered.begin(), discovered.end());
+      };
+
+      i = 0;
+
+//       std::ofstream fsvg("svg/map.svg");
+//       boost::geometry::svg_mapper<point> mapper(fsvg, 200, 481);
+
+      for (Cluster & c : clusters)
+      {
+        polygon poly;
+
+        concaveHull(c.points, poly, 2);
+
+        fipImage imageOut = myMapImg;
+
+        std::ofstream fsvg("svg/" + boost::lexical_cast<std::string>(i) + ".svg");
+        boost::geometry::svg_mapper<point> mapper(fsvg, 200, 481,  "width=\"200\" height=\"480\"");
+
+        boost::geometry::model::polygon<point> po;
+
+        for (const auto & p : c.points)
+        {
+          std::cerr << p << " ";
+        }
+
+        std::cerr << "\n";
+
+        for (const auto & p : poly)
+        {
+          boost::geometry::append(po, p);
+          std::cerr << p << " ";
+          RGBQUAD co = { 0, 0, 255, 255 };
+          imageOut.setPixelColor(p.x(), p.y(), &co);
+        }
+
+        std::cerr << "\n";
+
+        mapper.add(po);
+        mapper.map(po, "fill-opacity:1.0;fill:rgb(153,204,0);stroke:rgb(0,0,0);stroke-width:1");
+
+        for(auto i = poly.begin_holes(); i != poly.end_holes(); ++i)
+        {
+          boost::geometry::model::polygon<point> ph;
+
+          for (const auto & p : *i)
+            boost::geometry::append(ph, p);
+
+          mapper.add(ph);
+          mapper.map(ph, "fill-opacity:0.8;fill:rgb(0,255,0);stroke:rgb(0,0,0);stroke-width:1");
+        }
+
+        std::string fileName = "png/out" + boost::lexical_cast<std::string>(i) + ".png";
+        imageOut.flipVertical();
+        imageOut.save(fileName.c_str());
+
+        i++;
+
+        break;
+      }
   }
 
   void MapGenerator::generateAll()
