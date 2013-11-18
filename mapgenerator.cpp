@@ -114,6 +114,7 @@ namespace ADWIF
       using polygon = boost::polygon::polygon_with_holes_data<ptype>;
       using point = boost::polygon::polygon_traits<polygon>::point_type;
       using segment = boost::polygon::segment_data<ptype>;
+      using rect = boost::polygon::rectangle_data<ptype>;
 
       boost::multi_array<bool,2> visited;
       visited.resize(boost::extents[myWidth][myHeight]);
@@ -167,7 +168,7 @@ namespace ADWIF
               if (n.x() < (signed)myWidth - 1 && n.y() > 0) q.push_back(point(n.x() + 1,n.y() - 1)); else edge = true;
               if (n.x() > 0 && n.y() < (signed)myHeight - 1) q.push_back(point(n.x() - 1,n.y() + 1)); else edge = true;
 
-              if (edge || ((int)n.x() % 2 == 0 && (int)n.y() % 2 == 0))
+              //if (edge || ((int)n.x() % 2 == 0 && (int)n.y() % 2 == 0))
               //if (edge)
               {
                  points.insert(n);
@@ -184,7 +185,7 @@ namespace ADWIF
             }
             else if (colour != pcolour)
             {
-              //points.insert(n);
+              points.insert(n);
 
               RGBQUAD outer = { 0, 0, 0, 255 };
               img.setPixelColor(n.x(),n.y(), &outer);
@@ -236,112 +237,125 @@ namespace ADWIF
         voronoi_diagram vd;
         boost::polygon::construct_voronoi(in.begin(), in.end(), &vd);
 
-        auto has_infinite_edge = [](const voronoi_diagram::cell_type & cell)
+        for(const voronoi_diagram::edge_type & e : vd.edges())
         {
-          bool found = false;
-          const voronoi_diagram::edge_type * edge = cell.incident_edge();
-          do
-          {
-            if (found = edge->is_infinite())
-              break;
-          } while ((edge = edge->next()) != cell.incident_edge());
-          return found;
-        };
+          const voronoi_diagram::cell_type * c1 = e.cell();
+          const voronoi_diagram::cell_type * c2 = e.twin()->cell();
 
-        for (const voronoi_diagram::cell_type & c : vd.cells())
-        {
-          if (!c.contains_point()) continue;
+          const point p1 = *(in.begin() + c1->source_index()), p2 = *(in.begin() + c2->source_index());
+          const point pp1 = getCoords(p1,p2,alpha/2,false), pp2 = getCoords(p1,p2,alpha/2,true);
 
-          const voronoi_diagram::edge_type * edge = c.incident_edge();
-          do
+          int e1 = 0, e2 = 0;
+          for (const point & p3 : in)
           {
-            const voronoi_diagram::edge_type * twin = edge->twin();
-            if (twin->cell()->contains_point())
-            {
-              const point p1 = *(in.begin() + c.source_index()), p2 = *(in.begin() + twin->cell()->source_index());
-              const point pp1 = getCoords(p1,p2,alpha,false), pp2 = getCoords(p1,p2,alpha,true);
-              int e1 = 0, e2 = 0;
-              for (const point & p3 : in)
-              {
-                if (p3 == p1 || p3 == p2) continue;
-                if (boost::polygon::distance_squared(pp1, p3) < alpha) e1++;
-                if (boost::polygon::distance_squared(pp2, p3) < alpha) e2++;
-                if (e1 && e2) break;
-              }
-              std::cerr << "detecting " << p1 << " to " << p2 << " ";
-              if (!e1)
-              {
-                segments.insert(segment(p1, p2));
-                std::cerr << "(" << p1 << " -> " << p2 << ") ";
-              }
-              if (!e2)
-              {
-                segments.insert(segment(p2, p1));
-                std::cerr << "(" << p1 << " <- " << p2 << ") ";
-              }
-              std::cerr << std::endl;
-            }
-          } while ((edge = edge->next()) != c.incident_edge());
+            if (p3 == p1 || p3 == p2) continue;
+            if (boost::polygon::distance_squared(pp1, p3) < alpha) e1++;
+            if (boost::polygon::distance_squared(pp2, p3) < alpha) e2++;
+            if (e1 && e2) break;
+          }
+//           std::cerr << "detecting " << p1 << " to " << p2 << " ";
+          bool dir = std::atan2(p1.y() - p2.y(), p1.x() - p2.x()) > 0;
+          if (!e1)
+          {
+            if (dir)
+              segments.insert(segment(p1, p2));
+            else
+              segments.insert(segment(p2, p1));
+//             std::cerr << "(" << p1 << " -> " << p2 << ") ";
+          }
+          if (!e2)
+          {
+            if (dir)
+              segments.insert(segment(p2, p1));
+            else
+              segments.insert(segment(p1, p2));
+//             std::cerr << "(" << p1 << " <- " << p2 << ") ";
+          }
+          std::cerr << std::endl;
         }
 
-        auto nextSegment = [&](const segment & seg, segment & next)
+        std::vector<polygon> polygons;
+        std::vector<point> pointsIndexed;
+        std::vector<segment> unsorted;
+
+//     while there are still loose segments
+//       take a loose segment and put it in a new polygon
+//       while the tail vertex of the polygon doesn't match its head vertex
+//         iterate over the remaining loose segments
+//         if the head of the segment matches the tail of the polygon
+//           append it to the polygon
+//           break out of the iteration
+//         reverse the segment
+//         if the head of the segment matches the tail of the polygon
+//           append it to the polygon
+//           break out of the iteration
+//         if control reaches here, the segments don't form a polygon -- ERROR!
+//           the polygon is complete, add it to the collection
+
+        unsorted.assign(segments.begin(), segments.end());
+
+        while(unsorted.size() > 0)
         {
-          auto it = std::find_if(segments.begin(), segments.end(),
-            [&](const segment & s) { return s.low() == seg.high(); });
-          if (it != segments.end())
+          segment & seg = unsorted.back();
+          unsorted.pop_back();
+          pointsIndexed.push_back(seg.high());
+          pointsIndexed.push_back(seg.low());
+          while(pointsIndexed.front() != pointsIndexed.back())
           {
-            next = *it;
-            return true;
+            bool found = false;
+            for (auto it = unsorted.begin(); it != unsorted.end(); ++it)
+            {
+              if (it->low() == pointsIndexed.back())
+              {
+                pointsIndexed.push_back(it->high());
+                unsorted.erase(it);
+                found = true;
+                break;
+              }
+              else if (it->high() == pointsIndexed.back())
+              {
+                pointsIndexed.push_back(it->low());
+                unsorted.erase(it);
+                found = true;
+                break;
+              }
+            }
+            if (!found)
+            {
+              pointsIndexed.push_back(pointsIndexed.front());
+              polygons.push_back(polygon(pointsIndexed.begin(), pointsIndexed.end()));
+              pointsIndexed.clear();
+              break;
+            }
+          }
+        }
+
+        auto biggest = polygons.begin();
+        rect maxBB;
+
+        for (auto it = polygons.begin(); it != polygons.end(); it++)
+        {
+          rect bb;
+          if (boost::polygon::extents(bb, *it))
+          {
+            if (!boost::polygon::contains(maxBB, bb))
+            {
+              maxBB = bb;
+              biggest = it;
+            }
           }
           else
-            return false;
-        };
-
-        std::vector<polygon> discovered;
-        std::vector<point> pointsIndexed;
-
-        std::map<segment, bool> searched;
-        flat_set<segment>::iterator start = segments.begin();
-        segment prev = *start, cur = *++start, next;
-
-        bool foundN = true;
-        unsigned int i = 0;
-
-        pointsIndexed.push_back(prev.low());
-
-        while(foundN && start != segments.end())
-        {
-          foundN = nextSegment(cur, next);
-          searched[cur] = true;
-          if (next == *start)
-          {
-            //break;
-            discovered.push_back(polygon(pointsIndexed.begin(), pointsIndexed.end()));
-            pointsIndexed.clear();
-            i = 0;
-            start = segments.begin();
-            while (searched[*++start]);
-            prev = *start;
-            pointsIndexed.push_back(prev.low());
-            cur = *start++;
-            continue;
-          }
-          //if (cur.low().x() != prev.low().x() && cur.low().y() != prev.low().y())
-            pointsIndexed.push_back(cur.low());
-          prev = cur;
-          cur = next;
+            it = polygons.erase(it);
         }
 
-        if (foundN)
-          pointsIndexed.push_back(cur.high());
+        poly.set(biggest->begin(), biggest->end());
+        biggest = polygons.erase(biggest);
+        poly.set_holes(polygons.begin(), polygons.end());
 
-        //if (pointsIndexed.size())
-//          discovered.push_back(polygon(pointsIndexed.begin(), pointsIndexed.end()));
+        std::cerr << "discovered: " << polygons.size() << " holes" << std::endl;
 
-        std::cerr << "discovered: " << discovered.size() << " holes" << std::endl;
 
-        poly.set(pointsIndexed.begin(), pointsIndexed.end());
-        poly.set_holes(discovered.begin(), discovered.end());
+        //poly.set_holes(discovered.begin(), discovered.end());
       };
 
       i = 0;
@@ -358,16 +372,9 @@ namespace ADWIF
         fipImage imageOut = myMapImg;
 
         std::ofstream fsvg("svg/" + boost::lexical_cast<std::string>(i) + ".svg");
-        boost::geometry::svg_mapper<point> mapper(fsvg, 200, 481,  "width=\"200\" height=\"480\"");
+        boost::geometry::svg_mapper<point> mapper(fsvg, 200, 481);//,  "width=\"200\" height=\"480\"");
 
         boost::geometry::model::polygon<point> po;
-
-        for (const auto & p : c.points)
-        {
-          std::cerr << p << " ";
-        }
-
-        std::cerr << "\n";
 
         for (const auto & p : poly)
         {
@@ -382,15 +389,26 @@ namespace ADWIF
         mapper.add(po);
         mapper.map(po, "fill-opacity:1.0;fill:rgb(153,204,0);stroke:rgb(0,0,0);stroke-width:1");
 
+        std::uniform_int_distribution<int> randomColour(0, 255);
+
         for(auto i = poly.begin_holes(); i != poly.end_holes(); ++i)
         {
           boost::geometry::model::polygon<point> ph;
 
+          int r = randomColour(myRandomEngine), g = randomColour(myRandomEngine), b = randomColour(myRandomEngine);
+
           for (const auto & p : *i)
+          {
             boost::geometry::append(ph, p);
+//             RGBQUAD co = { r, g, b, 255 };
+//             imageOut.setPixelColor(p.x(), p.y(), &co);
+          }
 
           mapper.add(ph);
-          mapper.map(ph, "fill-opacity:0.8;fill:rgb(0,255,0);stroke:rgb(0,0,0);stroke-width:1");
+          mapper.map(ph, "fill-opacity:0.8;fill:rgb(" +
+            boost::lexical_cast<std::string>(r) + "," +
+            boost::lexical_cast<std::string>(g) + "," +
+            boost::lexical_cast<std::string>(b) + ");stroke:rgb(0,0,0);stroke-width:1");
         }
 
         std::string fileName = "png/out" + boost::lexical_cast<std::string>(i) + ".png";
