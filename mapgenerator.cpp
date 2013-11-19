@@ -273,7 +273,7 @@ namespace ADWIF
             const voronoi_diagram::edge_type * edge = c.incident_edge();
             do
             {
-              if (edge->is_linear())
+              if (edge->is_curved())
                 return true;
               edge = edge->next();
             } while(edge != c.incident_edge());
