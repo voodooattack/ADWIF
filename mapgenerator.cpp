@@ -301,33 +301,52 @@ namespace ADWIF
         }
 
         std::vector<polygon> polygons;
-        std::vector<point> pointsIndexed;
-        std::vector<segment> unsorted;
 
-        unsorted.assign(segments.begin(), segments.end());
+        std::cerr << "discovered " << segments.size() << " segments." << std::endl;
 
-        while(unsorted.size() > 0)
+        while(!segments.empty())
         {
-          segment & seg = unsorted.back();
-          unsorted.pop_back();
+          std::cerr << "constructing polygon: ";
+          std::list<point> pointsIndexed;
+          segment seg = *segments.begin();
+          segments.erase(segments.begin());
           pointsIndexed.push_back(seg.high());
           pointsIndexed.push_back(seg.low());
+          std::cerr << seg.low() << " -> " << seg.high();
           while(pointsIndexed.front() != pointsIndexed.back())
           {
             bool found = false;
-            for (auto it = unsorted.begin(); it != unsorted.end(); ++it)
+            for (auto it = segments.begin(); it != segments.end(); ++it)
             {
               if (it->low() == pointsIndexed.back())
               {
                 pointsIndexed.push_back(it->high());
-                unsorted.erase(it);
+                std::cerr << " -> " << it->high();
+                segments.erase(it);
                 found = true;
                 break;
               }
               if (it->high() == pointsIndexed.back())
               {
                 pointsIndexed.push_back(it->low());
-                unsorted.erase(it);
+                std::cerr << " -> " << it->low();
+                segments.erase(it);
+                found = true;
+                break;
+              }
+              if (it->low() == pointsIndexed.front())
+              {
+                pointsIndexed.push_front(it->high());
+                std::cerr << " -> " << it->high();
+                segments.erase(it);
+                found = true;
+                break;
+              }
+              if (it->high() == pointsIndexed.front())
+              {
+                pointsIndexed.push_front(it->low());
+                std::cerr << " -> " << it->low();
+                segments.erase(it);
                 found = true;
                 break;
               }
@@ -335,11 +354,11 @@ namespace ADWIF
             if (!found)
             {
               pointsIndexed.push_back(pointsIndexed.front());
-              polygons.push_back(polygon(pointsIndexed.begin(), pointsIndexed.end()));
-              pointsIndexed.clear();
               break;
             }
           }
+          polygons.push_back(polygon(pointsIndexed.begin(), pointsIndexed.end()));
+          std::cerr << std::endl;
         }
 
         auto biggest = polygons.begin();
@@ -360,9 +379,12 @@ namespace ADWIF
             it = polygons.erase(it);
         }
 
-        poly.set(biggest->begin(), biggest->end());
-        biggest = polygons.erase(biggest);
-        poly.set_holes(polygons.begin(), polygons.end());
+        if (biggest != polygons.end())
+        {
+          poly.set(biggest->begin(), biggest->end());
+          biggest = polygons.erase(biggest);
+          poly.set_holes(polygons.begin(), polygons.end());
+        }
 
         std::cerr << "discovered: " << polygons.size() << " holes" << std::endl;
       };
