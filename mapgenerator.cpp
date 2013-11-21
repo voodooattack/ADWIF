@@ -242,12 +242,12 @@ namespace ADWIF
           const voronoi_diagram::cell_type * c2 = e.twin()->cell();
 
           const point p1 = *(in.begin() + c1->source_index()), p2 = *(in.begin() + c2->source_index());
-          const point pp1 = getCoords(p1, p2, alpha,false);
+          const point pp1 = getCoords(p1, p2, alpha, false);
           double dist = boost::polygon::distance_squared(p1, p2);
 
           std::cerr << "detecting " << p1 << " to " << p2 << ": ";
 
-          if (boost::polygon::distance_squared(p1, pp1) < dist || dist > alpha)
+          if (boost::polygon::distance_squared(p1, pp1) < dist || dist > alpha * alpha)
           {
             std::cerr << "early abort, dist: " << dist << std::endl;
             continue;
@@ -284,7 +284,7 @@ namespace ADWIF
           {
             const point p3 = *(in.begin() + c.source_index());
             if (p3 == p1 || p3 == p2) continue;
-            if (boost::polygon::distance_squared(pp1, p3) < alpha)
+            if (boost::polygon::distance_squared(pp1, p3) < alpha * alpha / 2.0)
             {
               ob = p3;
               obstructed = true;
@@ -364,9 +364,23 @@ namespace ADWIF
         auto biggest = polygons.begin();
         rect maxBB;
 
+        auto trimRect = [](rect & r)
+        {
+          rect::interval_type h = r.get(boost::polygon::orientation_2d(boost::polygon::orientation_2d_enum::HORIZONTAL));
+          rect::interval_type v = r.get(boost::polygon::orientation_2d(boost::polygon::orientation_2d_enum::VERTICAL));
+          h.high(h.high() - h.low()); h.low(0);
+          v.high(v.high() - v.low()); v.low(0);
+          r.set(boost::polygon::orientation_2d(boost::polygon::orientation_2d_enum::HORIZONTAL), h);
+          r.set(boost::polygon::orientation_2d(boost::polygon::orientation_2d_enum::HORIZONTAL), v);
+        };
+
+
+        trimRect(maxBB);
+
         for (auto it = polygons.begin(); it != polygons.end(); it++)
         {
           rect bb;
+          trimRect(bb);
           if (boost::polygon::extents(bb, *it))
           {
             if (!boost::polygon::contains(maxBB, bb))
@@ -401,6 +415,9 @@ namespace ADWIF
         concaveHull(c.points, poly, 2);
 
         fipImage imageOut = myMapImg;
+
+        imageOut.convertToGrayscale();
+        imageOut.convertTo32Bits();
 
         std::ofstream fsvg("svg/" + boost::lexical_cast<std::string>(i) + ".svg");
         boost::geometry::svg_mapper<point> mapper(fsvg, 200, 481);//,  "width=\"200\" height=\"480\"");
