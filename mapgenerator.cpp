@@ -231,6 +231,52 @@ namespace ADWIF
           return point(midX + pdx, midY + pdy);
         };
 
+        auto has_infinite_edge = [](const voronoi_diagram::cell_type & c) ->bool
+        {
+          const voronoi_diagram::edge_type * edge = c.incident_edge();
+          do
+          {
+            if (edge->is_infinite())
+              return true;
+            edge = edge->next();
+          } while(edge != c.incident_edge());
+          return false;
+        };
+
+        auto has_curved_edge = [](const voronoi_diagram::cell_type & c) ->bool
+        {
+          const voronoi_diagram::edge_type * edge = c.incident_edge();
+          do
+          {
+            if (edge->is_curved())
+              return true;
+            edge = edge->next();
+          } while(edge != c.incident_edge());
+          return false;
+        };
+
+        auto share_infinite_edge = [](const voronoi_diagram::cell_type & c1, const voronoi_diagram::cell_type & c2) ->bool
+        {
+          const voronoi_diagram::edge_type * edge = c1.incident_edge();
+          do
+          {
+            if (edge->is_infinite() && edge->twin()->cell()->source_index() == c2.source_index())
+              return true;
+            edge = edge->next();
+          } while(edge != c1.incident_edge());
+          return false;
+        };
+
+        auto trimRect = [](rect & r)
+        {
+          rect::interval_type h = r.get(boost::polygon::orientation_2d(boost::polygon::orientation_2d_enum::HORIZONTAL));
+          rect::interval_type v = r.get(boost::polygon::orientation_2d(boost::polygon::orientation_2d_enum::VERTICAL));
+          h.high(h.high() - h.low()); h.low(0);
+          v.high(v.high() - v.low()); v.low(0);
+          r.set(boost::polygon::orientation_2d(boost::polygon::orientation_2d_enum::HORIZONTAL), h);
+          r.set(boost::polygon::orientation_2d(boost::polygon::orientation_2d_enum::HORIZONTAL), v);
+        };
+
         flat_set<segment> segments;
 
         voronoi_diagram vd;
@@ -256,30 +302,6 @@ namespace ADWIF
           bool obstructed = false;
           point ob;
 
-          auto has_infinite_edge = [](const voronoi_diagram::cell_type & c) ->bool
-          {
-            const voronoi_diagram::edge_type * edge = c.incident_edge();
-            do
-            {
-              if (edge->is_infinite())
-                return true;
-              edge = edge->next();
-            } while(edge != c.incident_edge());
-            return false;
-          };
-
-          auto has_curved_edge = [](const voronoi_diagram::cell_type & c) ->bool
-          {
-            const voronoi_diagram::edge_type * edge = c.incident_edge();
-            do
-            {
-              if (edge->is_curved())
-                return true;
-              edge = edge->next();
-            } while(edge != c.incident_edge());
-            return false;
-          };
-
           for(const voronoi_diagram::cell_type & c : vd.cells())
           {
             const point p3 = *(in.begin() + c.source_index());
@@ -303,6 +325,55 @@ namespace ADWIF
         std::vector<polygon> polygons;
 
         std::cerr << "discovered " << segments.size() << " segments." << std::endl;
+
+        std::map<segment, bool> mendMap;
+
+        auto mendNearest = [&](const point & p, int r = 1)
+        {
+          if (r == 0)
+            return segments.end();
+
+          auto sg = std::find_if(segments.begin(), segments.end(), [&](const segment & s)
+          {
+            return s.low() == point(p.x() - r, p.y()) || s.low() == point(p.x() - r, p.y() - r) ||
+            s.low() == point(p.x(), p.y() - r) || s.low() == point(p.x() + r, p.y()) ||
+            s.low() == point(p.x(), p.y() + r) || s.low() == point(p.x() + r, p.y() + r) ||
+            s.low() == point(p.x() - r, p.y() + r) || s.low() == point(p.x() - r, p.y() + r) ||
+            s.high() == point(p.x() - r, p.y()) || s.high() == point(p.x() - r, p.y() - r) ||
+            s.high() == point(p.x(), p.y() - r) || s.high() == point(p.x() + r, p.y()) ||
+            s.high() == point(p.x(), p.y() + r) || s.high() == point(p.x() + r, p.y() + r) ||
+            s.high() == point(p.x() - r, p.y() + r) || s.high() == point(p.x() + r, p.y() - r);
+          });
+
+          if (sg == segments.end())
+            return segments.end();
+          else if (sg->low() == point(p.x() - r, p.y()) || sg->low() == point(p.x() - r, p.y() - r) ||
+            sg->low() == point(p.x(), p.y() - r) || sg->low() == point(p.x() + r, p.y()) ||
+            sg->low() == point(p.x(), p.y() + r) || sg->low() == point(p.x() + r, p.y() + r) ||
+            sg->low() == point(p.x() - r, p.y() + r) || sg->high() == point(p.x() + r, p.y() - r))
+          {
+            segment s(p, sg->low());
+            if (!mendMap[s])
+            {
+              mendMap[s] = true;
+              return segments.insert(s).first - 1;
+            }
+          }
+          else if (sg->high() == point(p.x() - r, p.y()) || sg->high() == point(p.x() - r, p.y() - r) ||
+            sg->high() == point(p.x(), p.y() - r) || sg->high() == point(p.x() + r, p.y()) ||
+            sg->high() == point(p.x(), p.y() + r) || sg->high() == point(p.x() + r, p.y() + r) ||
+            sg->high() == point(p.x() - r, p.y() + r) || sg->high() == point(p.x() + r, p.y() - r))
+          {
+            segment s(sg->high(), p);
+            if (!mendMap[s])
+            {
+              mendMap[s] = true;
+              return segments.insert(s).first - 1;
+            }
+          }
+
+          return segments.end();
+        };
 
         while(!segments.empty())
         {
@@ -350,6 +421,21 @@ namespace ADWIF
                 found = true;
                 break;
               }
+              if (!found && it == segments.end() - 1)
+              {
+                std::cerr << " {mending}";
+                auto m = mendNearest(pointsIndexed.back());
+                if (m == segments.end())
+                  m = mendNearest(pointsIndexed.front());
+                if (m == segments.end())
+                  m = mendNearest(pointsIndexed.back(), 2);
+                if (m == segments.end())
+                  m = mendNearest(pointsIndexed.front(), 2);
+                if (m == segments.end())
+                  break;
+                else
+                  it = m;
+              }
             }
             if (!found)
             {
@@ -357,40 +443,22 @@ namespace ADWIF
               break;
             }
           }
+
           polygons.push_back(polygon(pointsIndexed.begin(), pointsIndexed.end()));
           std::cerr << std::endl;
         }
 
         auto biggest = polygons.begin();
-        rect maxBB;
-
-        auto trimRect = [](rect & r)
-        {
-          rect::interval_type h = r.get(boost::polygon::orientation_2d(boost::polygon::orientation_2d_enum::HORIZONTAL));
-          rect::interval_type v = r.get(boost::polygon::orientation_2d(boost::polygon::orientation_2d_enum::VERTICAL));
-          h.high(h.high() - h.low()); h.low(0);
-          v.high(v.high() - v.low()); v.low(0);
-          r.set(boost::polygon::orientation_2d(boost::polygon::orientation_2d_enum::HORIZONTAL), h);
-          r.set(boost::polygon::orientation_2d(boost::polygon::orientation_2d_enum::HORIZONTAL), v);
-        };
-
-
-        trimRect(maxBB);
+        double maxArea = 0;
 
         for (auto it = polygons.begin(); it != polygons.end(); it++)
         {
-          rect bb;
-          trimRect(bb);
-          if (boost::polygon::extents(bb, *it))
+          double area = boost::polygon::area(*it);
+          if (area > maxArea)
           {
-            if (!boost::polygon::contains(maxBB, bb))
-            {
-              maxBB = bb;
-              biggest = it;
-            }
+            maxArea = area;
+            biggest = it;
           }
-          else
-            it = polygons.erase(it);
         }
 
         if (biggest != polygons.end())
@@ -434,14 +502,11 @@ namespace ADWIF
 
         std::cerr << "\n";
 
-        mapper.add(po);
-        mapper.map(po, "fill-opacity:1.0;fill:rgb(153,204,0);stroke:rgb(0,0,0);stroke-width:1", 240);
-
         std::uniform_int_distribution<int> randomColour(0, 255);
 
         for(auto i = poly.begin_holes(); i != poly.end_holes(); ++i)
         {
-          boost::geometry::model::polygon<point> ph;
+          boost::geometry::model::ring<point> ph;
 
           int r = randomColour(myRandomEngine),
               g = randomColour(myRandomEngine),
@@ -454,12 +519,11 @@ namespace ADWIF
             imageOut.setPixelColor(p.x(), p.y(), &co);
           }
 
-          mapper.add(ph);
-          mapper.map(ph, "fill-opacity:0.8;fill:rgb(" +
-            boost::lexical_cast<std::string>(r) + "," +
-            boost::lexical_cast<std::string>(g) + "," +
-            boost::lexical_cast<std::string>(b) + ");stroke:rgb(0,0,0);stroke-width:1", 240);
+          po.inners().push_back(ph);
         }
+
+        mapper.add(po);
+        mapper.map(po, "fill-opacity:1.0;fill:rgb(153,204,0);stroke:rgb(0,0,0);stroke-width:1", 240);
 
         std::string fileName = "png/out" + boost::lexical_cast<std::string>(i) + ".png";
         imageOut.flipVertical();
@@ -467,7 +531,7 @@ namespace ADWIF
 
         i++;
 
-        break;
+//         break;
       }
   }
 
