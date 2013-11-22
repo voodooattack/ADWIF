@@ -210,7 +210,7 @@ namespace ADWIF
         }
       }
 
-      auto concaveHull = [](const flat_set<point> & in, polygon & poly, double alpha)
+      auto concaveHull = [](const flat_set<point> & in, polygon & poly, double alpha, int mendRadius)
       {
         auto getCoords = [](const point & p1, const point & p2, double radius, bool dir) -> point
         {
@@ -330,45 +330,76 @@ namespace ADWIF
 
         auto mendNearest = [&](const point & p, int r = 1)
         {
-          if (r == 0)
+          if (r <= 0)
             return segments.end();
 
           auto sg = std::find_if(segments.begin(), segments.end(), [&](const segment & s)
           {
-            return s.low() == point(p.x() - r, p.y()) || s.low() == point(p.x() - r, p.y() - r) ||
-            s.low() == point(p.x(), p.y() - r) || s.low() == point(p.x() + r, p.y()) ||
-            s.low() == point(p.x(), p.y() + r) || s.low() == point(p.x() + r, p.y() + r) ||
-            s.low() == point(p.x() - r, p.y() + r) || s.low() == point(p.x() - r, p.y() + r) ||
-            s.high() == point(p.x() - r, p.y()) || s.high() == point(p.x() - r, p.y() - r) ||
-            s.high() == point(p.x(), p.y() - r) || s.high() == point(p.x() + r, p.y()) ||
-            s.high() == point(p.x(), p.y() + r) || s.high() == point(p.x() + r, p.y() + r) ||
-            s.high() == point(p.x() - r, p.y() + r) || s.high() == point(p.x() + r, p.y() - r);
+            for (int y = p.y() - r; y < p.y() + r; y++)
+              for (int x = p.x() - r; x < p.x() + r; x++)
+                if (((s.low().x() == x && s.low().y() == y) ||
+                    (s.high().x() == x && s.high().y() == y)))
+                      return true;
+            return false;
           });
 
           if (sg == segments.end())
             return segments.end();
-          else if (sg->low() == point(p.x() - r, p.y()) || sg->low() == point(p.x() - r, p.y() - r) ||
-            sg->low() == point(p.x(), p.y() - r) || sg->low() == point(p.x() + r, p.y()) ||
-            sg->low() == point(p.x(), p.y() + r) || sg->low() == point(p.x() + r, p.y() + r) ||
-            sg->low() == point(p.x() - r, p.y() + r) || sg->high() == point(p.x() + r, p.y() - r))
+
+          for (int radius = 1; radius <= r; radius++)
           {
-            segment s(p, sg->low());
-            if (!mendMap[s])
+            int x = radius, y = 0;
+            int error = 1-x;
+
+            while(x >= y)
             {
-              mendMap[s] = true;
-              return segments.insert(s).first - 1;
-            }
-          }
-          else if (sg->high() == point(p.x() - r, p.y()) || sg->high() == point(p.x() - r, p.y() - r) ||
-            sg->high() == point(p.x(), p.y() - r) || sg->high() == point(p.x() + r, p.y()) ||
-            sg->high() == point(p.x(), p.y() + r) || sg->high() == point(p.x() + r, p.y() + r) ||
-            sg->high() == point(p.x() - r, p.y() + r) || sg->high() == point(p.x() + r, p.y() - r))
-          {
-            segment s(sg->high(), p);
-            if (!mendMap[s])
-            {
-              mendMap[s] = true;
-              return segments.insert(s).first - 1;
+              if
+              (
+                (sg->low().x() ==  x + p.x() && sg->low().y() ==  y + p.y()) ||
+                (sg->low().x() ==  y + p.x() && sg->low().y() ==  x + p.y()) ||
+                (sg->low().x() == -x + p.x() && sg->low().y() ==  y + p.y()) ||
+                (sg->low().x() == -y + p.x() && sg->low().y() ==  x + p.y()) ||
+                (sg->low().x() == -x + p.x() && sg->low().y() == -y + p.y()) ||
+                (sg->low().x() == -y + p.x() && sg->low().y() == -x + p.y()) ||
+                (sg->low().x() ==  x + p.x() && sg->low().y() == -y + p.y()) ||
+                (sg->low().x() ==  y + p.x() && sg->low().y() == -x + p.y())
+              )
+              {
+                segment s(p, sg->low());
+                if (!mendMap[s])
+                {
+                  mendMap[s] = true;
+                  return segments.insert(s).first - 1;
+                }
+              }
+              else if
+              (
+                (sg->high().x() ==  x + p.x() && sg->high().y() ==  y + p.y()) ||
+                (sg->high().x() ==  y + p.x() && sg->high().y() ==  x + p.y()) ||
+                (sg->high().x() == -x + p.x() && sg->high().y() ==  y + p.y()) ||
+                (sg->high().x() == -y + p.x() && sg->high().y() ==  x + p.y()) ||
+                (sg->high().x() == -x + p.x() && sg->high().y() == -y + p.y()) ||
+                (sg->high().x() == -y + p.x() && sg->high().y() == -x + p.y()) ||
+                (sg->high().x() ==  x + p.x() && sg->high().y() == -y + p.y()) ||
+                (sg->high().x() ==  y + p.x() && sg->high().y() == -x + p.y())
+              )
+              {
+                segment s(sg->high(), p);
+                if (!mendMap[s])
+                {
+                  mendMap[s] = true;
+                  return segments.insert(s).first - 1;
+                }
+              }
+
+              y++;
+              if(error < 0)
+                error += 2 * y + 1;
+              else
+              {
+                x--;
+                error += 2 * (y - x + 1);
+              }
             }
           }
 
@@ -424,17 +455,13 @@ namespace ADWIF
               if (!found && it == segments.end() - 1)
               {
                 std::cerr << " {mending}";
-                auto m = mendNearest(pointsIndexed.back());
+                auto m = mendNearest(pointsIndexed.back(), mendRadius);
                 if (m == segments.end())
-                  m = mendNearest(pointsIndexed.front());
-                if (m == segments.end())
-                  m = mendNearest(pointsIndexed.back(), 2);
-                if (m == segments.end())
-                  m = mendNearest(pointsIndexed.front(), 2);
-                if (m == segments.end())
-                  break;
-                else
+                  m = mendNearest(pointsIndexed.front(), mendRadius);
+                if (m != segments.end())
                   it = m;
+                else
+                  break;
               }
             }
             if (!found)
@@ -480,7 +507,7 @@ namespace ADWIF
       {
         polygon poly;
 
-        concaveHull(c.points, poly, 2);
+        concaveHull(c.points, poly, 2, 5);
 
         fipImage imageOut = myMapImg;
 
