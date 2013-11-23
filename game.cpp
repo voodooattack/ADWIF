@@ -305,7 +305,7 @@ namespace ADWIF
     myBank.reset(new MapBank(myIndexStream));
     myMap.reset(new Map(myBank, saveDir + dirSep + "map", false, 512, 512, 32, bg));
 
-    myGenerator.reset(new MapGenerator(shared_from_this(), false));
+    myGenerator.reset(new MapGenerator(shared_from_this()));
 
     fipImage mapImg;
     fipImage hmapImg;
@@ -345,7 +345,7 @@ namespace ADWIF
     myBank.reset(new MapBank(myIndexStream));
     myMap.reset(new Map(myBank, saveDir + dirSep + "map", true, 512, 512, 32, bg));
 
-    myGenerator.reset(new MapGenerator(shared_from_this(), true));
+    myGenerator.reset(new MapGenerator(shared_from_this()));
 
     if (boost::filesystem::exists(saveDir + dirSep + "generator"))
     {

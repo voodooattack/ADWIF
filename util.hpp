@@ -39,6 +39,7 @@ namespace ADWIF
   std::vector<std::string> split(const std::string &s, char delim);
   // convert a colour code to its value (format: #000000)
   uint32_t hexStringToColour(const std::string & str);
+  std::string colourToHexString(uint32_t colour);
 }
 
 #endif // UTIL_HPP

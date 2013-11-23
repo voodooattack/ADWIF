@@ -28,9 +28,11 @@
 
 #include <boost/polygon/polygon.hpp>
 #include <boost/multi_array.hpp>
+#include <boost/polygon/gtl.hpp>
 
 #include <boost/serialization/shared_ptr.hpp>
 #include <boost/serialization/string.hpp>
+
 
 #include <json/value.h>
 #include <FreeImagePlus.h>
@@ -39,6 +41,9 @@
 
 namespace ADWIF
 {
+  typedef boost::polygon::polygon_with_holes_data<double> polygon;
+  typedef boost::polygon::polygon_traits<polygon>::point_type point;
+
   struct BiomeCell
   {
     std::string name;
@@ -60,10 +65,27 @@ namespace ADWIF
     }
   };
 
+  struct MapCluster
+  {
+    std::string biome;
+    point centroid;
+    polygon poly;
+    double area;
+
+    template<class Archive>
+    void serialize(Archive & ar, const unsigned int version)
+    {
+      ar & biome;
+      ar & centroid;
+      ar & poly;
+      ar & area;
+    }
+  };
+
   class MapGenerator
   {
   public:
-    MapGenerator(const std::shared_ptr<class Game> & game, bool load);
+    MapGenerator(const std::shared_ptr<class Game> & game);
     ~MapGenerator();
 
     std::shared_ptr<class Game>  game() { return myGame; }
@@ -102,6 +124,7 @@ namespace ADWIF
       ar & myGenerationMap;
       ar & myBiomeMap;
       ar & myInitialisedFlag;
+      ar & myMapClusters;
       ar & myHeight;
       ar & myWidth;
     }
@@ -131,6 +154,7 @@ namespace ADWIF
     std::mt19937 myRandomEngine;
     boost::multi_array<bool, 2> myGenerationMap;
     boost::multi_array<BiomeCell, 2> myBiomeMap;
+    std::vector<MapCluster> myMapClusters;
     unsigned int myHeight, myWidth;
     bool myInitialisedFlag;
   };

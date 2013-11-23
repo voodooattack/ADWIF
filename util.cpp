@@ -25,6 +25,7 @@
 #include <locale>
 #include <string>
 #include <sstream>
+#include <boost/format.hpp>
 
 namespace ADWIF
 {
@@ -109,5 +110,10 @@ namespace ADWIF
     ss << copy;
     ss >> std::hex >> col;
     return col;
+  }
+
+  std::string colourToHexString(uint32_t colour)
+  {
+    return boost::str(boost::format("#%|06|p") % colour);
   }
 }

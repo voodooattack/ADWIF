@@ -20,12 +20,19 @@
 #ifndef SERIALISATIONUTILS_H
 #define SERIALISATIONUTILS_H
 
+#include <boost/serialization/serialization.hpp>
 #include <boost/serialization/split_free.hpp>
 #include <boost/serialization/utility.hpp>
 #include <boost/serialization/collections_save_imp.hpp>
 #include <boost/serialization/collections_load_imp.hpp>
 #include <boost/serialization/map.hpp>
+#include <boost/serialization/vector.hpp>
 #include <boost/multi_array.hpp>
+#include <boost/polygon/point_data.hpp>
+#include <boost/polygon/polygon_with_holes_data.hpp>
+#include <boost/geometry/io/wkt/wkt.hpp>
+#include <boost/geometry/io/io.hpp>
+#include <boost/geometry/geometries/adapted/boost_polygon.hpp>
 #include <unordered_map>
 
 
@@ -260,6 +267,50 @@ namespace boost { namespace serialization {
 //   ){
 //     boost::serialization::split_free(ar, t, file_version);
 //   }
+
+  template<class Archive, typename T>
+  inline void save(Archive & ar, const boost::polygon::point_data<T> & t, const unsigned int /* file_version */)
+  {
+    T x = t.x(), y = t.y();
+    ar << x << y;
+  }
+
+  template<class Archive, typename T>
+  inline void load(Archive & ar, boost::polygon::point_data<T> & t, const unsigned int /* file_version */)
+  {
+    T x, y;
+    ar >> x >> y;
+    t.x(x); t.y(y);
+  }
+
+  template<class Archive, typename T>
+  inline void serialize(Archive & ar, boost::polygon::point_data<T> & t, const unsigned int file_version)
+  {
+    boost::serialization::split_free(ar, t, file_version);
+  }
+
+  template<class Archive, typename T>
+  inline void save(Archive & ar, const boost::polygon::polygon_with_holes_data<T> & t, const unsigned int /* file_version */)
+  {
+    std::stringstream ss;
+    ss << boost::geometry::wkt_manipulator<typename boost::polygon::polygon_with_holes_data<T>>(t);
+    std::string str = ss.str();
+    ar << str;
+  }
+
+  template<class Archive, typename T>
+  inline void load(Archive & ar, boost::polygon::polygon_with_holes_data<T> & t, const unsigned int /* file_version */)
+  {
+    std::string str;
+    ar >> str;
+    boost::geometry::read_wkt(str, t);
+  }
+
+  template<class Archive, typename T>
+  inline void serialize(Archive & ar, boost::polygon::polygon_with_holes_data<T> & t, const unsigned int file_version)
+  {
+    boost::serialization::split_free(ar, t, file_version);
+  }
 
 }}
 #endif // SERIALISATIONUTILS_H
