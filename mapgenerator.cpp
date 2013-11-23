@@ -267,16 +267,6 @@ namespace ADWIF
           return false;
         };
 
-        auto trimRect = [](rect & r)
-        {
-          rect::interval_type h = r.get(boost::polygon::orientation_2d(boost::polygon::orientation_2d_enum::HORIZONTAL));
-          rect::interval_type v = r.get(boost::polygon::orientation_2d(boost::polygon::orientation_2d_enum::VERTICAL));
-          h.high(h.high() - h.low()); h.low(0);
-          v.high(v.high() - v.low()); v.low(0);
-          r.set(boost::polygon::orientation_2d(boost::polygon::orientation_2d_enum::HORIZONTAL), h);
-          r.set(boost::polygon::orientation_2d(boost::polygon::orientation_2d_enum::HORIZONTAL), v);
-        };
-
         flat_set<segment> segments;
 
         voronoi_diagram vd;
@@ -454,14 +444,20 @@ namespace ADWIF
               }
               if (!found && it == segments.end() - 1)
               {
-                std::cerr << " {mending}";
+                std::cerr << " {mending: ";
                 auto m = mendNearest(pointsIndexed.back(), mendRadius);
                 if (m == segments.end())
                   m = mendNearest(pointsIndexed.front(), mendRadius);
                 if (m != segments.end())
+                {
+                  std::cerr << "ok}";
                   it = m;
+                }
                 else
+                {
+                  std::cerr << "n/a}";
                   break;
+                }
               }
             }
             if (!found)
@@ -507,7 +503,7 @@ namespace ADWIF
       {
         polygon poly;
 
-        concaveHull(c.points, poly, 2, 5);
+        concaveHull(c.points, poly, 1.5, 3);
 
         fipImage imageOut = myMapImg;
 
@@ -529,7 +525,7 @@ namespace ADWIF
 
         std::cerr << "\n";
 
-        std::uniform_int_distribution<int> randomColour(0, 255);
+        std::uniform_int_distribution<int> randomColour(64, 192);
 
         for(auto i = poly.begin_holes(); i != poly.end_holes(); ++i)
         {
