@@ -114,6 +114,6 @@ namespace ADWIF
 
   std::string colourToHexString(uint32_t colour)
   {
-    return boost::str(boost::format("#%|06|p") % colour);
+    return boost::str(boost::format("#%06x") % colour);
   }
 }

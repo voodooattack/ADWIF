@@ -55,6 +55,10 @@ namespace ADWIF
 //     else
 //     {
       myGame->createMap();
+
+      myViewOffX = 171 * myGame->generator()->chunkSizeX();
+      myViewOffY = 169 * myGame->generator()->chunkSizeY();
+
       myGame->generator()->generateOne(myViewOffX / myGame->generator()->chunkSizeX(),
                                        myViewOffY / myGame->generator()->chunkSizeY());
 //     }

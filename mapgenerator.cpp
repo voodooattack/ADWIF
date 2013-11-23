@@ -62,7 +62,7 @@ namespace ADWIF
 {
   MapGenerator::MapGenerator(const std::shared_ptr<Game> & game):
     myGame(game), myMapImg(), myHeightMap(), myChunkSizeX(32), myChunkSizeY(32),
-    myColourIndex(), myRandomEngine(), myGenerationMap(), myBiomeMap(), myMapClusters(),
+    myColourIndex(), myRandomEngine(), myGenerationMap(), myBiomeMap(), myRegions(),
     myInitialisedFlag(false)
   {
     myRandomEngine.seed(time(NULL));
@@ -144,7 +144,7 @@ namespace ADWIF
 
           while(!q.empty())
           {
-            const point n = q.back(); q.pop_back();
+            point n = q.back(); q.pop_back();
             uint32_t pcolour = getPixelColour(n.x(), n.y(), myMapImg);
 
             if (!visited[n.x()][n.y()] && colour == pcolour)
@@ -166,7 +166,7 @@ namespace ADWIF
               if (edge || ((int)n.x() % 2 == 0 && (int)n.y() % 2 == 0))
               //if (edge)
               {
-                 points.insert(n);
+                points.insert(n);
 
 //                  if (edge)
 //                  {
@@ -180,6 +180,7 @@ namespace ADWIF
             }
             else if (colour != pcolour)
             {
+
               points.insert(n);
 
 //               RGBQUAD outer = { 0, 0, 0, 255 };
@@ -195,7 +196,7 @@ namespace ADWIF
 
           clusters.push_back(c);
 
-//           std::string fileName = "png/" + boost::lexical_cast<std::string>(i++) + ".png";
+//           std::string fileName = saveDir + "/map/png/" + boost::lexical_cast<std::string>(i++) + ".png";
 //           img.flipVertical();
 //           img.save(fileName.c_str());
         }
@@ -245,7 +246,7 @@ namespace ADWIF
           }
 
           bool obstructed = false;
-          point ob;
+//           point ob;
 
           for(const voronoi_diagram::cell_type & c : vd.cells())
           {
@@ -253,7 +254,7 @@ namespace ADWIF
             if (p3 == p1 || p3 == p2) continue;
             if (boost::polygon::distance_squared(pp1, p3) < alpha * alpha / 2.0)
             {
-              ob = p3;
+//               ob = p3;
               obstructed = true;
               break;
             }
@@ -365,14 +366,14 @@ namespace ADWIF
             bool found = false;
             for (auto it = segments.begin(); it != segments.end(); ++it)
             {
-              if (it->low() == pointsIndexed.back())
-              {
-                pointsIndexed.push_back(it->high());
-                //std::cerr << " -> " << it->high();
-                segments.erase(it);
-                found = true;
-                break;
-              }
+//               if (it->low() == pointsIndexed.back())
+//               {
+//                 pointsIndexed.push_back(it->high());
+//                 //std::cerr << " -> " << it->high();
+//                 segments.erase(it);
+//                 found = true;
+//                 break;
+//               }
               if (it->high() == pointsIndexed.back())
               {
                 pointsIndexed.push_back(it->low());
@@ -389,15 +390,15 @@ namespace ADWIF
                 found = true;
                 break;
               }
-              if (it->high() == pointsIndexed.front())
-              {
-                pointsIndexed.push_front(it->low());
-                //std::cerr << " -> " << it->low();
-                segments.erase(it);
-                found = true;
-                break;
-              }
-              if (!found && it == segments.end() - 1)
+//               if (it->high() == pointsIndexed.front())
+//               {
+//                 pointsIndexed.push_front(it->low());
+//                 //std::cerr << " -> " << it->low();
+//                 segments.erase(it);
+//                 found = true;
+//                 break;
+//               }
+              if (!found && it == segments.end() - 1 && mendRadius > 0)
               {
                 //std::cerr << " {mending: ";
                 auto m = mendNearest(pointsIndexed.back(), mendRadius);
@@ -442,7 +443,7 @@ namespace ADWIF
         if (biggest != polygons.end())
         {
           poly.set(biggest->begin(), biggest->end());
-          biggest = polygons.erase(biggest);
+          polygons.erase(biggest);
           poly.set_holes(polygons.begin(), polygons.end());
         }
 
@@ -456,27 +457,27 @@ namespace ADWIF
 
       for (Cluster & c : clusters)
       {
-        MapCluster mc;
+        Region region;
 
-        concaveHull(c.points, mc.poly, 1.5, 3);
-        boost::polygon::center(mc.centroid, mc.poly);
+        concaveHull(c.points, region.poly, 1.5, 3);
+        boost::polygon::center(region.centroid, region.poly);
 
-        mc.biome = c.biome;
-        mc.area = boost::polygon::area(mc.poly);
+        region.biome = c.biome;
+        region.area = boost::polygon::area(region.poly);
 
-        myMapClusters.push_back(mc);
+        myRegions.push_back(region);
 
 //         fipImage imageOut = myMapImg;
 //
 //         imageOut.convertToGrayscale();
 //         imageOut.convertTo32Bits();
 //
-//         std::ofstream fsvg("svg/" + boost::lexical_cast<std::string>(i) + ".svg");
+//         std::ofstream fsvg(saveDir + "/map/svg/" + boost::lexical_cast<std::string>(i) + ".svg");
 //         boost::geometry::svg_mapper<point> mapper(fsvg, 200, 481);//,  "width=\"200\" height=\"480\"");
 //
         boost::geometry::model::polygon<point> po;
-//
-        for (const auto & p : mc.poly)
+
+        for (const auto & p : region.poly)
         {
           boost::geometry::append(po, p);
           //std::cerr << p << " ";
@@ -488,7 +489,7 @@ namespace ADWIF
 //
 //         std::uniform_int_distribution<int> randomColour(64, 192);
 //
-        for(auto i = mc.poly.begin_holes(); i != mc.poly.end_holes(); ++i)
+        for(auto i = region.poly.begin_holes(); i != region.poly.end_holes(); ++i)
         {
           boost::geometry::model::ring<point> ph;
 //
@@ -506,18 +507,18 @@ namespace ADWIF
           po.inners().push_back(ph);
         }
 
+        boost::geometry::correct(po);
+
         mapper.add(po);
         mapper.map(po, "fill-opacity:1.0;fill:" +
-          myGame->biomes()[c.biome]->jsonValue["mapColour"].asString() +
+          colourToHexString(myGame->biomes()[c.biome]->mapColour) +
             ";stroke:rgb(0,0,0);stroke-width:1");
 //
-//         std::string fileName = "png/out" + boost::lexical_cast<std::string>(i) + ".png";
+//         std::string fileName = saveDir + "/map/png/out" + boost::lexical_cast<std::string>(i) + ".png";
 //         imageOut.flipVertical();
 //         imageOut.save(fileName.c_str());
 
 //         i++;
-
-//         break;
       }
   }
 
@@ -540,6 +541,33 @@ namespace ADWIF
     unsigned int offx = x * myChunkSizeX, offy = y * myChunkSizeY;
 
     Biome * biome = myGame->biomes()[myBiomeMap[x][y].name];
+
+//     auto region = std::find_if(myRegions.begin(), myRegions.end(), [&](const Region & c) {
+//       return boost::polygon::contains(c.poly, point(x,y), false);
+//     });
+//
+//     if (region == myRegions.end())
+//       throw std::runtime_error(boost::str(boost::format("could not find region for biome cell %ix%i") % x % y));
+//
+//     std::cerr << boost::format("map cell %ix%i located in region ")  % x % y <<
+//       region->centroid << boost::format(" (%s)") % region->biome << std::endl;
+
+    std::vector<Region> regions;
+
+    for(auto & r : myRegions)
+    {
+      if (boost::polygon::contains(r.poly, point(x,y), true))
+      {
+        regions.push_back(r);
+      }
+    }
+
+    std::cerr << boost::format("map cell %ix%i intersects regions: ")  % x % y;
+
+    for(auto & r : regions)
+      std::cerr << r.centroid << boost::format(" (%s), ") % r.biome;
+
+    std::cerr << std::endl;
 
     std::uniform_int_distribution<int> ud(0, biome->materials.size()-1);
     std::bernoulli_distribution bd(0.001);

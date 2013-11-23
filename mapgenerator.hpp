@@ -65,7 +65,7 @@ namespace ADWIF
     }
   };
 
-  struct MapCluster
+  struct Region
   {
     std::string biome;
     point centroid;
@@ -124,7 +124,7 @@ namespace ADWIF
       ar & myGenerationMap;
       ar & myBiomeMap;
       ar & myInitialisedFlag;
-      ar & myMapClusters;
+      ar & myRegions;
       ar & myHeight;
       ar & myWidth;
     }
@@ -154,7 +154,7 @@ namespace ADWIF
     std::mt19937 myRandomEngine;
     boost::multi_array<bool, 2> myGenerationMap;
     boost::multi_array<BiomeCell, 2> myBiomeMap;
-    std::vector<MapCluster> myMapClusters;
+    std::vector<Region> myRegions;
     unsigned int myHeight, myWidth;
     bool myInitialisedFlag;
   };
