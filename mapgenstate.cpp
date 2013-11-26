@@ -108,9 +108,9 @@ namespace ADWIF
       myGame->generator()->generateOne(chunkX, chunkY);
     }
     else if (key == '>')
-      myViewOffZ++;
-    else if (key == '<')
       myViewOffZ--;
+    else if (key == '<')
+      myViewOffZ++;
     else if (key == 'c')
       myGame->createMap();
     else if (key == 'l')

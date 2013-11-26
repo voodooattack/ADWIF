@@ -301,6 +301,7 @@ namespace ADWIF
     bg.type = TerrainType::Hole;
     bg.material = "Air";
     bg.symIdx = 0;
+    bg.background = true;
 
     myBank.reset(new MapBank(myIndexStream));
     myMap.reset(new Map(myBank, saveDir + dirSep + "map", false, 512, 512, 32, bg));
@@ -321,6 +322,7 @@ namespace ADWIF
 
     myGenerator->chunkSizeX(800);
     myGenerator->chunkSizeY(240);
+    myGenerator->chunkSizeZ(400);
 
     if (boost::filesystem::exists(saveDir + dirSep + "status"))
       boost::filesystem::remove(saveDir + dirSep + "status");

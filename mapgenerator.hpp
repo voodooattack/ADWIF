@@ -103,6 +103,9 @@ namespace ADWIF
     unsigned int chunkSizeY() const { return myChunkSizeY; }
     void chunkSizeY(unsigned int size) { myChunkSizeY = size; }
 
+    unsigned int chunkSizeZ() const { return myChunkSizeZ; }
+    void chunkSizeZ(unsigned int size) { myChunkSizeZ = size; }
+
     unsigned int height() { return myHeight; }
     unsigned int width() { return myWidth; }
 
@@ -117,8 +120,10 @@ namespace ADWIF
     template<class Archive>
     void serialize(Archive & ar, const unsigned int version)
     {
+      ar & mySeed;
       ar & myChunkSizeX;
       ar & myChunkSizeY;
+      ar & myChunkSizeZ;
       ar & myColourIndex;
       ar & myRandomEngine;
       ar & myGenerationMap;
@@ -149,13 +154,14 @@ namespace ADWIF
     std::shared_ptr<class Game> myGame;
     fipImage myMapImg;
     fipImage myHeightMap;
-    unsigned int myChunkSizeX, myChunkSizeY;
+    unsigned int myChunkSizeX, myChunkSizeY, myChunkSizeZ;
     std::unordered_map<uint32_t, std::string> myColourIndex;
     std::mt19937 myRandomEngine;
     boost::multi_array<bool, 2> myGenerationMap;
     boost::multi_array<BiomeCell, 2> myBiomeMap;
     std::vector<Region> myRegions;
     unsigned int myHeight, myWidth;
+    unsigned int mySeed;
     bool myInitialisedFlag;
   };
 }

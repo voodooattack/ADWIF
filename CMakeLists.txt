@@ -36,13 +36,19 @@ endif()
 
 add_subdirectory(${DEP_DIR})
 
-if(UNIX)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++11")
-endif(UNIX)
+if(CMAKE_COMPILER_IS_GNUCXX)
+  set(CMAKE_CXX_FLAGS "-std=gnu++11")
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  set(CMAKE_CXX_FLAGS "-std=c++11")
+elseif(MSVC)
+  # On by default
+endif()
 
 #execute_process(COMMAND make -C ${V8_ROOT} -f ${V8_ROOT}/Makefile i18nsupport=off werror=no native)
 
+set(Boost_USE_MULTITHREADED ON)
 set(CURSES_NEED_WIDE on)
+
 find_package(V8 REQUIRED)
 find_package(curses REQUIRED)
 find_package(PhysFS REQUIRED)
@@ -53,17 +59,20 @@ find_package(OpenVDB REQUIRED)
 find_package(Half REQUIRED)
 find_package(UTF8CPP REQUIRED)
 find_package(FreeImage REQUIRED)
-
-set(Boost_USE_MULTITHREADED ON)
+find_package(Noise REQUIRED)
 find_package(Boost 1.54.0 COMPONENTS serialization filesystem system iostreams regex program_options thread chrono REQUIRED)
+
+if(NOISE_DIR_IS_LIBNOISE)
+  add_definitions(-DNOISE_DIR_IS_LIBNOISE)
+endif(NOISE_DIR_IS_LIBNOISE)
 
 include_directories(${PROJECT_SOURCE_DIR} ${CURSES_INCLUDE_DIR} ${PHYSFS_INCLUDE_DIR} ${V8_INCLUDE_DIR} ${Boost_INCLUDE_DIRS} ${HALF_INCLUDE_DIRS}
                     ${PHYSFS_CPP_ROOT}/include ${JSONCPP_INCLUDE_DIR} ${OPENVDB_INCLUDE_DIRS} ${TBB_INCLUDE_DIRS} ${UTF8CPP_INCLUDE_DIR}
-                    ${FREEIMAGE_INCLUDE_PATH})
+                    ${FREEIMAGE_INCLUDE_PATH} ${NOISE_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIR})
 add_executable(adwif imageutils.cpp serialisationutils.cpp mapbank.cpp mapeditorstate.cpp mapgenerator.cpp mapgenstate.cpp item.cpp map.cpp fileutils.cpp jsonutils.cpp renderer.cpp animationutils.cpp util.cpp scripting.cpp game.cpp player.cpp newgamestate.cpp introanimation.cpp animation.cpp mainmenustate.cpp introstate.cpp engine.cpp curses.cpp main.cpp)
 add_dependencies(adwif physfs++)
 target_link_libraries(adwif ${CURSES_LIBRARIES} ${PHYSFS_LIBRARY} ${V8_LIBRARIES} ${Boost_LIBRARIES} ${HALF_LIBRARIES} ${FREEIMAGE_LIBRARIES}
-                      ${CMAKE_THREAD_LIBS_INIT} ${JSONCPP_LIBRARIES} ${OPENVDB_LIBRARIES} ${TBB_LIBRARIES} physfs++)
+                      ${CMAKE_THREAD_LIBS_INIT} ${JSONCPP_LIBRARIES} ${OPENVDB_LIBRARIES} ${TBB_LIBRARIES} ${NOISE_LIBRARY} physfs++)
 
 #add_custom_command(TARGET adwif POST_BUILD COMMENT
 #                     COMMAND ${CMAKE_COMMAND} -E copy_directory

@@ -31,25 +31,24 @@
 #include <physfs.hpp>
 
 #include <boost/container/flat_set.hpp>
-#include <boost/serialization/serialization.hpp>
-#include <boost/serialization/array.hpp>
-#include <boost/serialization/vector.hpp>
-#include <boost/archive/binary_oarchive.hpp>
-#include <boost/archive/binary_iarchive.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/lexical_cast.hpp>
+// #include <boost/filesystem.hpp>
+// #include <boost/lexical_cast.hpp>
 #include <boost/polygon/polygon.hpp>
 #include <boost/polygon/voronoi.hpp>
 #include <boost/multi_array.hpp>
-#include <boost/optional.hpp>
-#include <boost/geometry.hpp>
-#include <boost/geometry/geometries/geometries.hpp>
-#include <boost/geometry/geometries/adapted/boost_polygon.hpp>
-#include <boost/geometry/io/wkt/wkt.hpp>
-#include <boost/assign.hpp>
+// #include <boost/optional.hpp>
+#include <boost/format.hpp>
+// #include <boost/geometry.hpp>
+// #include <boost/geometry/geometries/geometries.hpp>
+// #include <boost/geometry/geometries/adapted/boost_polygon.hpp>
+// #include <boost/assign.hpp>
+// #include <boost/iterator.hpp>
 
-typedef boost::polygon::segment_data<double> segment;
-typedef boost::polygon::voronoi_diagram<double> voronoi_diagram;
+#ifdef NOISE_DIR_IS_LIBNOISE
+#include <libnoise/noise.h>
+#else
+#include <noise/noise.h>
+#endif
 
 template<class T>
 std::ostream & operator<< (std::ostream & os, const boost::polygon::point_data<T> & p)
@@ -60,12 +59,68 @@ std::ostream & operator<< (std::ostream & os, const boost::polygon::point_data<T
 
 namespace ADWIF
 {
+  class HeightMapModule: public noise::module::Module
+  {
+    inline static double cubicInterpolate (double p[4], double x) {
+      return p[1] + 0.5 * x*(p[2] - p[0] + x*(2.0*p[0] - 5.0*p[1] + 4.0*p[2] - p[3] + x*(3.0*(p[1] - p[2]) + p[3] - p[0])));
+    }
+
+    inline static double bicubicInterpolate (double p[4][4], double x, double y) {
+      double arr[4];
+      arr[0] = cubicInterpolate(p[0], y);
+      arr[1] = cubicInterpolate(p[1], y);
+      arr[2] = cubicInterpolate(p[2], y);
+      arr[3] = cubicInterpolate(p[3], y);
+      return cubicInterpolate(arr, x);
+    }
+
+  public:
+    HeightMapModule(const boost::multi_array<BiomeCell, 2> & biomeMap,
+                    int chunkSizeX, int chunkSizeY,
+                    int chunkSizeZ) : Module(0), myBiomeMap(biomeMap),
+                    myChunkSizeX(chunkSizeX), myChunkSizeY(chunkSizeY),
+                    myChunkSizeZ(chunkSizeZ) { }
+
+    virtual int GetSourceModuleCount() const { return 0; }
+
+    virtual double GetValue(double x, double y, double z) const {
+      int chunkX = x / myChunkSizeX, chunkY = y / myChunkSizeY;
+      int xl = myBiomeMap.index_bases()[0], xh = myBiomeMap.shape()[0];
+      int yl = myBiomeMap.index_bases()[1], yh = myBiomeMap.shape()[1];
+
+      if (chunkX < xl || chunkY < yl || chunkX >= xh || chunkY >= yh)
+        return 0;
+
+      double m[4][4];
+
+      std::memset(m, 0, 4 * 4 * sizeof(double));
+
+      int jl = chunkY > yl ? -1 : 0, jh = chunkY + 2 < yh ? 3 : (chunkY+1 < yh ? 2 : 1);
+      int il = chunkX > xl ? -1 : 0, ih = chunkX + 2 < xh ? 3 : (chunkX+1 < xh ? 2 : 1);
+
+      for (int j = chunkY > yl ? -1 : 0; j < jh; j++)
+        for (int i = il; i < ih; i++)
+          m[i+1][j+1] = myBiomeMap[chunkX+i][chunkY+j].height;
+
+      double vx = fmod(x, myChunkSizeX) / myChunkSizeX, vy = fmod(y, myChunkSizeY) / myChunkSizeY;
+      return bicubicInterpolate(m, 0.25 + vx, 0.25 + vy);
+    }
+
+    int myChunkSizeX, myChunkSizeY, myChunkSizeZ;
+    const boost::multi_array<BiomeCell, 2> & myBiomeMap;
+  };
+
+  typedef boost::polygon::segment_data<double> segment;
+  typedef boost::polygon::voronoi_diagram<double> voronoi_diagram;
+
+  using boost::container::flat_set;
+
   MapGenerator::MapGenerator(const std::shared_ptr<Game> & game):
-    myGame(game), myMapImg(), myHeightMap(), myChunkSizeX(32), myChunkSizeY(32),
-    myColourIndex(), myRandomEngine(), myGenerationMap(), myBiomeMap(), myRegions(),
+    myGame(game), myMapImg(), myHeightMap(), myChunkSizeX(32), myChunkSizeY(32), myChunkSizeZ(16),
+    myColourIndex(), myRandomEngine(), myGenerationMap(), myBiomeMap(), myRegions(), mySeed(time(NULL)),
     myInitialisedFlag(false)
   {
-    myRandomEngine.seed(time(NULL));
+    myRandomEngine.seed(mySeed);
   }
 
   MapGenerator::~MapGenerator() { }
@@ -81,8 +136,6 @@ namespace ADWIF
 
   void MapGenerator::generateBiomeMap()
   {
-    using boost::container::flat_set;
-
     for(auto const & b : myGame->biomes())
       myColourIndex[b.second->mapColour] = b.second->name;
     myHeight = myMapImg.getHeight();
@@ -105,7 +158,8 @@ namespace ADWIF
           myGenerationMap[x][y] = false;
           //return;
         }
-        double height = (h.rgbBlue | h.rgbGreen | h.rgbRed) / 256.0;
+        double height = (-0.5 + (h.rgbBlue | h.rgbGreen | h.rgbRed) / 256.0 / 2);
+//         double height = (h.rgbBlue | h.rgbGreen | h.rgbRed) / 256.0;
         myBiomeMap[x][y].name = myColourIndex[colour];
         myBiomeMap[x][y].x = x;
         myBiomeMap[x][y].y = y;
@@ -196,7 +250,7 @@ namespace ADWIF
 
           clusters.push_back(c);
 
-//           std::string fileName = saveDir + "/map/png/" + boost::lexical_cast<std::string>(i++) + ".png";
+//           std::string fileName = saveDir + dirSep + "map" + dirSep + "png" + dirSep + boost::lexical_cast<std::string>(i++) + ".png";
 //           img.flipVertical();
 //           img.save(fileName.c_str());
         }
@@ -452,8 +506,8 @@ namespace ADWIF
 
 //       i = 0;
 
-      std::ofstream fsvg(saveDir + "/map.svg");
-      boost::geometry::svg_mapper<point> mapper(fsvg, myWidth, myHeight);
+//       std::ofstream fsvg(saveDir + dirSep + "map.svg");
+//       boost::geometry::svg_mapper<point> mapper(fsvg, myWidth, myHeight);
 
       for (Cluster & c : clusters)
       {
@@ -466,13 +520,13 @@ namespace ADWIF
         region.area = boost::polygon::area(region.poly);
 
         myRegions.push_back(region);
-
+/*
 //         fipImage imageOut = myMapImg;
 //
 //         imageOut.convertToGrayscale();
 //         imageOut.convertTo32Bits();
 //
-//         std::ofstream fsvg(saveDir + "/map/svg/" + boost::lexical_cast<std::string>(i) + ".svg");
+//         std::ofstream fsvg(saveDir + dirSep + "map" + dirSep + "svg" + dirSep + boost::lexical_cast<std::string>(i) + ".svg");
 //         boost::geometry::svg_mapper<point> mapper(fsvg, 200, 481);//,  "width=\"200\" height=\"480\"");
 //
         boost::geometry::model::polygon<point> po;
@@ -514,18 +568,18 @@ namespace ADWIF
           colourToHexString(myGame->biomes()[c.biome]->mapColour) +
             ";stroke:rgb(0,0,0);stroke-width:1");
 //
-//         std::string fileName = saveDir + "/map/png/out" + boost::lexical_cast<std::string>(i) + ".png";
+//         std::string fileName = saveDir + dirSep + "map" + dirSep + "png" + dirSep + "out" + boost::lexical_cast<std::string>(i) + ".png";
 //         imageOut.flipVertical();
 //         imageOut.save(fileName.c_str());
 
-//         i++;
+//         i++;*/
       }
   }
 
   void MapGenerator::generateAll()
   {
-    for(unsigned int y = 0; y < myMapImg.getHeight(); y++)
-      for(unsigned int x = 0; x < myMapImg.getWidth(); x++)
+    for(unsigned int y = 0; y < myHeight; y++)
+      for(unsigned int x = 0; x < myWidth; x++)
       {
         generateOne(x, y);
       }
@@ -542,32 +596,79 @@ namespace ADWIF
 
     Biome * biome = myGame->biomes()[myBiomeMap[x][y].name];
 
-//     auto region = std::find_if(myRegions.begin(), myRegions.end(), [&](const Region & c) {
-//       return boost::polygon::contains(c.poly, point(x,y), false);
-//     });
-//
-//     if (region == myRegions.end())
-//       throw std::runtime_error(boost::str(boost::format("could not find region for biome cell %ix%i") % x % y));
-//
-//     std::cerr << boost::format("map cell %ix%i located in region ")  % x % y <<
-//       region->centroid << boost::format(" (%s)") % region->biome << std::endl;
-
     std::vector<Region> regions;
 
     for(auto & r : myRegions)
-    {
       if (boost::polygon::contains(r.poly, point(x,y), true))
-      {
         regions.push_back(r);
+
+    if (regions.empty())
+      throw std::runtime_error(boost::str(boost::format("could not find region for biome cell %ix%i") % x %y));
+
+    std::vector<point> neighbours;
+    {
+      voronoi_diagram vd;
+      flat_set<point> vdpoints;
+      const point coords(x,y);
+
+      vdpoints.insert(coords);
+
+      std::cerr << boost::format("map cell %ix%i intersects regions: ")  % x % y;
+      for(auto & r : regions)
+      {
+        std::cerr << r.centroid << " (" <<  r.biome << ") ";
+        std::copy(r.poly.begin(), r.poly.end(), std::inserter(vdpoints, vdpoints.end()));
+      }
+      std::cerr << std::endl;
+
+      boost::polygon::construct_voronoi(vdpoints.begin(), vdpoints.end(), &vd);
+
+      for(const voronoi_diagram::cell_type & c : vd.cells())
+      {
+        const point & p = *(vdpoints.begin() + c.source_index());
+        if (p == coords)
+        {
+          const voronoi_diagram::edge_type * edge = c.incident_edge();
+          do
+          {
+            const voronoi_diagram::cell_type * nc = edge->twin()->cell();
+            const point & np = *(vdpoints.begin() + nc->source_index());
+            neighbours.push_back(np);
+            edge = edge->next();
+          } while(edge != c.incident_edge());
+          break;
+        }
       }
     }
 
-    std::cerr << boost::format("map cell %ix%i intersects regions: ")  % x % y;
-
-    for(auto & r : regions)
-      std::cerr << r.centroid << boost::format(" (%s), ") % r.biome;
-
+    std::cerr << boost::format("found %i neighbours for cell %ix%i: ") % neighbours.size() % x % y;
+    for(const point & p : neighbours)
+      std::cerr << p << " (" << myBiomeMap[p.x()][p.y()].name << ") ";
     std::cerr << std::endl;
+
+    HeightMapModule heightmapSource(myBiomeMap, myChunkSizeX, myChunkSizeY, myChunkSizeZ);
+    noise::module::Perlin perlinSource;
+    noise::module::ScaleBias scaleBiasFilter;
+    noise::module::Add addFilter;
+
+    perlinSource.SetSeed(mySeed);
+    perlinSource.SetFrequency (0.0314566);
+    perlinSource.SetPersistence (0.03);
+    perlinSource.SetLacunarity (0.44783);
+    perlinSource.SetOctaveCount (8);
+    perlinSource.SetNoiseQuality (noise::QUALITY_BEST);
+
+    scaleBiasFilter.SetSourceModule(0, perlinSource);
+    scaleBiasFilter.SetBias(0.154778);
+    scaleBiasFilter.SetScale(0.01);
+
+    addFilter.SetSourceModule(0, heightmapSource);
+    addFilter.SetSourceModule(1, scaleBiasFilter);
+
+//     absFilter.SetSourceModule(0, multiplyFilter);
+
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     std::uniform_int_distribution<int> ud(0, biome->materials.size()-1);
     std::bernoulli_distribution bd(0.001);
@@ -577,6 +678,9 @@ namespace ADWIF
       for (unsigned int xx = offx; xx < offx + myChunkSizeX; xx++)
       {
         MapCell c = myGame->map()->get(xx, yy, 0);
+        int height = addFilter.GetValue(xx, yy, 0) * myChunkSizeZ / 2;
+
+        std::cerr << height << std::endl;
 
         std::string mat = biome->materials[ud(myRandomEngine)];
         std::uniform_int_distribution<int> ud2(0, myGame->materials()[mat]->disp[TerrainType::Floor].size() - 1);
@@ -584,30 +688,31 @@ namespace ADWIF
         c.material = mat;
         c.symIdx = ud2(myRandomEngine);
         c.biome = biome->name;
+        c.background = false;
+        c.type = TerrainType::Floor;
 
-        if (c.type == TerrainType::RampU)
-        {
-          continue;
-        }
-        else if (!bd(myRandomEngine))
-          c.type = TerrainType::Floor;
-        else
-        {
-          c.type = TerrainType::Wall;
-          for (int y1 = -1; y1 < 2; y1++)
-            for (int x1 = -1; x1 < 2; x1++)
-              //if ((x1 | y1) != 0)
-              {
-                MapCell cc = c;
-                cc.type = TerrainType::RampU;
-                cc.symIdx = 0;
-                myGame->map()->set(xx+x1, yy+y1, 0, cc);
-              }
-        }
-        myGame->map()->set(xx, yy, 0, c);
+//         if (c.type == TerrainType::RampU)
+//         {
+//           continue;
+//         }
+//         else if (!bd(myRandomEngine))
+//           c.type = TerrainType::Floor;
+//         else
+//         {
+//           c.type = TerrainType::Wall;
+//           for (int y1 = -1; y1 < 2; y1++)
+//             for (int x1 = -1; x1 < 2; x1++)
+//               //if ((x1 | y1) != 0)
+//               {
+//                 MapCell cc = c;
+//                 cc.type = TerrainType::RampU;
+//                 cc.symIdx = 0;
+//                 myGame->map()->set(xx+x1, yy+y1, 0, cc);
+//               }
+//         }
+        myGame->map()->set(xx, yy, height, c);
       }
     }
-
     myGenerationMap[x][y] = true;
   }
   void MapGenerator::notifyLoad() {  }
