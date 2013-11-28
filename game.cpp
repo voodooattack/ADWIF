@@ -54,13 +54,21 @@ namespace ADWIF
 
   Game::Game(const std::shared_ptr<ADWIF::Engine> & engine): myEngine(engine), myPlayer(nullptr), myMap(nullptr),
     myBank(nullptr), myIndexStream(), myRaces(), myProfessions(), mySkills(), myFactions(),
-    myMaterials(), myBiomes()
+    myMaterials(), myBiomes(), myService(), myThreads(), myServiceLock()
   {
+    myServiceLock.reset(new boost::asio::io_service::work(myService));
+    int nthreads = boost::thread::hardware_concurrency() - 1;
+    if (nthreads < 1) nthreads = 1;
+    while(nthreads--)
+      myThreads.create_thread(boost::bind(&boost::asio::io_service::run, &myService));
   }
 
   Game::~Game()
   {
     clearData();
+    myServiceLock.reset();
+//     myService.stop();
+    myThreads.join_all();
   }
 
   void Game::player(const std::shared_ptr<Player> & player)
@@ -304,7 +312,7 @@ namespace ADWIF
     bg.background = true;
 
     myBank.reset(new MapBank(myIndexStream));
-    myMap.reset(new Map(myBank, saveDir + dirSep + "map", false, 512, 512, 32, bg));
+    myMap.reset(new Map(myService, myBank, saveDir + dirSep + "map", false, 512, 512, 32, bg));
 
     myGenerator.reset(new MapGenerator(shared_from_this()));
 
@@ -347,7 +355,7 @@ namespace ADWIF
     bg.symIdx = 0;
 
     myBank.reset(new MapBank(myIndexStream));
-    myMap.reset(new Map(myBank, saveDir + dirSep + "map", true, 512, 512, 32, bg));
+    myMap.reset(new Map(myService, myBank, saveDir + dirSep + "map", true, 512, 512, 32, bg));
 
     myGenerator.reset(new MapGenerator(shared_from_this()));
 

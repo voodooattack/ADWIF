@@ -33,14 +33,14 @@ namespace iostreams = boost::iostreams;
 
 namespace ADWIF
 {
-  MapImpl::MapImpl(Map * parent, const std::shared_ptr<MapBank> & bank,
+  MapImpl::MapImpl(Map * parent, boost::asio::io_service & service, const std::shared_ptr<MapBank> & bank,
                    const std::string & mapPath, bool load, unsigned int chunkSizeX,
                    unsigned int chunkSizeY, unsigned int chunkSizeZ,
                    const MapCell & bgValue):
     myMap(parent), myChunks(), myBank(bank), myChunkSize(chunkSizeX, chunkSizeY, chunkSizeZ),
     myAccessTolerance(200000), myBackgroundValue(0), myMapPath(mapPath), myClock(),
     myAccessCounter(0), myMemThresholdMB(2048), myDurationThreshold(boost::chrono::minutes(1)),
-    myPruningInterval(boost::chrono::seconds(1)), myService(), myThreads(), myServiceLock(),
+    myPruningInterval(boost::chrono::seconds(1)), myService(service),
     myLock(), myPruningInProgressFlag(), myPruneTimer(myService)
   {
     if (!myInitialisedFlag)
@@ -55,11 +55,6 @@ namespace ADWIF
       boost::filesystem::remove_all(myMapPath);
       boost::filesystem::create_directory(myMapPath);
     }
-    myServiceLock.reset(new boost::asio::io_service::work(myService));
-    int nthreads = boost::thread::hardware_concurrency() - 1;
-    if (nthreads < 1) nthreads = 1;
-    while(nthreads--)
-      myThreads.create_thread(boost::bind(&boost::asio::io_service::run, &myService));
     myPruneTimer.expires_from_now(myPruningInterval);
     myPruneTimer.async_wait(boost::bind(&MapImpl::pruneTask, this));
     myPruningInProgressFlag.store(false);
@@ -67,9 +62,6 @@ namespace ADWIF
 
   MapImpl::~MapImpl()
   {
-    myServiceLock.reset();
-    myService.stop();
-    myThreads.join_all();
   }
 
   const MapCell & MapImpl::get(int x, int y, int z) const
@@ -289,10 +281,10 @@ namespace ADWIF
 
   std::shared_ptr<MapBank> MapImpl::bank() const { return myBank; }
 
-  Map::Map(const std::shared_ptr<MapBank> & bank, const std::string & mapPath, bool load, unsigned int chunkSizeX,
+  Map::Map(boost::asio::io_service & service, const std::shared_ptr<MapBank> & bank, const std::string & mapPath, bool load, unsigned int chunkSizeX,
            unsigned int chunkSizeY, unsigned int chunkSizeZ, const MapCell & bgValue): myImpl(nullptr)
   {
-    myImpl = new MapImpl(this, bank, mapPath, load, chunkSizeX, chunkSizeY, chunkSizeZ, bgValue);
+    myImpl = new MapImpl(this, service, bank, mapPath, load, chunkSizeX, chunkSizeY, chunkSizeZ, bgValue);
   }
 
   Map::~Map() { delete myImpl; }

@@ -33,7 +33,6 @@
 #include <boost/serialization/shared_ptr.hpp>
 #include <boost/serialization/string.hpp>
 
-
 #include <json/value.h>
 #include <FreeImagePlus.h>
 

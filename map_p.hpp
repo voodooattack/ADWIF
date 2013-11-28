@@ -30,9 +30,7 @@
 #include <boost/functional/hash/extensions.hpp>
 #include <boost/functional/hash/hash.hpp>
 
-#include <boost/thread.hpp>
 #include <boost/lockfree/queue.hpp>
-#include <boost/asio/io_service.hpp>
 #include <boost/asio/basic_waitable_timer.hpp>
 
 #include "map.hpp"
@@ -81,7 +79,8 @@ namespace ADWIF
     };
 
   public:
-    MapImpl(Map * parent, const std::shared_ptr<MapBank> & bank, const std::string & mapPath, bool load, unsigned int chunkSizeX,
+    MapImpl(Map * parent, boost::asio::io_service & service, const std::shared_ptr<MapBank> & bank,
+            const std::string & mapPath, bool load, unsigned int chunkSizeX,
             unsigned int chunkSizeY, unsigned int chunkSizeZ, const MapCell & bgValue = MapCell());
     ~MapImpl();
 
@@ -148,9 +147,7 @@ namespace ADWIF
     unsigned long int myMemThresholdMB;
     duration_type myDurationThreshold;
     duration_type myPruningInterval;
-    mutable boost::asio::io_service myService;
-    boost::thread_group myThreads;
-    std::shared_ptr<boost::asio::io_service::work> myServiceLock;
+    boost::asio::io_service & myService;
     mutable boost::recursive_mutex myLock;
     mutable boost::atomic_bool myPruningInProgressFlag;
     boost::asio::basic_waitable_timer<clock_type> myPruneTimer;
