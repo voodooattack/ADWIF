@@ -188,7 +188,7 @@ namespace ADWIF
       for(int xx = 0; xx < w; xx++)
       {
         const MapCell & c = map->get(x + xx, y + yy, z);
-        if (!c.visible && c.type != TerrainType::Hole)
+        if (!c.visible && c.type == TerrainType::Wall)
         {
           style(Colour::Black, Colour::Black, Style::Normal);
           drawChar(scrx + xx, scry + yy, ' ');

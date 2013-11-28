@@ -47,21 +47,14 @@ namespace ADWIF
 
   void MapGenState::init()
   {
-    //myViewOffX = (mapImg.getWidth() / 2) * myGame->generator()->chunkSizeX();
-    //myViewOffY = (mapImg.getHeight() / 2) * myGame->generator()->chunkSizeY();
+    myGame->createMap();
 
-//     if (boost::filesystem::exists(saveDir + dirSep + "map"))
-//       myGame->loadMap();
-//     else
-//     {
-      myGame->createMap();
+    myViewOffX = 171 * myGame->generator()->chunkSizeX();
+    myViewOffY = 169 * myGame->generator()->chunkSizeY();
 
-      myViewOffX = 171 * myGame->generator()->chunkSizeX();
-      myViewOffY = 169 * myGame->generator()->chunkSizeY();
-
-      myGame->generator()->generateOne(myViewOffX / myGame->generator()->chunkSizeX(),
-                                       myViewOffY / myGame->generator()->chunkSizeY());
-//     }
+    myGame->generator()->generateOne(myViewOffX / myGame->generator()->chunkSizeX(),
+                                      myViewOffY / myGame->generator()->chunkSizeY(),
+                                      myViewOffZ / myGame->generator()->chunkSizeZ());
   }
 
   void MapGenState::step()
@@ -82,6 +75,7 @@ namespace ADWIF
   {
     int chunkX = (myViewOffX + myEngine->renderer()->width() / 2) / myGame->generator()->chunkSizeX();
     int chunkY = (myViewOffY + myEngine->renderer()->height() / 2) / myGame->generator()->chunkSizeY();
+    int chunkZ = (myViewOffZ) / (int)myGame->generator()->chunkSizeZ();
     if (key == Key::Escape)
     {
       myGame->saveMap();
@@ -90,27 +84,33 @@ namespace ADWIF
     else if (key == Key::Up)
     {
       myViewOffY--;
-      myGame->generator()->generateOne(chunkX, chunkY);
+      myGame->generator()->generateOne(chunkX, chunkY, chunkZ);
     }
     else if (key == Key::Down)
     {
       myViewOffY++;
-      myGame->generator()->generateOne(chunkX, chunkY);
+      myGame->generator()->generateOne(chunkX, chunkY, chunkZ);
     }
     else if (key == Key::Left)
     {
       myViewOffX--;
-      myGame->generator()->generateOne(chunkX, chunkY);
+      myGame->generator()->generateOne(chunkX, chunkY, chunkZ);
     }
     else if (key == Key::Right)
     {
       myViewOffX++;
-      myGame->generator()->generateOne(chunkX, chunkY);
+      myGame->generator()->generateOne(chunkX, chunkY, chunkZ);
     }
     else if (key == '>')
+    {
       myViewOffZ--;
+      myGame->generator()->generateOne(chunkX, chunkY, chunkZ);
+    }
     else if (key == '<')
+    {
       myViewOffZ++;
+      myGame->generator()->generateOne(chunkX, chunkY, chunkZ);
+    }
     else if (key == 'c')
       myGame->createMap();
     else if (key == 'l')
@@ -122,23 +122,24 @@ namespace ADWIF
       myEngine->input()->setTimeout(0);
       for(unsigned int y = 0; y < myGame->generator()->height(); y++)
         for(unsigned int x = 0; x < myGame->generator()->width(); x++)
-        {
-          std::stringstream ss;
-          ss << x << "x" << y;
-          std::string str = "Generating " + ss.str();
-          myEngine->renderer()->startWindow(1,1,myEngine->renderer()->width() - 2, 1);
-          myEngine->renderer()->style(White, Black, Style::Bold);
-          myEngine->renderer()->drawText(0,0, str + std::string(myEngine->renderer()->width() - 2 - str.size(),  ' '));
-          myEngine->renderer()->refresh();
-          myEngine->renderer()->endWindow();
-          myGame->generator()->generateOne(x, y);
-          if (myEngine->input()->key() == Key::Escape)
+          for(int z = -myGame->generator()->depth() / 2; z < myGame->generator()->depth() / 2; z++)
           {
-            myEngine->input()->setTimeout(-1);
-            return;
+            std::stringstream ss;
+            ss << x << "x" << y << "x" << z;
+            std::string str = "Generating " + ss.str();
+            myEngine->renderer()->startWindow(1,1,myEngine->renderer()->width() - 2, 1);
+            myEngine->renderer()->style(White, Black, Style::Bold);
+            myEngine->renderer()->drawText(0,0, str + std::string(myEngine->renderer()->width() - 2 - str.size(),  ' '));
+            myEngine->renderer()->refresh();
+            myEngine->renderer()->endWindow();
+            myGame->generator()->generateOne(x, y, z);
+            if (myEngine->input()->key() == Key::Escape)
+            {
+              myEngine->input()->setTimeout(-1);
+              return;
+            }
+            //myEngine->sleep(0);
           }
-          //myEngine->sleep(0);
-        }
     }
   }
 

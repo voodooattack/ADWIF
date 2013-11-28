@@ -105,10 +105,7 @@ namespace ADWIF
     std::string name;
     std::string desc;
     std::unordered_map<TerrainType, std::vector<dispEntry>, std::hash<uint8_t> > disp;
-    bool grow;
-    std::vector<std::string> needs;
     palEntry style;
-    bool background;
 
     Json::Value jsonValue;
 

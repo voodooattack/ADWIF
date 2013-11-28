@@ -322,7 +322,9 @@ namespace ADWIF
 
     myGenerator->chunkSizeX(800);
     myGenerator->chunkSizeY(240);
-    myGenerator->chunkSizeZ(400);
+    myGenerator->chunkSizeZ(10);
+
+    myGenerator->depth(256);
 
     if (boost::filesystem::exists(saveDir + dirSep + "status"))
       boost::filesystem::remove(saveDir + dirSep + "status");
@@ -527,7 +529,6 @@ namespace ADWIF
     Material * air = new Material;
     Material::dispEntry airDisp = {' ', { Cyan, Cyan, Style::Dim }};
 
-    air->background = true;
     air->disp[TerrainType::Floor] = { airDisp };
     air->disp[TerrainType::Wall] = { airDisp };
     air->disp[TerrainType::Hole] = { airDisp };
@@ -814,11 +815,6 @@ namespace ADWIF
 
     if (!value["description"].empty())
       material->desc = value["description"].asString();
-
-    if (!value["background"].empty())
-      material->background = value["background"].asBool();
-    else
-      material->background = false;
 
     for (auto const & i : value["disp"].getMemberNames())
     {

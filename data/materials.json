@@ -3,7 +3,7 @@
     "name":"Dirt",
     "disp":{
       "Floor": [{ "sym":"." }, { "sym":"," }, { "sym":"`" }, { "sym":";" }],
-      "Wall":  [{ "sym":"#", "usym":"░", "style":{ "fgcolour":"Yellow", "bgcolour":"Yellow", "attributes":["Bold"] }}],
+      "Wall":  [{ "sym":" ", "usym":"░", "style":{ "fgcolour":"Yellow", "bgcolour":"Yellow", "attributes":["Bold"] }}],
       "RampU": [{ "sym":"^", "usym":"▴" }],
       "RampD": [{ "sym":"v", "usym":"▾" }]
     },
@@ -13,11 +13,12 @@
     "name":"Snow",
     "disp":{
       "Floor": [{ "sym":"." }, { "sym":"," }, { "sym":"`" }, { "sym":";" }],
-      "Wall":  [{ "sym":"#", "usym":"░", "style":{ "fgcolour":"Black", "bgcolour":"White" }, "attributes":["Bold"] }],
+      "Wall":  [{ "sym":" ", "usym":"░", "style":{ "fgcolour":"Black", "bgcolour":"White" }, "attributes":["Bold"] }],
       "RampU": [{ "sym":"^", "usym":"▴" }],
       "RampD": [{ "sym":"v", "usym":"▾" }]
     },
-    "style":{"fgcolour":"White", "attributes":["Dim"] }
+    "style":{"fgcolour":"White", "attributes":["Dim"] },
+    "meltTo":"Water"
   },
   {
     "name":"Ice",
@@ -27,7 +28,8 @@
       "RampU": [{ "sym":"^", "usym":"▴" }],
       "RampD": [{ "sym":"v", "usym":"▾" }]
     },
-    "style":{"fgcolour":"Cyan", "attributes":["Dim"] }
+    "style":{"fgcolour":"Cyan", "attributes":["Dim"] },
+    "meltTo":"Water"
   },
   {
     "name":"Sand",
@@ -43,7 +45,7 @@
     "name": "Rock",
     "disp":{
       "Floor": [{ "sym":"," }, { "sym":"." }, { "sym":"`" }],
-      "Wall":  [{ "sym":"#", "usym":"░", "style":{ "bgcolour":"White" }}],
+      "Wall":  [{ "sym":" ", "usym":"░", "style":{ "bgcolour":"White" }}],
       "RampU": [{ "sym":"^", "usym":"▴" }],
       "RampD": [{ "sym":"v", "usym":"▾" }]
     },
@@ -58,7 +60,8 @@
       "RampD": [{ "sym":"^", "usym":"▾" }]
     },
     "style": {"fgcolour":"White", "bgcolour":"Blue", "attributes":["Dim"] },
-    "liquid":true
+    "liquid":true,
+    "freezeTo":"Ice"
   },
   {
     "name": "SaltWater",
@@ -71,22 +74,5 @@
     "style": {"fgcolour":"Blue", "attributes":["Dim"] },
     "liquid": true,
     "background":true
-  },
-  {
-    "name": "Grass",
-    "grow": true,
-    "needs": ["Water"],
-    "soil": "Dirt",
-    "disp":{
-      "Floor": [{ "sym":"," }, { "sym":"." }, { "sym":"`" },
-                { "sym":",", "style":{"attributes":["Bold"] } },
-                { "sym":".", "style":{"attributes":["Bold"] } },
-                { "sym":"`", "style":{"attributes":["Bold"] } }
-      ],
-      "Wall":  null,
-      "RampU": [{ "sym":"^", "usym":"▴" }],
-      "RampD": [{ "sym":"v", "usym":"▾" }]
-    },
-    "style": {"fgcolour":"Green", "attributes":["Dim"] }
   }
 ]

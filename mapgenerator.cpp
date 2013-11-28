@@ -31,13 +31,11 @@
 #include <physfs.hpp>
 
 #include <boost/container/flat_set.hpp>
-// #include <boost/filesystem.hpp>
-// #include <boost/lexical_cast.hpp>
 #include <boost/polygon/polygon.hpp>
 #include <boost/polygon/voronoi.hpp>
 #include <boost/multi_array.hpp>
-// #include <boost/optional.hpp>
 #include <boost/format.hpp>
+#include <boost/lexical_cast.hpp>
 // #include <boost/geometry.hpp>
 // #include <boost/geometry/geometries/geometries.hpp>
 // #include <boost/geometry/geometries/adapted/boost_polygon.hpp>
@@ -117,8 +115,8 @@ namespace ADWIF
 
   MapGenerator::MapGenerator(const std::shared_ptr<Game> & game):
     myGame(game), myMapImg(), myHeightMap(), myChunkSizeX(32), myChunkSizeY(32), myChunkSizeZ(16),
-    myColourIndex(), myRandomEngine(), myGenerationMap(), myBiomeMap(), myRegions(), mySeed(time(NULL)),
-    myInitialisedFlag(false)
+    myColourIndex(), myRandomEngine(), myGenerationMap(), myBiomeMap(), myRegions(), myHeight(0), myWidth(0),
+    myDepth(512), mySeed(time(NULL)), myInitialisedFlag(false)
   {
     myRandomEngine.seed(mySeed);
   }
@@ -140,7 +138,7 @@ namespace ADWIF
       myColourIndex[b.second->mapColour] = b.second->name;
     myHeight = myMapImg.getHeight();
     myWidth = myMapImg.getWidth();
-    myGenerationMap.resize(boost::extents[myWidth][myHeight]);
+    myGenerationMap.resize(boost::extents[myWidth][myHeight][myDepth]);
     RGBQUAD v, h;
     myBiomeMap.resize(boost::extents[myWidth][myHeight]);
     for(unsigned int y = 0; y < myHeight; y++)
@@ -154,12 +152,10 @@ namespace ADWIF
           std::stringstream ss;
           ss << "unknown biome colour: " << std::hex << colour
              << " at pixel " << std::dec << x << "x" << y << ", area not generated";
-          myGame->engine()->reportError(false, ss.str());
-          myGenerationMap[x][y] = false;
-          //return;
+          myGame->engine()->reportError(true, ss.str());
+          return;
         }
-        double height = (-0.5 + (h.rgbBlue | h.rgbGreen | h.rgbRed) / 256.0 / 2);
-//         double height = (h.rgbBlue | h.rgbGreen | h.rgbRed) / 256.0;
+        double height = (-0.5 + (h.rgbBlue | h.rgbGreen | h.rgbRed) / 256.0);
         myBiomeMap[x][y].name = myColourIndex[colour];
         myBiomeMap[x][y].x = x;
         myBiomeMap[x][y].y = y;
@@ -179,7 +175,7 @@ namespace ADWIF
 
       std::vector<Cluster> clusters;
 
-//       int i = 0;
+      int i = 0;
 
       for(unsigned int y = 0; y < myHeight; y++)
       {
@@ -513,66 +509,66 @@ namespace ADWIF
       {
         Region region;
 
-        concaveHull(c.points, region.poly, 1.5, 3);
+        concaveHull(c.points, region.poly, 1.5, 0);
         boost::polygon::center(region.centroid, region.poly);
 
         region.biome = c.biome;
         region.area = boost::polygon::area(region.poly);
 
         myRegions.push_back(region);
-/*
-//         fipImage imageOut = myMapImg;
-//
-//         imageOut.convertToGrayscale();
-//         imageOut.convertTo32Bits();
+
+        fipImage imageOut = myMapImg;
+
+        imageOut.convertToGrayscale();
+        imageOut.convertTo32Bits();
 //
 //         std::ofstream fsvg(saveDir + dirSep + "map" + dirSep + "svg" + dirSep + boost::lexical_cast<std::string>(i) + ".svg");
 //         boost::geometry::svg_mapper<point> mapper(fsvg, 200, 481);//,  "width=\"200\" height=\"480\"");
 //
-        boost::geometry::model::polygon<point> po;
+//         boost::geometry::model::polygon<point> po;
 
         for (const auto & p : region.poly)
         {
-          boost::geometry::append(po, p);
+//           boost::geometry::append(po, p);
           //std::cerr << p << " ";
-//           RGBQUAD co = { 0, 0, 255, 255 };
-//           imageOut.setPixelColor(p.x(), p.y(), &co);
+          RGBQUAD co = { 0, 0, 255, 255 };
+          imageOut.setPixelColor(p.x(), p.y(), &co);
         }
 //
 //         //std::cerr << "\n";
 //
-//         std::uniform_int_distribution<int> randomColour(64, 192);
+        std::uniform_int_distribution<int> randomColour(64, 192);
 //
         for(auto i = region.poly.begin_holes(); i != region.poly.end_holes(); ++i)
         {
-          boost::geometry::model::ring<point> ph;
+//           boost::geometry::model::ring<point> ph;
 //
-//           int r = randomColour(myRandomEngine),
-//               g = randomColour(myRandomEngine),
-//               b = randomColour(myRandomEngine);
+          int r = randomColour(myRandomEngine),
+              g = randomColour(myRandomEngine),
+              b = randomColour(myRandomEngine);
 //
           for (const auto & p : *i)
-//           {
-            boost::geometry::append(ph, p);
-//             RGBQUAD co = { (BYTE)r, (BYTE)g, (BYTE)b, 255 };
-//             imageOut.setPixelColor(p.x(), p.y(), &co);
-//           }
+          {
+//             boost::geometry::append(ph, p);
+            RGBQUAD co = { (BYTE)r, (BYTE)g, (BYTE)b, 255 };
+            imageOut.setPixelColor(p.x(), p.y(), &co);
+          }
 //
-          po.inners().push_back(ph);
+//           po.inners().push_back(ph);
         }
 
-        boost::geometry::correct(po);
+//         boost::geometry::correct(po);
 
-        mapper.add(po);
-        mapper.map(po, "fill-opacity:1.0;fill:" +
-          colourToHexString(myGame->biomes()[c.biome]->mapColour) +
-            ";stroke:rgb(0,0,0);stroke-width:1");
-//
-//         std::string fileName = saveDir + dirSep + "map" + dirSep + "png" + dirSep + "out" + boost::lexical_cast<std::string>(i) + ".png";
-//         imageOut.flipVertical();
-//         imageOut.save(fileName.c_str());
+//         mapper.add(po);
+//         mapper.map(po, "fill-opacity:1.0;fill:" +
+//           colourToHexString(myGame->biomes()[c.biome]->mapColour) +
+//             ";stroke:rgb(0,0,0);stroke-width:1");
+// //
+        std::string fileName = saveDir + dirSep + "png" + dirSep + "out" + boost::lexical_cast<std::string>(i) + ".png";
+        imageOut.flipVertical();
+        imageOut.save(fileName.c_str());
 
-//         i++;*/
+        i++;
       }
   }
 
@@ -580,19 +576,21 @@ namespace ADWIF
   {
     for(unsigned int y = 0; y < myHeight; y++)
       for(unsigned int x = 0; x < myWidth; x++)
-      {
-        generateOne(x, y);
-      }
+        for(int z = -myDepth / 2; z < myDepth / 2; z++)
+        {
+          generateOne(x, y, z);
+        }
   }
 
-  void MapGenerator::generateOne(unsigned int x, unsigned int y, bool regenerate)
+  void MapGenerator::generateOne(unsigned int x, unsigned int y, int z, bool regenerate)
   {
     if (x < 0 || y < 0 || x >= myHeight || y >= myWidth)
       return;
-    if (!regenerate && myGenerationMap[x][y])
+    if (!regenerate && myGenerationMap[x][y][z])
       return;
 
     unsigned int offx = x * myChunkSizeX, offy = y * myChunkSizeY;
+    int offz = z * (int)myChunkSizeZ - (int)myChunkSizeZ;
 
     Biome * biome = myGame->biomes()[myBiomeMap[x][y].name];
 
@@ -653,14 +651,14 @@ namespace ADWIF
 
     perlinSource.SetSeed(mySeed);
     perlinSource.SetFrequency (0.0314566);
-    perlinSource.SetPersistence (0.03);
+    perlinSource.SetPersistence (0.1);
     perlinSource.SetLacunarity (0.44783);
     perlinSource.SetOctaveCount (8);
     perlinSource.SetNoiseQuality (noise::QUALITY_BEST);
 
     scaleBiasFilter.SetSourceModule(0, perlinSource);
-    scaleBiasFilter.SetBias(0.154778);
-    scaleBiasFilter.SetScale(0.01);
+    scaleBiasFilter.SetBias(0.0154778);
+    scaleBiasFilter.SetScale(0.005);
 
     addFilter.SetSourceModule(0, heightmapSource);
     addFilter.SetSourceModule(1, scaleBiasFilter);
@@ -673,47 +671,80 @@ namespace ADWIF
     std::uniform_int_distribution<int> ud(0, biome->materials.size()-1);
     std::bernoulli_distribution bd(0.001);
 
+    auto getHeight = [&](unsigned int x, unsigned int y) -> int {
+      return ceil(addFilter.GetValue(x, y, 0) * ((int)myDepth / 2));
+    };
+
     for (unsigned int yy = offy; yy < offy + myChunkSizeY; yy++)
     {
       for (unsigned int xx = offx; xx < offx + myChunkSizeX; xx++)
       {
-        MapCell c = myGame->map()->get(xx, yy, 0);
-        int height = addFilter.GetValue(xx, yy, 0) * myChunkSizeZ / 2;
-
-        std::cerr << height << std::endl;
-
-        std::string mat = biome->materials[ud(myRandomEngine)];
-        std::uniform_int_distribution<int> ud2(0, myGame->materials()[mat]->disp[TerrainType::Floor].size() - 1);
-
-        c.material = mat;
-        c.symIdx = ud2(myRandomEngine);
-        c.biome = biome->name;
-        c.background = false;
-        c.type = TerrainType::Floor;
-
-//         if (c.type == TerrainType::RampU)
-//         {
-//           continue;
-//         }
-//         else if (!bd(myRandomEngine))
-//           c.type = TerrainType::Floor;
-//         else
-//         {
-//           c.type = TerrainType::Wall;
-//           for (int y1 = -1; y1 < 2; y1++)
-//             for (int x1 = -1; x1 < 2; x1++)
-//               //if ((x1 | y1) != 0)
-//               {
-//                 MapCell cc = c;
-//                 cc.type = TerrainType::RampU;
-//                 cc.symIdx = 0;
-//                 myGame->map()->set(xx+x1, yy+y1, 0, cc);
-//               }
-//         }
-        myGame->map()->set(xx, yy, height, c);
+        int height = getHeight(xx,yy);
+        for (int zz = offz; zz < (offz + (int)myChunkSizeZ > height ? height + 1 : offz + (int)myChunkSizeZ); zz++)
+        {
+          if (zz == height)
+          {
+            MapCell c(myGame->map()->get(xx, yy, zz));
+            std::string mat = biome->materials[ud(myRandomEngine)];
+            std::uniform_int_distribution<int> ud2(0, myGame->materials()[mat]->disp[TerrainType::Floor].size() - 1);
+            c.material = mat;
+            c.symIdx = ud2(myRandomEngine);
+            c.biome = biome->name;
+            c.background = false;
+            if ((getHeight(xx+1,yy) == height + 1 ||
+              getHeight(xx,yy+1) == height + 1 ||
+              getHeight(xx-1,yy) == height + 1 ||
+              getHeight(xx,yy-1) == height + 1 ||
+              getHeight(xx+1,yy+1) == height + 1 ||
+              getHeight(xx+1,yy-1) == height + 1 ||
+              getHeight(xx-1,yy-1) == height + 1 ||
+              getHeight(xx-1,yy+1) == height + 1))
+            {
+              c.type = TerrainType::RampU;
+              MapCell cc = c;
+              cc.type = TerrainType::RampD;
+              myGame->map()->set(xx, yy, height+1, cc);
+            }
+            else
+              c.type = TerrainType::Floor;
+            myGame->map()->set(xx, yy, zz, c);
+          }
+          else if (zz < height)
+          {
+            MapCell c(myGame->map()->get(xx, yy, zz));
+            std::string mat = biome->materials[ud(myRandomEngine)];
+            c.type = TerrainType::Wall;
+            c.material = mat;
+            c.symIdx = 0;
+            c.visible = false;
+            if (myGame->materials()[mat]->disp.find(TerrainType::Wall) == myGame->materials()[mat]->disp.end())
+              continue;
+            bool dobreak = false;
+            if (zz == height - 1)
+            {
+              for (int j = -1; j < 2; j++)
+              {
+                for (int i = -1; i < 2; i++)
+                {
+                  int h = getHeight(xx+i,yy+j);
+                  if ( h <= zz && myGame->map()->get(xx+i, yy+j, zz).visible)
+                  {
+                    c.visible = true;
+                    dobreak = true;
+                    break;
+                  }
+                }
+                if (dobreak) break;
+              }
+            }
+            myGame->map()->set(xx, yy, zz, c);
+          }
+          else
+            continue;
+        }
       }
     }
-    myGenerationMap[x][y] = true;
+    myGenerationMap[x][y][z] = true;
   }
   void MapGenerator::notifyLoad() {  }
   void MapGenerator::notifySave() {  }

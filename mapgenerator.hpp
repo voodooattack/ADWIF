@@ -106,16 +106,19 @@ namespace ADWIF
     unsigned int chunkSizeZ() const { return myChunkSizeZ; }
     void chunkSizeZ(unsigned int size) { myChunkSizeZ = size; }
 
-    unsigned int height() { return myHeight; }
-    unsigned int width() { return myWidth; }
+    unsigned int height() const { return myHeight; }
+    unsigned int width() const { return myWidth; }
+
+    unsigned int depth() const { return myDepth; }
+    void depth(unsigned int depth) { myDepth = depth; }
 
     void init();
     void generateAll();
-    void generateAround(unsigned int x, unsigned int y, unsigned int z = 0, unsigned int radius = 1, unsigned int radiusZ = 1)
+    void generateAround(unsigned int x, unsigned int y, int z = 0, unsigned int radius = 1, unsigned int radiusZ = 1)
     {
 
     }
-    void generateOne(unsigned int x, unsigned int y, bool regenerate = false);
+    void generateOne(unsigned int x, unsigned int y, int z, bool regenerate = false);
 
     template<class Archive>
     void serialize(Archive & ar, const unsigned int version)
@@ -132,6 +135,7 @@ namespace ADWIF
       ar & myRegions;
       ar & myHeight;
       ar & myWidth;
+      ar & myDepth;
     }
 
     void notifyLoad();
@@ -139,7 +143,6 @@ namespace ADWIF
 
   private:
     void generateBiomeMap();
-    void generateChunk(struct Biome * biome, int x, int y);
 
   private:
 
@@ -157,10 +160,10 @@ namespace ADWIF
     unsigned int myChunkSizeX, myChunkSizeY, myChunkSizeZ;
     std::unordered_map<uint32_t, std::string> myColourIndex;
     std::mt19937 myRandomEngine;
-    boost::multi_array<bool, 2> myGenerationMap;
+    boost::multi_array<bool, 3> myGenerationMap;
     boost::multi_array<BiomeCell, 2> myBiomeMap;
     std::vector<Region> myRegions;
-    unsigned int myHeight, myWidth;
+    unsigned int myHeight, myWidth, myDepth;
     unsigned int mySeed;
     bool myInitialisedFlag;
   };

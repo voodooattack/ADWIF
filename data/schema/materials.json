@@ -79,6 +79,19 @@
             }
           }
         }
+      },
+      "liquid":{
+        "type":"boolean"
+      },
+      "meltTo":{
+        "type": "string",
+        "minSize": 1,
+        "pattern": "^\\w+$"
+      },
+      "freezeTo":{
+        "type": "string",
+        "minSize": 1,
+        "pattern": "^\\w+$"
       }
     },
     "required": [ "name", "disp", "style" ]

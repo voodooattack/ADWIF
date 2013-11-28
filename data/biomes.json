@@ -3,7 +3,8 @@
     "name":"Plains",
     "sym":".",
     "style":{"fgcolour":"Yellow", "attributes":["Dim"]},
-    "materials":["Dirt", "Grass"],
+    "materials":["Dirt"],
+    "foliage":["Grass"],
     "layerStart":0,
     "layerEnd:":2,
     "mapColour":"#827f00"
@@ -12,7 +13,8 @@
     "name":"Grasslands",
     "sym":"~",
     "style":{"fgcolour":"Green", "attributes":["Dim"]},
-    "materials":["Grass"],
+    "materials":["Dirt"],
+    "foliage":["Grass"],
     "layerStart":0,
     "layerEnd:":2,
     "mapColour":"#00ff00"
