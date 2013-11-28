@@ -111,6 +111,7 @@ namespace ADWIF
     std::string desc;
     std::unordered_map<TerrainType, std::vector<dispEntry>, std::hash<uint8_t> > disp;
     palEntry style;
+    bool liquid;
 
     Json::Value jsonValue;
 
@@ -127,6 +128,7 @@ namespace ADWIF
     int layerStart, layerEnd;
     uint32_t mapColour;
     bool background;
+    bool flat;
 
     Json::Value jsonValue;
 

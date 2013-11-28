@@ -334,8 +334,8 @@ namespace ADWIF
 
     myGenerator->depth(256);
 
-    if (boost::filesystem::exists(saveDir + dirSep + "status"))
-      boost::filesystem::remove(saveDir + dirSep + "status");
+    if (boost::filesystem::exists(saveDir + dirSep + "generator"))
+      boost::filesystem::remove(saveDir + dirSep + "generator");
 
     myGenerator->init();
   }
@@ -824,6 +824,9 @@ namespace ADWIF
     if (!value["description"].empty())
       material->desc = value["description"].asString();
 
+    if (!value["liquid"].empty())
+      material->liquid = value["liquid"].asBool();
+
     for (auto const & i : value["disp"].getMemberNames())
     {
       for(auto const & o : value["disp"][i])
@@ -879,6 +882,11 @@ namespace ADWIF
       biome->background = value["background"].asBool();
     else
       biome->background = false;
+
+    if (!value["flat"].empty())
+      biome->flat = value["flat"].asBool();
+    else
+      biome->flat = false;
 
     std::string u8 = value["sym"].asString();
     std::u32string codePoint;

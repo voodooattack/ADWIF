@@ -53,7 +53,8 @@
     "layerStart":0,
     "layerEnd":-10,
     "mapColour":"#0000ff",
-    "background":true
+    "background":true,
+    "flat":true
   },
   {
     "name":"Arctic",

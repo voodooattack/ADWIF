@@ -48,6 +48,7 @@ namespace ADWIF
     std::string name;
     int x, y;
     double height;
+    bool flat;
 
     template<class Archive>
     void serialize(Archive & ar, const unsigned int version)

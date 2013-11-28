@@ -87,6 +87,9 @@ namespace ADWIF
       if (chunkX < xl || chunkY < yl || chunkX >= xh || chunkY >= yh)
         return 0;
 
+      if (myBiomeMap[chunkX][chunkY].flat)
+        return myBiomeMap[chunkX][chunkY].height;
+
       double m[4][4];
 
       std::memset(m, 0, 4 * 4 * sizeof(double));
@@ -158,6 +161,7 @@ namespace ADWIF
         myBiomeMap[x][y].x = x;
         myBiomeMap[x][y].y = y;
         myBiomeMap[x][y].height = height;
+        myBiomeMap[x][y].flat = myGame->biomes()[myColourIndex[colour]]->flat;
       }
 
       // Clustering algorithm for terrain features
@@ -521,7 +525,7 @@ namespace ADWIF
 
         {
           boost::mutex::scoped_lock guard(regionMutex);
-          myRegions.push_back(region);
+          myRegions.push_back(boost::move(region));
         }
 
         clusterCompletionCount--;
@@ -667,21 +671,18 @@ namespace ADWIF
     noise::module::Add addFilter;
 
     perlinSource.SetSeed(mySeed);
-    perlinSource.SetFrequency (0.0314566);
-    perlinSource.SetPersistence (0.1);
-    perlinSource.SetLacunarity (0.44783);
-    perlinSource.SetOctaveCount (8);
-    perlinSource.SetNoiseQuality (noise::QUALITY_BEST);
+    perlinSource.SetFrequency(0.06);
+    perlinSource.SetPersistence(0.0);
+    perlinSource.SetLacunarity(1.50);
+    perlinSource.SetOctaveCount(1);
+    perlinSource.SetNoiseQuality(noise::QUALITY_BEST);
 
     scaleBiasFilter.SetSourceModule(0, perlinSource);
-    scaleBiasFilter.SetBias(0.0154778);
-    scaleBiasFilter.SetScale(0.005);
+    scaleBiasFilter.SetBias(0.0);
+    scaleBiasFilter.SetScale(0.01);
 
     addFilter.SetSourceModule(0, heightmapSource);
     addFilter.SetSourceModule(1, scaleBiasFilter);
-
-//     absFilter.SetSourceModule(0, multiplyFilter);
-
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -689,7 +690,10 @@ namespace ADWIF
     std::bernoulli_distribution bd(0.001);
 
     auto getHeight = [&](unsigned int x, unsigned int y) -> int {
-      return ceil(addFilter.GetValue(x, y, 0) * ((int)myDepth / 2));
+      if (biome->flat)
+        return floor(heightmapSource.GetValue(x, y, 0) * ((int)myDepth / 2));
+      else
+        return floor(addFilter.GetValue(x, y, 0) * ((int)myDepth / 2));
     };
 
     for (unsigned int yy = offy; yy < offy + myChunkSizeY; yy++)
@@ -697,7 +701,7 @@ namespace ADWIF
       for (unsigned int xx = offx; xx < offx + myChunkSizeX; xx++)
       {
         int height = getHeight(xx,yy);
-        for (int zz = offz; zz < (offz + (int)myChunkSizeZ > height ? height + 1 : offz + (int)myChunkSizeZ); zz++)
+        for (int zz = offz; zz <= (offz + (int)myChunkSizeZ > height ? height : offz + (int)myChunkSizeZ); zz++)
         {
           if (zz == height)
           {
@@ -708,6 +712,8 @@ namespace ADWIF
             c.symIdx = ud2(myRandomEngine);
             c.biome = biome->name;
             c.background = false;
+            c.type = TerrainType::Floor;
+
             if ((getHeight(xx+1,yy) == height + 1 ||
               getHeight(xx,yy+1) == height + 1 ||
               getHeight(xx-1,yy) == height + 1 ||
@@ -722,8 +728,7 @@ namespace ADWIF
               cc.type = TerrainType::RampD;
               myGame->map()->set(xx, yy, height+1, cc);
             }
-            else
-              c.type = TerrainType::Floor;
+
             myGame->map()->set(xx, yy, zz, c);
           }
           else if (zz < height)
@@ -734,12 +739,12 @@ namespace ADWIF
             c.material = mat;
             c.symIdx = 0;
             c.visible = false;
-            if (myGame->materials()[mat]->disp.find(TerrainType::Wall) ==
-                  myGame->materials()[mat]->disp.end())
+            auto amat = myGame->materials()[mat];
+            if (amat->disp.find(TerrainType::Wall) == myGame->materials()[mat]->disp.end())
               continue;
-            bool dobreak = false;
-            if (zz == height - 1)
+            if (!amat->liquid && zz == height - 1)
             {
+              bool dobreak = false;
               for (int j = -1; j < 2; j++)
               {
                 for (int i = -1; i < 2; i++)
