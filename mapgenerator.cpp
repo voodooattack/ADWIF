@@ -102,7 +102,7 @@ namespace ADWIF
           m[i+1][j+1] = myBiomeMap[chunkX+i][chunkY+j].height;
 
       double vx = fmod(x, myChunkSizeX) / myChunkSizeX, vy = fmod(y, myChunkSizeY) / myChunkSizeY;
-      return bicubicInterpolate(m, 0.33 + vx, 0.33 + vy);
+      return bicubicInterpolate(m, 0.25 + vx, 0.25 + vy);
     }
 
     int myChunkSizeX, myChunkSizeY;
@@ -596,26 +596,31 @@ namespace ADWIF
 
   void MapGenerator::generateAll()
   {
-    for(unsigned int y = 0; y < myHeight; y++)
-      for(unsigned int x = 0; x < myWidth; x++)
-        for(int z = -(int)myDepth / 2; z < (int)myDepth / 2; z++)
+    for(int y = 0; y < myHeight; y++)
+      for(int x = 0; x < myWidth; x++)
+        for(int z = -myDepth / 2; z < myDepth / 2; z++)
         {
           generateOne(x, y, z);
         }
   }
 
-  void MapGenerator::generateOne(unsigned int x, unsigned int y, int z, bool regenerate)
+//   void MapGenerator::generateSome(int x, int y, int z, int w, int h, int d, bool regenerate)
+//   {
+//     int chunkX = x / myChunkSizeX, chunkY = y / myChunkSizeY, chunkZ = z / myChunkSizeZ;
+//   }
+
+  void MapGenerator::generateOne(int x, int y, int z, bool regenerate)
   {
     if (x < 0 || y < 0 || x >= myHeight || y >= myWidth)
       return;
 
     {
       boost::recursive_mutex::scoped_lock guard(myGenerationLock);
-      if (!regenerate && myGenerationMap[x][y][z+(int)myDepth/2])
+      if (!regenerate && myGenerationMap[x][y][z+myDepth/2])
         return;
     }
-    unsigned int offx = x * myChunkSizeX, offy = y * myChunkSizeY;
-    int offz = z * (int)myChunkSizeZ - (int)myChunkSizeZ;
+    int offx = x * myChunkSizeX, offy = y * myChunkSizeY;
+    int offz = z * myChunkSizeZ - myChunkSizeZ;
 
     Biome * biome = myGame->biomes()[myBiomeMap[x][y].name];
 
@@ -695,9 +700,9 @@ namespace ADWIF
 
     auto getHeight = [&](unsigned int x, unsigned int y) -> int {
 //       if (biome->flat)
-        return floor(heightmapSource.GetValue(x, y, 0) * ((int)myDepth / 2));
+        return floor(heightmapSource.GetValue(x, y, 0) * (myDepth / 2));
 //       else
-//         return floor(addFilter.GetValue(x, y, 0) * ((int)myDepth / 2));
+//         return floor(addFilter.GetValue(x, y, 0) * (myDepth / 2));
     };
 
     for (unsigned int yy = offy; yy < offy + myChunkSizeY; yy++)
@@ -705,17 +710,19 @@ namespace ADWIF
       for (unsigned int xx = offx; xx < offx + myChunkSizeX; xx++)
       {
         int height = getHeight(xx,yy);
-        for (int zz = offz; zz <= (offz + (int)myChunkSizeZ > height ? height : offz + (int)myChunkSizeZ); zz++)
+        for (int zz = offz; zz <= (offz + myChunkSizeZ > height ? height : offz + myChunkSizeZ); zz++)
         {
           if (zz == height)
           {
             MapCell c(myGame->map()->get(xx, yy, zz));
+            if (c.generated && !regenerate) continue;
             std::string mat = biome->materials[ud(myRandomEngine)];
             auto amat = myGame->materials()[mat];
             std::uniform_int_distribution<int> ud2(0, myGame->materials()[mat]->disp[TerrainType::Floor].size() - 1);
             c.material = mat;
             c.symIdx = ud2(myRandomEngine);
             c.biome = biome->name;
+            c.generated = true;
             c.background = false;
             c.type = TerrainType::Floor;
 
@@ -740,12 +747,14 @@ namespace ADWIF
           else if (zz < height)
           {
             MapCell c(myGame->map()->get(xx, yy, zz));
+            if (c.generated && !regenerate) continue;
             std::string mat = biome->materials[ud(myRandomEngine)];
             auto amat = myGame->materials()[mat];
             c.type = TerrainType::Wall;
             c.material = mat;
             c.symIdx = 0;
             c.visible = false;
+            c.generated = true;
             if (amat->disp.find(TerrainType::Wall) == myGame->materials()[mat]->disp.end())
               continue;
             if (!amat->liquid && zz == height - 1)
@@ -776,39 +785,47 @@ namespace ADWIF
 
     {
       boost::recursive_mutex::scoped_lock guard(myGenerationLock);
-      myGenerationMap[x][y][z+(int)myDepth/2] = true;
+      myGenerationMap[x][y][z+myDepth/2] = true;
     }
   }
   void MapGenerator::notifyLoad() {  }
   void MapGenerator::notifySave() {  }
-  void MapGenerator::generateAround(unsigned int x, unsigned int y, int z, unsigned int radius, unsigned int radiusZ)
+  void MapGenerator::generateAround(int x, int y, int z, int radius, int radiusZ)
   {
     int chunkX = x / myChunkSizeX;
     int chunkY = y / myChunkSizeY;
-    int chunkZ = z / (int)myChunkSizeZ;
+    int chunkZ = z / myChunkSizeZ;
 
-    for (int i = -1; i < 2; i++)
-      for (int j = -1; j < 2; j++)
-        for (int k = -1; k < 2; k++)
-        {
-          boost::recursive_mutex::scoped_lock guard(myGenerationLock);
-          if (!myGenerationMap[chunkX+i][chunkY+j][chunkZ+k+(int)myDepth/2])
-            if (i == 0 && j == 0 && k == 0)
-            {
-            }
-            else
-              myGame->service().post(boost::bind<void>(&MapGenerator::generateOne, shared_from_this(),
-                                                      chunkX+i, chunkY+j, chunkZ+k, false));
-        }
+    for (int r = -radius; r <= radius; r++)
+    {
+      boost::recursive_mutex::scoped_lock guard(myGenerationLock);
+/*      if (!myGenerationMap[chunkX][chunkY][chunkZ+myDepth/2])
+        myGame->service().post(boost::bind<void>(&MapGenerator::generateOne, shared_from_this(),
+                                                 chunkX, chunkY, chunkZ, false))*/;
+      for (int i = -r; i <= r; i++)
+        for (int j = -r; j <= r; j++)
+          for (int k = -r; k <= r; k++)
+            if (!myGenerationMap[chunkX+i][chunkY+j][chunkZ+k+myDepth/2])
+              if (i != 0 && j != 0 && k != 0)
+                myGame->service().post(boost::bind<void>(&MapGenerator::generateOne, shared_from_this(),
+                                                        chunkX+i, chunkY+j, chunkZ+k, false));
+    }
 
-    myGame->service().dispatch(boost::bind<void>(&MapGenerator::generateOne, shared_from_this(),
-                                                  chunkX, chunkY, chunkZ, false));
+    generateOne(chunkX, chunkY, chunkZ);
+
     do
     {
       boost::recursive_mutex::scoped_lock guard(myGenerationLock);
-      if (myGenerationMap[chunkX][chunkY][chunkZ+(int)myDepth/2])
+      if (myGenerationMap[chunkX][chunkY][chunkZ+myDepth/2])
+      {
         break;
-    } while(myGame->service().poll_one());
+      }
+      else
+      {
+        guard.unlock();
+        myGame->service().poll_one();
+      }
+    } while(1);
   }
 
 }

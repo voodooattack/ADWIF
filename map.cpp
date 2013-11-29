@@ -41,7 +41,7 @@ namespace ADWIF
     myAccessTolerance(200000), myBackgroundValue(0), myMapPath(mapPath), myClock(),
     myAccessCounter(0), myMemThresholdMB(2048), myDurationThreshold(boost::chrono::minutes(1)),
     myPruningInterval(boost::chrono::seconds(1)), myService(service),
-    myLock(), myPruningInProgressFlag(), myPruneTimer(myService)
+    myLock(), myPruningInProgressFlag()/*, myPruneTimer(myService)*/
   {
     if (!myInitialisedFlag)
     {
@@ -55,20 +55,21 @@ namespace ADWIF
       boost::filesystem::remove_all(myMapPath);
       boost::filesystem::create_directory(myMapPath);
     }
-    myPruneTimer.expires_from_now(myPruningInterval);
-    myPruneTimer.async_wait(boost::bind(&MapImpl::pruneTask, this));
     myPruningInProgressFlag.store(false);
+    myPruneThreadQuitFlag.store(false);
+    myPruneThread = boost::thread(boost::bind(&MapImpl::pruneTask, this));
   }
 
   MapImpl::~MapImpl()
   {
+    myPruneThreadQuitFlag.store(true);
+    myPruneThread.join();
   }
 
   const MapCell & MapImpl::get(int x, int y, int z) const
   {
     std::shared_ptr<Chunk> chunk = getChunk(x, y, z);
-    boost::recursive_mutex::scoped_try_lock guard(chunk->lock);
-    while (!guard.owns_lock() && !guard.try_lock()) myService.poll_one();
+    boost::recursive_mutex::scoped_lock guard(chunk->lock);
     if(!chunk->accessor)
       loadChunk(chunk);
     if (myAccessCounter++ % myAccessTolerance == 0)
@@ -83,11 +84,13 @@ namespace ADWIF
 
   void MapImpl::set(int x, int y, int z, const MapCell & cell)
   {
+    if (!myPruneThread.joinable())
+      myPruneThread.start_thread();
+
     uint64_t hash = myBank->put(cell);
 
     std::shared_ptr<Chunk> chunk = getChunk(x, y, z);
-    boost::recursive_mutex::scoped_try_lock guard(chunk->lock);
-    while (!guard.owns_lock() && !guard.try_lock()) myService.poll_one();
+    boost::recursive_mutex::scoped_lock guard(chunk->lock);
     if(!chunk->accessor)
       loadChunk(chunk);
     while(chunk->readerCount)
@@ -107,21 +110,23 @@ namespace ADWIF
 
   void MapImpl::pruneTask()
   {
-    prune(false);
-    myPruneTimer.expires_from_now(myPruningInterval);
-    myPruneTimer.async_wait(boost::bind(&MapImpl::pruneTask, this));
+    while (!myPruneThreadQuitFlag)
+    {
+      boost::this_thread::sleep_for(myPruningInterval);
+      prune(false);
+    }
   }
 
   void MapImpl::prune(bool pruneAll) const
   {
     bool isPruning = false;
 
-    while (!myPruningInProgressFlag.compare_exchange_weak(isPruning, true)) myService.poll_one();
+    while (!myPruningInProgressFlag.compare_exchange_weak(isPruning, true))
+      boost::this_thread::sleep_for(boost::chrono::microseconds(50));
 
     std::vector<std::pair<Vec3Type, std::shared_ptr<Chunk>>> accessTimesSorted;
     {
-      boost::recursive_mutex::scoped_try_lock guard(myLock);
-      while (!guard.owns_lock() && !guard.try_lock()) myService.poll_one();
+      boost::recursive_mutex::scoped_lock guard(myLock);
       accessTimesSorted.assign(myChunks.begin(), myChunks.end());
     }
 
@@ -140,21 +145,24 @@ namespace ADWIF
       return first.second->lastAccess < second.second->lastAccess;
     });
 
-    unsigned long int memUse = 0;
+    std::size_t memUse = 0;
 
-    std::map<Vec3Type, unsigned long int> memoryMap;
+    std::map<Vec3Type, std::size_t> memoryMap;
 
     if (!pruneAll && myMemThresholdMB)
     {
       std::transform(accessTimesSorted.begin(), accessTimesSorted.end(), std::inserter(memoryMap, memoryMap.begin()),
                      [](const std::pair<Vec3Type, std::shared_ptr<Chunk>> pair) {
-                       boost::recursive_mutex::scoped_lock guard(pair.second->lock);
-                       return std::make_pair(pair.first, pair.second->grid ? pair.second->grid->memUsage() : 0);
+                       boost::recursive_mutex::scoped_try_lock guard(pair.second->lock);
+                       if (guard.owns_lock())
+                         return std::make_pair(pair.first, pair.second->grid ? pair.second->grid->memUsage() : 0);
+                       else
+                         return std::make_pair(pair.first, (std::size_t)0);
                      });
 
       memUse = std::accumulate(memoryMap.begin(), memoryMap.end(), memUse,
                                [](unsigned long int sum,
-                                  const std::pair<Vec3Type, unsigned long int> second)
+                                  const std::pair<Vec3Type, std::size_t> second)
                               {
                                  return sum + second.second;
                               });
@@ -174,7 +182,7 @@ namespace ADWIF
         {
           // std::cerr << "scheduling save operation for: " << i->second->pos << std::endl;
           if (i->second->dirty)
-            myService.post(boost::bind(&MapImpl::saveChunk, this, i->second));
+            myService.dispatch(boost::bind(&MapImpl::saveChunk, this, i->second));
           else
           {
             i->second->grid.reset();
@@ -192,9 +200,6 @@ namespace ADWIF
         else ++i;
       }
     }
-
-    if (posted > boost::thread::hardware_concurrency()-1)
-      myService.poll();
 
     myPruningInProgressFlag.store(false);
   }
@@ -214,9 +219,7 @@ namespace ADWIF
     Vec3Type vec(x, y, z);
     vec /= myChunkSize;
 
-    boost::recursive_mutex::scoped_try_lock guard(myLock);
-    while (!guard.owns_lock() && !guard.try_lock())
-      boost::this_thread::sleep_for(boost::chrono::microseconds(50));
+    boost::recursive_mutex::scoped_lock guard(myLock);
 
     if (myChunks.find(vec) != myChunks.end())
     {
@@ -239,8 +242,7 @@ namespace ADWIF
   void MapImpl::loadChunk(std::shared_ptr<Chunk> & chunk) const
   {
     // std::cerr << "loading: " << chunk->pos << std::endl;
-    boost::recursive_mutex::scoped_try_lock guard(chunk->lock);
-    while (!guard.owns_lock() && !guard.try_lock()) myService.poll_one();
+    boost::recursive_mutex::scoped_lock guard(chunk->lock);
     if (boost::filesystem::exists(myMapPath + dirSep + chunk->fileName) &&
         boost::filesystem::file_size(myMapPath + dirSep + chunk->fileName))
     {
@@ -270,8 +272,7 @@ namespace ADWIF
     if (!chunk->dirty)
       return;
     // std::cerr << "saving: " << chunk->pos << std::endl;
-    boost::recursive_mutex::scoped_try_lock guard(chunk->lock);
-    while (!guard.owns_lock() && !guard.try_lock()) myService.poll_one();
+    boost::recursive_mutex::scoped_lock guard(chunk->lock);
     if (!chunk->grid)
       return;
     iostreams::file_sink fs(myMapPath + dirSep + chunk->fileName);

@@ -330,8 +330,8 @@ namespace ADWIF
     myGenerator->heightmapImage(hmapImg);
 
     myGenerator->chunkSizeX(800);
-    myGenerator->chunkSizeY(240);
-    myGenerator->chunkSizeZ(4);
+    myGenerator->chunkSizeY(400);
+    myGenerator->chunkSizeZ(16);
 
     myGenerator->depth(256);
 

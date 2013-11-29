@@ -37,8 +37,8 @@ namespace ADWIF
   MapGenState::MapGenState(const std::shared_ptr<ADWIF::Engine> & engine, std::shared_ptr<ADWIF::Game> & game):
     myEngine(engine), myGame(game), myViewOffX(0), myViewOffY(0), myViewOffZ(0)
   {
-    myEngine->delay(30);
-    myEngine->input()->setTimeout(-1);
+    myEngine->delay(0);
+    myEngine->input()->setTimeout(300);
   }
 
   MapGenState::~MapGenState() {
@@ -52,9 +52,9 @@ namespace ADWIF
     myViewOffX = 171 * myGame->generator()->chunkSizeX();
     myViewOffY = 169 * myGame->generator()->chunkSizeY();
 
-    myGame->generator()->generateOne(myViewOffX / myGame->generator()->chunkSizeX(),
-                                      myViewOffY / myGame->generator()->chunkSizeY(),
-                                      myViewOffZ / myGame->generator()->chunkSizeZ());
+    myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
+                                        myViewOffY + myEngine->renderer()->height() / 2,
+                                        myViewOffZ);
   }
 
   void MapGenState::step()
@@ -134,7 +134,7 @@ namespace ADWIF
     }
     myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
                                         myViewOffY + myEngine->renderer()->height() / 2,
-                                        myViewOffZ + (int)myGame->generator()->chunkSizeZ() / 2);
+                                        myViewOffZ, 2);
   }
 
   void MapGenState::activate() { }

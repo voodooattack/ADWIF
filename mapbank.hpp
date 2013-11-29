@@ -83,7 +83,7 @@ namespace ADWIF
   struct MapCell: public ItemContainer
   {
     MapCell(): type(TerrainType::Hole), structure(None), material("Air"), smaterial(), biome(), symIdx(0), visible(true),
-      background(false), contents() {}
+      background(false), generated(false), contents() {}
     ~MapCell() { }
 
     TerrainType type;
@@ -92,7 +92,7 @@ namespace ADWIF
     std::string smaterial;
     std::string biome;
     unsigned char symIdx;
-    bool visible, background;
+    bool visible, background, generated;
     std::vector<Item> contents;
 
     virtual size_t itemCount()  { return contents.size(); }
@@ -111,11 +111,13 @@ namespace ADWIF
     virtual uint64_t hash() const {
       size_t h = boost::hash<int>()(type);
       boost::hash_combine(h, (int)structure);
-      boost::hash_combine(h, symIdx);
       boost::hash_combine(h, material);
       boost::hash_combine(h, smaterial);
       boost::hash_combine(h, biome);
+      boost::hash_combine(h, symIdx);
       boost::hash_combine(h, visible);
+      boost::hash_combine(h, background);
+      boost::hash_combine(h, generated);
       for(auto i : contents)
         boost::hash_combine(h, i.hash());
       return h;

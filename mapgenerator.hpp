@@ -99,25 +99,24 @@ namespace ADWIF
     const fipImage & mapImage() const { return myMapImg; }
     void mapImage(const fipImage & image) { myMapImg = image; myMapImg.convertTo32Bits(); }
 
-    unsigned int chunkSizeX() const { return myChunkSizeX; }
-    void chunkSizeX(unsigned int size) { myChunkSizeX = size; }
+    int chunkSizeX() const { return myChunkSizeX; }
+    void chunkSizeX( int size) { myChunkSizeX = size; }
 
-    unsigned int chunkSizeY() const { return myChunkSizeY; }
-    void chunkSizeY(unsigned int size) { myChunkSizeY = size; }
+    int chunkSizeY() const { return myChunkSizeY; }
+    void chunkSizeY( int size) { myChunkSizeY = size; }
 
-    unsigned int chunkSizeZ() const { return myChunkSizeZ; }
-    void chunkSizeZ(unsigned int size) { myChunkSizeZ = size; }
+    int chunkSizeZ() const { return myChunkSizeZ; }
+    void chunkSizeZ( int size) { myChunkSizeZ = size; }
 
-    unsigned int height() const { return myHeight; }
-    unsigned int width() const { return myWidth; }
-
-    unsigned int depth() const { return myDepth; }
-    void depth(unsigned int depth) { myDepth = depth; }
+    int height() const { return myHeight; }
+    int width() const { return myWidth; }
+    int depth() const { return myDepth; }
+    void depth( int depth) { myDepth = depth; }
 
     void init();
     void generateAll();
-    void generateAround(unsigned int x, unsigned int y, int z = 0, unsigned int radius = 1, unsigned int radiusZ = 1);
-    void generateOne(unsigned int x, unsigned int y, int z, bool regenerate = false);
+    void generateAround( int x,  int y, int z = 0,  int radius = 1,  int radiusZ = 1);
+    void generateOne( int x,  int y, int z, bool regenerate = false);
 
     template<class Archive>
     void serialize(Archive & ar, const unsigned int version)
@@ -156,14 +155,14 @@ namespace ADWIF
     std::shared_ptr<class Game> myGame;
     fipImage myMapImg;
     fipImage myHeightMap;
-    unsigned int myChunkSizeX, myChunkSizeY, myChunkSizeZ;
+    int myChunkSizeX, myChunkSizeY, myChunkSizeZ;
     std::unordered_map<uint32_t, std::string> myColourIndex;
     std::mt19937 myRandomEngine;
     boost::multi_array<bool, 3> myGenerationMap;
     boost::recursive_mutex myGenerationLock;
     boost::multi_array<BiomeCell, 2> myBiomeMap;
     std::vector<Region> myRegions;
-    unsigned int myHeight, myWidth, myDepth;
+    int myHeight, myWidth, myDepth;
     unsigned int mySeed;
     bool myInitialisedFlag;
   };

@@ -151,7 +151,9 @@ namespace ADWIF
     boost::asio::io_service & myService;
     mutable boost::recursive_mutex myLock;
     mutable boost::atomic_bool myPruningInProgressFlag;
-    boost::asio::basic_waitable_timer<clock_type> myPruneTimer;
+    boost::thread myPruneThread;
+    boost::atomic_bool myPruneThreadQuitFlag;
+//     boost::asio::basic_waitable_timer<clock_type> myPruneTimer;
 
     static bool myInitialisedFlag;
   };
