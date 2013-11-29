@@ -598,7 +598,7 @@ namespace ADWIF
   {
     for(unsigned int y = 0; y < myHeight; y++)
       for(unsigned int x = 0; x < myWidth; x++)
-        for(int z = -myDepth / 2; z < myDepth / 2; z++)
+        for(int z = -(int)myDepth / 2; z < (int)myDepth / 2; z++)
         {
           generateOne(x, y, z);
         }
@@ -611,7 +611,7 @@ namespace ADWIF
 
     {
       boost::recursive_mutex::scoped_lock guard(myGenerationLock);
-      if (!regenerate && myGenerationMap[x][y][z+myDepth/2])
+      if (!regenerate && myGenerationMap[x][y][z+(int)myDepth/2])
         return;
     }
     unsigned int offx = x * myChunkSizeX, offy = y * myChunkSizeY;
@@ -776,7 +776,7 @@ namespace ADWIF
 
     {
       boost::recursive_mutex::scoped_lock guard(myGenerationLock);
-      myGenerationMap[x][y][z+myDepth/2] = true;
+      myGenerationMap[x][y][z+(int)myDepth/2] = true;
     }
   }
   void MapGenerator::notifyLoad() {  }
@@ -792,19 +792,21 @@ namespace ADWIF
         for (int k = -1; k < 2; k++)
         {
           boost::recursive_mutex::scoped_lock guard(myGenerationLock);
-          if (!myGenerationMap[chunkX+i][chunkY+j][chunkZ+k+myDepth/2])
+          if (!myGenerationMap[chunkX+i][chunkY+j][chunkZ+k+(int)myDepth/2])
             if (i == 0 && j == 0 && k == 0)
-              myGame->service().dispatch(boost::bind<void>(&MapGenerator::generateOne, shared_from_this(),
-                                                       chunkX+i, chunkY+j, chunkZ+k, false));
+            {
+            }
             else
               myGame->service().post(boost::bind<void>(&MapGenerator::generateOne, shared_from_this(),
                                                       chunkX+i, chunkY+j, chunkZ+k, false));
         }
 
+    myGame->service().dispatch(boost::bind<void>(&MapGenerator::generateOne, shared_from_this(),
+                                                  chunkX, chunkY, chunkZ, false));
     do
     {
       boost::recursive_mutex::scoped_lock guard(myGenerationLock);
-      if (myGenerationMap[chunkX][chunkY][chunkZ+myDepth/2])
+      if (myGenerationMap[chunkX][chunkY][chunkZ+(int)myDepth/2])
         break;
     } while(myGame->service().poll_one());
   }
