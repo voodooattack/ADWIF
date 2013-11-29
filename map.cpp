@@ -77,7 +77,8 @@ namespace ADWIF
     while(chunk->writerCount)
       boost::this_thread::sleep_for(boost::chrono::microseconds(50));
     chunk->readerCount++;
-    const MapCell & value = myBank->get(chunk->accessor->getValue(ovdb::Coord(x % myChunkSize.x(), y % myChunkSize.y(), z % myChunkSize.z())));
+    const MapCell & value = myBank->get(chunk->accessor->getValue(
+      ovdb::Coord(x % myChunkSize.x(), y % myChunkSize.y(), z % myChunkSize.z())));
     chunk->readerCount--;
     return value;
   }
@@ -97,9 +98,11 @@ namespace ADWIF
       boost::this_thread::sleep_for(boost::chrono::microseconds(50));
     chunk->writerCount++;
     if (hash == myBackgroundValue)
-      chunk->accessor->setValueOff(ovdb::Coord(x % myChunkSize.x(), y % myChunkSize.y(), z % myChunkSize.z()), hash);
+      chunk->accessor->setValueOff(
+        ovdb::Coord(x % myChunkSize.x(), y % myChunkSize.y(), z % myChunkSize.z()), hash);
     else
-      chunk->accessor->setValue(ovdb::Coord(x % myChunkSize.x(), y % myChunkSize.y(), z % myChunkSize.z()), hash);
+      chunk->accessor->setValue(
+        ovdb::Coord(x % myChunkSize.x(), y % myChunkSize.y(), z % myChunkSize.z()), hash);
     chunk->writerCount--;
 
     chunk->dirty = true;
@@ -151,11 +154,13 @@ namespace ADWIF
 
     if (!pruneAll && myMemThresholdMB)
     {
-      std::transform(accessTimesSorted.begin(), accessTimesSorted.end(), std::inserter(memoryMap, memoryMap.begin()),
+      std::transform(accessTimesSorted.begin(), accessTimesSorted.end(),
+                     std::inserter(memoryMap, memoryMap.begin()),
                      [](const std::pair<Vec3Type, std::shared_ptr<Chunk>> pair) {
                        boost::recursive_mutex::scoped_try_lock guard(pair.second->lock);
                        if (guard.owns_lock())
-                         return std::make_pair(pair.first, pair.second->grid ? pair.second->grid->memUsage() : 0);
+                         return std::make_pair(pair.first,
+                                               pair.second->grid ? pair.second->grid->memUsage() : 0);
                        else
                          return std::make_pair(pair.first, (std::size_t)0);
                      });
@@ -178,7 +183,8 @@ namespace ADWIF
       while (i != accessTimesSorted.end())
       {
         // std::cerr << "pruning: " << i->second->pos << std::endl;
-        if (pruneAll || myClock.now() - i->second->lastAccess > myDurationThreshold || (memUse > myMemThresholdMB))
+        if (pruneAll || myClock.now() - i->second->lastAccess > myDurationThreshold ||
+            (memUse > myMemThresholdMB))
         {
           // std::cerr << "scheduling save operation for: " << i->second->pos << std::endl;
           if (i->second->dirty)
@@ -206,11 +212,6 @@ namespace ADWIF
 
   std::string MapImpl::getChunkName(const Vec3Type & v) const
   {
-//     unsigned long int hash = 0; // myBackgroundValue; // if this is enabled it'll invalidate the map if bg data change
-//     boost::hash_combine(hash, v.x());
-//     boost::hash_combine(hash, v.y());
-//     boost::hash_combine(hash, v.z());
-//     return boost::str( boost::format("%x") % hash );
     return boost::str(boost::format("%i.%i.%i") % v.x() % v.y() % v.z());
   }
 
@@ -293,10 +294,12 @@ namespace ADWIF
 
   std::shared_ptr<MapBank> MapImpl::bank() const { return myBank; }
 
-  Map::Map(boost::asio::io_service & service, const std::shared_ptr<MapBank> & bank, const std::string & mapPath, bool load, unsigned int chunkSizeX,
+  Map::Map(boost::asio::io_service & service, const std::shared_ptr<MapBank> & bank,
+           const std::string & mapPath, bool load, unsigned int chunkSizeX,
            unsigned int chunkSizeY, unsigned int chunkSizeZ, const MapCell & bgValue): myImpl(nullptr)
   {
-    myImpl = new MapImpl(this, service, bank, mapPath, load, chunkSizeX, chunkSizeY, chunkSizeZ, bgValue);
+    myImpl = new MapImpl(this, service, bank, mapPath, load,
+                         chunkSizeX, chunkSizeY, chunkSizeZ, bgValue);
   }
 
   Map::~Map() { delete myImpl; }

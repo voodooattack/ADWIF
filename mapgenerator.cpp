@@ -806,7 +806,7 @@ namespace ADWIF
         for (int j = -r; j <= r; j++)
           for (int k = -r; k <= r; k++)
             if (!myGenerationMap[chunkX+i][chunkY+j][chunkZ+k+myDepth/2])
-              if (i != 0 && j != 0 && k != 0)
+              if (!(i == 0 && j == 0 && k == 0))
                 myGame->service().post(boost::bind<void>(&MapGenerator::generateOne, shared_from_this(),
                                                         chunkX+i, chunkY+j, chunkZ+k, false));
     }

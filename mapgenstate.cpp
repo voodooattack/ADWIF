@@ -134,7 +134,7 @@ namespace ADWIF
     }
     myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
                                         myViewOffY + myEngine->renderer()->height() / 2,
-                                        myViewOffZ, 2);
+                                        myViewOffZ, 1);
   }
 
   void MapGenState::activate() { }
