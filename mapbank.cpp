@@ -24,6 +24,7 @@
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/thread/recursive_mutex.hpp>
 
 namespace ADWIF
 {
@@ -35,6 +36,7 @@ namespace ADWIF
 
   const MapCell & MapBank::get(uint64_t hash)
   {
+    boost::recursive_mutex::scoped_lock guard(myMutex);
     auto cell = myCache.find(hash);
     if (cell == myCache.end())
     {
@@ -48,6 +50,7 @@ namespace ADWIF
 
   void MapBank::prune(bool pruneAll)
   {
+    boost::recursive_mutex::scoped_lock guard(myMutex);
     std::unordered_map<uint64_t, MapCell> toStore;
     auto i = myAccessTimes.begin();
     while (i != myAccessTimes.end())
@@ -94,6 +97,7 @@ namespace ADWIF
 
   MapCell MapBank::loadCell(uint64_t hash)
   {
+    boost::recursive_mutex::scoped_lock guard(myMutex);
     myStream.seekg(std::ios_base::beg);
     MapCell cell;
 
@@ -120,6 +124,7 @@ namespace ADWIF
 
   uint64_t MapBank::put(const MapCell & cell)
   {
+    boost::recursive_mutex::scoped_lock guard(myMutex);
     uint64_t hash = cell.hash();
     myAccessTimes[hash] = myClock.now();
     if (myCache.find(hash) == myCache.end())

@@ -73,9 +73,6 @@ namespace ADWIF
 
   void MapGenState::consume(int key)
   {
-    int chunkX = (myViewOffX + myEngine->renderer()->width() / 2) / myGame->generator()->chunkSizeX();
-    int chunkY = (myViewOffY + myEngine->renderer()->height() / 2) / myGame->generator()->chunkSizeY();
-    int chunkZ = (myViewOffZ + (int)myGame->generator()->chunkSizeZ() / 2) / (int)myGame->generator()->chunkSizeZ();
     if (key == Key::Escape)
     {
       myGame->saveMap();
@@ -88,7 +85,6 @@ namespace ADWIF
     else if (key == Key::Down)
     {
       myViewOffY++;
-      myGame->generator()->generateOne(chunkX, chunkY, chunkZ);
     }
     else if (key == Key::Left)
     {
@@ -136,15 +132,9 @@ namespace ADWIF
             //myEngine->sleep(0);
           }
     }
-
-    myGame->generator()->generateOne(chunkX, chunkY, chunkZ);
-    myGame->generator()->generateOne(chunkX - 1, chunkY, chunkZ);
-    myGame->generator()->generateOne(chunkX + 1, chunkY, chunkZ);
-    myGame->generator()->generateOne(chunkX, chunkY - 1, chunkZ);
-    myGame->generator()->generateOne(chunkX, chunkY + 1, chunkZ);
-    myGame->generator()->generateOne(chunkX, chunkY, chunkZ - 1);
-    myGame->generator()->generateOne(chunkX, chunkY, chunkZ + 1);
-
+    myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
+                                        myViewOffY + myEngine->renderer()->height() / 2,
+                                        myViewOffZ + (int)myGame->generator()->chunkSizeZ() / 2);
   }
 
   void MapGenState::activate() { }

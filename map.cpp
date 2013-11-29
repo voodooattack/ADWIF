@@ -73,7 +73,12 @@ namespace ADWIF
       loadChunk(chunk);
     if (myAccessCounter++ % myAccessTolerance == 0)
       prune(false);
-    return myBank->get(chunk->accessor->getValue(ovdb::Coord(x % myChunkSize.x(), y % myChunkSize.y(), z % myChunkSize.z())));
+    while(chunk->writerCount)
+      boost::this_thread::sleep_for(boost::chrono::microseconds(50));
+    chunk->readerCount++;
+    const MapCell & value = myBank->get(chunk->accessor->getValue(ovdb::Coord(x % myChunkSize.x(), y % myChunkSize.y(), z % myChunkSize.z())));
+    chunk->readerCount--;
+    return value;
   }
 
   void MapImpl::set(int x, int y, int z, const MapCell & cell)
@@ -85,11 +90,14 @@ namespace ADWIF
     while (!guard.owns_lock() && !guard.try_lock()) myService.poll_one();
     if(!chunk->accessor)
       loadChunk(chunk);
-
+    while(chunk->readerCount)
+      boost::this_thread::sleep_for(boost::chrono::microseconds(50));
+    chunk->writerCount++;
     if (hash == myBackgroundValue)
       chunk->accessor->setValueOff(ovdb::Coord(x % myChunkSize.x(), y % myChunkSize.y(), z % myChunkSize.z()), hash);
     else
       chunk->accessor->setValue(ovdb::Coord(x % myChunkSize.x(), y % myChunkSize.y(), z % myChunkSize.z()), hash);
+    chunk->writerCount--;
 
     chunk->dirty = true;
 
@@ -207,7 +215,8 @@ namespace ADWIF
     vec /= myChunkSize;
 
     boost::recursive_mutex::scoped_try_lock guard(myLock);
-    while (!guard.owns_lock() && !guard.try_lock()) myService.poll_one();
+    while (!guard.owns_lock() && !guard.try_lock())
+      boost::this_thread::sleep_for(boost::chrono::microseconds(50));
 
     if (myChunks.find(vec) != myChunks.end())
     {
@@ -220,6 +229,8 @@ namespace ADWIF
       myChunks[vec]->pos = vec;
       myChunks[vec]->fileName = getChunkName(vec);
       myChunks[vec]->dirty = false;
+      myChunks[vec]->readerCount.store(0);
+      myChunks[vec]->writerCount.store(0);
     }
 
     return myChunks[vec];

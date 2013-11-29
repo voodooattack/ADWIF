@@ -41,6 +41,7 @@
 
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/array.hpp>
+#include <boost/serialization/shared_ptr.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/serialization/shared_ptr.hpp>
@@ -330,7 +331,7 @@ namespace ADWIF
 
     myGenerator->chunkSizeX(800);
     myGenerator->chunkSizeY(240);
-    myGenerator->chunkSizeZ(10);
+    myGenerator->chunkSizeZ(4);
 
     myGenerator->depth(256);
 

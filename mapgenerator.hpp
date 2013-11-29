@@ -32,6 +32,8 @@
 
 #include <boost/serialization/shared_ptr.hpp>
 #include <boost/serialization/string.hpp>
+#include <boost/atomic.hpp>
+#include <boost/thread/recursive_mutex.hpp>
 
 #include <json/value.h>
 #include <FreeImagePlus.h>
@@ -82,7 +84,7 @@ namespace ADWIF
     }
   };
 
-  class MapGenerator
+  class MapGenerator: public std::enable_shared_from_this<MapGenerator>
   {
   public:
     MapGenerator(const std::shared_ptr<class Game> & game);
@@ -114,10 +116,7 @@ namespace ADWIF
 
     void init();
     void generateAll();
-    void generateAround(unsigned int x, unsigned int y, int z = 0, unsigned int radius = 1, unsigned int radiusZ = 1)
-    {
-
-    }
+    void generateAround(unsigned int x, unsigned int y, int z = 0, unsigned int radius = 1, unsigned int radiusZ = 1);
     void generateOne(unsigned int x, unsigned int y, int z, bool regenerate = false);
 
     template<class Archive>
@@ -161,6 +160,7 @@ namespace ADWIF
     std::unordered_map<uint32_t, std::string> myColourIndex;
     std::mt19937 myRandomEngine;
     boost::multi_array<bool, 3> myGenerationMap;
+    boost::recursive_mutex myGenerationLock;
     boost::multi_array<BiomeCell, 2> myBiomeMap;
     std::vector<Region> myRegions;
     unsigned int myHeight, myWidth, myDepth;
