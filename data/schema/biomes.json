@@ -51,7 +51,7 @@
       "layerEnd": { "type":"integer" },
       "mapColour": { "type":"string", "pattern":"^#[A-Fa-f0-9]{6}$" },
       "background": { "type":"boolean" },
-      "flat":{ "type":"boolean" },
+      "flat":{ "type":"boolean" }
     },
     "required": [ "name", "sym", "style" ]
   }

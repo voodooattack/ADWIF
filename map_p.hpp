@@ -72,6 +72,7 @@ namespace ADWIF
       Vec3Type pos;
       GridType::Ptr grid;
       std::shared_ptr<GridType::Accessor> accessor;
+      boost::atomic_size_t readerCount, writerCount;
       time_point lastAccess;
       std::string fileName;
       boost::recursive_mutex lock;
