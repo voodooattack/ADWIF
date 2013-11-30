@@ -83,6 +83,7 @@ namespace ADWIF
   void Game::shutdown(bool graceful)
   {
     myServiceLock.reset();
+    myGenerator->abort();
     if (!graceful)
       myService->stop();
     else

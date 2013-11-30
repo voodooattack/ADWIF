@@ -23,6 +23,7 @@
 #include "map.hpp"
 #include "jsonutils.hpp"
 #include "util.hpp"
+#include "threadingutils.hpp"
 
 #include <string>
 #include <algorithm>
@@ -94,12 +95,24 @@ namespace ADWIF
 
       std::memset(m, 0, 4 * 4 * sizeof(double));
 
-      int jl = chunkY > yl ? -1 : 0, jh = chunkY + 2 < yh ? 3 : (chunkY+1 < yh ? 2 : 1);
-      int il = chunkX > xl ? -1 : 0, ih = chunkX + 2 < xh ? 3 : (chunkX+1 < xh ? 2 : 1);
+      int jl = 0, jh = 3;
+      int il = 0, ih = 3;
 
-      for (int j = jl; j < jh; j++)
-        for (int i = il; i < ih; i++)
-          m[i+1][j+1] = myBiomeMap[chunkX+i][chunkY+j].height;
+      while (chunkX + il < xl) il++;
+      while (chunkX + il > xh) jl--;
+      while (chunkY + jl < yl) jl++;
+      while (chunkY + jl > yh) jl--;
+
+      while (chunkX + ih < xl) ih++;
+      while (chunkX + ih > xh) jh--;
+      while (chunkY + jh < yl) jh++;
+      while (chunkY + jh > yh) jh--;
+
+      //TODO: Shift the interpolation grid outside flat cells
+
+      for (int j = jl; j <= jh; j++)
+        for (int i = il; i <= ih; i++)
+          m[i][j] = myBiomeMap[chunkX+i-1][chunkY+j-1].height;
 
       double vx = fmod(x, myChunkSizeX) / myChunkSizeX, vy = fmod(y, myChunkSizeY) / myChunkSizeY;
       return bicubicInterpolate(m, 0.25 + vx, 0.25 + vy);
@@ -117,7 +130,8 @@ namespace ADWIF
   MapGenerator::MapGenerator(const std::shared_ptr<Game> & game):
     myGame(game), myMapImg(), myHeightMap(), myChunkSizeX(32), myChunkSizeY(32), myChunkSizeZ(16),
     myColourIndex(), myRandomEngine(), myGenerationMap(), myBiomeMap(), myRegions(), myHeight(0), myWidth(0),
-    myDepth(512), mySeed(time(NULL)), myInitialisedFlag(false)
+    myDepth(512), mySeed(time(NULL)), myGenerationLock(), myGeneratorCount(0), myGeneratorAbortFlag(false),
+    myInitialisedFlag(false)
   {
     myRandomEngine.seed(mySeed);
     myGenerationMap.resize(boost::extents[myWidth][myHeight][myDepth]);
@@ -515,6 +529,7 @@ namespace ADWIF
 
       auto calculateHullThread = [&](Cluster & c) -> void
       {
+        AtomicRefCount<std::size_t> refCount(clusterCompletionCount, false);
         Region region;
 
         concaveHull(c.points, region.poly, 1.5, 0);
@@ -528,8 +543,6 @@ namespace ADWIF
           boost::mutex::scoped_lock guard(regionMutex);
           myRegions.push_back(boost::move(region));
         }
-
-        clusterCompletionCount--;
       };
 
       for (Cluster & c : clusters)
@@ -614,11 +627,11 @@ namespace ADWIF
     if (x < 0 || y < 0 || x >= myHeight || y >= myWidth)
       return;
 
-    {
-      boost::recursive_mutex::scoped_lock guard(myGenerationLock);
-      if (!regenerate && myGenerationMap[x][y][z+myDepth/2])
-        return;
-    }
+    if (myGeneratorAbortFlag || !regenerate && isGenerated(x,y,z))
+      return;
+
+    AtomicRefCount<std::size_t> refCount(myGeneratorCount);
+
     int offx = x * myChunkSizeX, offy = y * myChunkSizeY;
     int offz = z * myChunkSizeZ - myChunkSizeZ;
 
@@ -641,7 +654,7 @@ namespace ADWIF
 
       vdpoints.insert(coords);
 
-      std::cerr << boost::format("map cell %ix%i intersects regions: ")  % x % y;
+      std::cerr << boost::format("map cell %ix%ix%i intersects regions: ")  % x % y % z;
       for(auto & r : regions)
       {
         std::cerr << r.centroid << " (" <<  r.biome << ") ";
@@ -669,7 +682,7 @@ namespace ADWIF
       }
     }
 
-    std::cerr << boost::format("found %i neighbours for cell %ix%i: ") % neighbours.size() % x % y;
+    std::cerr << boost::format("found %i neighbours for cell %ix%i%i: ") % neighbours.size() % x % y % z;
     for(const point & p : neighbours)
       std::cerr << p << " (" << myBiomeMap[p.x()][p.y()].name << ") ";
     std::cerr << std::endl;
@@ -709,6 +722,8 @@ namespace ADWIF
     {
       for (unsigned int xx = offx; xx < offx + myChunkSizeX; xx++)
       {
+        if (myGeneratorAbortFlag)
+          return;
         int height = getHeight(xx,yy);
         for (int zz = offz; zz <= (offz + myChunkSizeZ > height ? height : offz + myChunkSizeZ); zz++)
         {
@@ -788,8 +803,10 @@ namespace ADWIF
       myGenerationMap[x][y][z+myDepth/2] = true;
     }
   }
+
   void MapGenerator::notifyLoad() {  }
   void MapGenerator::notifySave() {  }
+
   void MapGenerator::generateAround(int x, int y, int z, int radius, int radiusZ)
   {
     int chunkX = x / myChunkSizeX;
@@ -798,34 +815,33 @@ namespace ADWIF
 
     for (int r = -radius; r <= radius; r++)
     {
-      boost::recursive_mutex::scoped_lock guard(myGenerationLock);
-/*      if (!myGenerationMap[chunkX][chunkY][chunkZ+myDepth/2])
-        myGame->service().post(boost::bind<void>(&MapGenerator::generateOne, shared_from_this(),
-                                                 chunkX, chunkY, chunkZ, false))*/;
       for (int i = -r; i <= r; i++)
         for (int j = -r; j <= r; j++)
           for (int k = -r; k <= r; k++)
-            if (!myGenerationMap[chunkX+i][chunkY+j][chunkZ+k+myDepth/2])
+            if (!isGenerated(chunkX+i, chunkY+j, chunkZ+k))
               if (!(i == 0 && j == 0 && k == 0))
                 game()->service().post(boost::bind<void>(&MapGenerator::generateOne, shared_from_this(),
                                                         chunkX+i, chunkY+j, chunkZ+k, false));
     }
 
-    generateOne(chunkX, chunkY, chunkZ);
+    if (!isGenerated(chunkX, chunkY, chunkZ))
+      generateOne(chunkX, chunkY, chunkZ);
 
     do
     {
-      boost::recursive_mutex::scoped_lock guard(myGenerationLock);
-      if (myGenerationMap[chunkX][chunkY][chunkZ+myDepth/2])
-      {
+      if (isGenerated(chunkX, chunkY, chunkZ))
         break;
-      }
       else
       {
-        guard.unlock();
         game()->service().poll_one();
       }
-    } while(1);
+    } while(!myGeneratorAbortFlag);
+  }
+
+  void MapGenerator::abort()
+  {
+    myGeneratorAbortFlag.store(true);
+    while (myGeneratorCount) game()->service().poll_one();
   }
 
 }

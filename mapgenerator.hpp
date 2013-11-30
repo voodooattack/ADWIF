@@ -139,6 +139,14 @@ namespace ADWIF
     void notifyLoad();
     void notifySave();
 
+    void abort();
+
+    bool isGenerated(int x, int y, int z)
+    {
+      boost::recursive_mutex::scoped_lock guard(myGenerationLock);
+      return myGenerationMap[x][y][z+myDepth/2];
+    }
+
   private:
     void generateBiomeMap();
 
@@ -164,6 +172,8 @@ namespace ADWIF
     std::vector<Region> myRegions;
     int myHeight, myWidth, myDepth;
     unsigned int mySeed;
+    boost::atomic_size_t myGeneratorCount;
+    boost::atomic_bool myGeneratorAbortFlag;
     bool myInitialisedFlag;
   };
 }
