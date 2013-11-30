@@ -57,6 +57,12 @@ namespace ADWIF
                                         myViewOffZ);
   }
 
+  void MapGenState::exit()
+  {
+    myGame->save("default");
+    myGame->shutdown();
+  }
+
   void MapGenState::step()
   {
     myEngine->renderer()->clear();

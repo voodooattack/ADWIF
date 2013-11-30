@@ -34,6 +34,7 @@ namespace ADWIF
     virtual void done(bool finished) { myFinishedFlag = finished; }
     virtual void resize() { }
     virtual void activate() { }
+    virtual void exit() { }
   private:
     bool myFinishedFlag;
   };

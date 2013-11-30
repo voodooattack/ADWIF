@@ -136,7 +136,7 @@ namespace ADWIF
 
   void MapGenerator::generateBiomeMap()
   {
-    for(auto const & b : myGame->biomes())
+    for(auto const & b : game()->biomes())
       myColourIndex[b.second->mapColour] = b.second->name;
     myHeight = myMapImg.getHeight();
     myWidth = myMapImg.getWidth();
@@ -149,7 +149,7 @@ namespace ADWIF
 
         if (myColourIndex.find(colour) == myColourIndex.end())
         {
-          myGame->engine()->reportError(true,
+          game()->engine()->reportError(true,
             boost::str(boost::format("unknown biome colour: %x at pixel %ix%i") % colour % x % y));
           return;
         }
@@ -162,7 +162,7 @@ namespace ADWIF
         myBiomeMap[x][y].x = x;
         myBiomeMap[x][y].y = y;
         myBiomeMap[x][y].height = height;
-        myBiomeMap[x][y].flat = myGame->biomes()[myColourIndex[colour]]->flat;
+        myBiomeMap[x][y].flat = game()->biomes()[myColourIndex[colour]]->flat;
       }
 
       // Clustering algorithm for terrain features
@@ -533,9 +533,9 @@ namespace ADWIF
       };
 
       for (Cluster & c : clusters)
-        myGame->service().post(boost::bind<void>(calculateHullThread, c));
+        game()->service().post(boost::bind<void>(calculateHullThread, c));
 
-      while(clusterCompletionCount > 0) myGame->service().poll_one();
+      while(clusterCompletionCount > 0) game()->service().poll_one();
 
       for (Region & r : myRegions)
       {
@@ -622,7 +622,7 @@ namespace ADWIF
     int offx = x * myChunkSizeX, offy = y * myChunkSizeY;
     int offz = z * myChunkSizeZ - myChunkSizeZ;
 
-    Biome * biome = myGame->biomes()[myBiomeMap[x][y].name];
+    Biome * biome = game()->biomes()[myBiomeMap[x][y].name];
 
     std::vector<Region> regions;
 
@@ -714,11 +714,11 @@ namespace ADWIF
         {
           if (zz == height)
           {
-            MapCell c(myGame->map()->get(xx, yy, zz));
+            MapCell c(game()->map()->get(xx, yy, zz));
             if (c.generated && !regenerate) continue;
             std::string mat = biome->materials[ud(myRandomEngine)];
-            auto amat = myGame->materials()[mat];
-            std::uniform_int_distribution<int> ud2(0, myGame->materials()[mat]->disp[TerrainType::Floor].size() - 1);
+            auto amat = game()->materials()[mat];
+            std::uniform_int_distribution<int> ud2(0, game()->materials()[mat]->disp[TerrainType::Floor].size() - 1);
             c.material = mat;
             c.symIdx = ud2(myRandomEngine);
             c.biome = biome->name;
@@ -739,23 +739,23 @@ namespace ADWIF
               c.type = TerrainType::RampU;
               MapCell cc = c;
               cc.type = TerrainType::RampD;
-              myGame->map()->set(xx, yy, height+1, cc);
+              game()->map()->set(xx, yy, height+1, cc);
             }
 
-            myGame->map()->set(xx, yy, zz, c);
+            game()->map()->set(xx, yy, zz, c);
           }
           else if (zz < height)
           {
-            MapCell c(myGame->map()->get(xx, yy, zz));
+            MapCell c(game()->map()->get(xx, yy, zz));
             if (c.generated && !regenerate) continue;
             std::string mat = biome->materials[ud(myRandomEngine)];
-            auto amat = myGame->materials()[mat];
+            auto amat = game()->materials()[mat];
             c.type = TerrainType::Wall;
             c.material = mat;
             c.symIdx = 0;
             c.visible = false;
             c.generated = true;
-            if (amat->disp.find(TerrainType::Wall) == myGame->materials()[mat]->disp.end())
+            if (amat->disp.find(TerrainType::Wall) == game()->materials()[mat]->disp.end())
               continue;
             if (!amat->liquid && zz == height - 1)
             {
@@ -765,7 +765,7 @@ namespace ADWIF
                 for (int i = -1; i < 2; i++)
                 {
                   int h = getHeight(xx+i,yy+j);
-                  if ( h <= zz && myGame->map()->get(xx+i, yy+j, zz).visible)
+                  if ( h <= zz && game()->map()->get(xx+i, yy+j, zz).visible)
                   {
                     c.visible = true;
                     dobreak = true;
@@ -775,7 +775,7 @@ namespace ADWIF
                 if (dobreak) break;
               }
             }
-            myGame->map()->set(xx, yy, zz, c);
+            game()->map()->set(xx, yy, zz, c);
           }
           else
             continue;
@@ -807,7 +807,7 @@ namespace ADWIF
           for (int k = -r; k <= r; k++)
             if (!myGenerationMap[chunkX+i][chunkY+j][chunkZ+k+myDepth/2])
               if (!(i == 0 && j == 0 && k == 0))
-                myGame->service().post(boost::bind<void>(&MapGenerator::generateOne, shared_from_this(),
+                game()->service().post(boost::bind<void>(&MapGenerator::generateOne, shared_from_this(),
                                                         chunkX+i, chunkY+j, chunkZ+k, false));
     }
 
@@ -823,7 +823,7 @@ namespace ADWIF
       else
       {
         guard.unlock();
-        myGame->service().poll_one();
+        game()->service().poll_one();
       }
     } while(1);
   }

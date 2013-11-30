@@ -90,7 +90,7 @@ namespace ADWIF
     MapGenerator(const std::shared_ptr<class Game> & game);
     ~MapGenerator();
 
-    std::shared_ptr<class Game>  game() { return myGame; }
+    std::shared_ptr<class Game> game() { return myGame.lock(); }
     void game(std::shared_ptr<class Game> & game) { myGame = game; }
 
     const fipImage & heightmap() const { return myHeightMap; }
@@ -152,7 +152,7 @@ namespace ADWIF
     }
 
   private:
-    std::shared_ptr<class Game> myGame;
+    std::weak_ptr<class Game> myGame;
     fipImage myMapImg;
     fipImage myHeightMap;
     int myChunkSizeX, myChunkSizeY, myChunkSizeZ;

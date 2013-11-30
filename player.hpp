@@ -39,6 +39,9 @@ namespace ADWIF
 
     Player(const std::shared_ptr<class Game> & game);
 
+    std::shared_ptr<class Game> game() { return myGame.lock(); }
+    void game(std::shared_ptr<class Game> & game) { myGame = game; }
+
     const std::string & name() const { return myName; }
     void name(const std::string & name) { myName = name; }
 
@@ -55,7 +58,7 @@ namespace ADWIF
     void profession(struct Profession * profession) { myProfession = profession; }
 
   private:
-    std::shared_ptr<class Game> myGame;
+    std::weak_ptr<class Game> myGame;
     class Race * myRace;
     class Faction * myFaction;
     class Profession * myProfession;

@@ -54,6 +54,7 @@ namespace ADWIF
       {
         if (myStates.back()->done())
         {
+          myStates.back()->exit();
           myStates.pop_back();
           if (!myStates.empty())
             myStates.back()->activate();

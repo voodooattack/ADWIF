@@ -33,7 +33,7 @@ namespace iostreams = boost::iostreams;
 
 namespace ADWIF
 {
-  MapImpl::MapImpl(Map * parent, boost::asio::io_service & service, const std::shared_ptr<MapBank> & bank,
+  MapImpl::MapImpl(Map * parent, std::shared_ptr<boost::asio::io_service> service, const std::shared_ptr<MapBank> & bank,
                    const std::string & mapPath, bool load, unsigned int chunkSizeX,
                    unsigned int chunkSizeY, unsigned int chunkSizeZ,
                    const MapCell & bgValue):
@@ -188,7 +188,7 @@ namespace ADWIF
         {
           // std::cerr << "scheduling save operation for: " << i->second->pos << std::endl;
           if (i->second->dirty)
-            myService.dispatch(boost::bind(&MapImpl::saveChunk, this, i->second));
+            myService->dispatch(boost::bind(&MapImpl::saveChunk, this, i->second));
           else
           {
             i->second->grid.reset();
@@ -294,7 +294,7 @@ namespace ADWIF
 
   std::shared_ptr<MapBank> MapImpl::bank() const { return myBank; }
 
-  Map::Map(boost::asio::io_service & service, const std::shared_ptr<MapBank> & bank,
+  Map::Map(std::shared_ptr<boost::asio::io_service> service, const std::shared_ptr<MapBank> & bank,
            const std::string & mapPath, bool load, unsigned int chunkSizeX,
            unsigned int chunkSizeY, unsigned int chunkSizeZ, const MapCell & bgValue): myImpl(nullptr)
   {

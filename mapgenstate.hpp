@@ -40,6 +40,7 @@ namespace ADWIF
     virtual void resize() { step(); }
     virtual void consume(int key);
     virtual void activate();
+    virtual void exit();
 
   private:
     std::shared_ptr<class Engine> myEngine;

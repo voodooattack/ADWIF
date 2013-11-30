@@ -142,22 +142,21 @@ namespace ADWIF
     ~Game() ;
 
     void init();
+    void shutdown(bool graceful = true);
 
     void reloadData();
     void clearData();
     void createNew(std::shared_ptr<class Player> & player) { this->player(player); }
 
-    void load(const std::string & fileName) { }
-    void save(const std::string & fileName) { }
-    void load(const std::istream & stream) { }
-    void save(const std::ostream & stream) { }
+    void load(const std::string & fileName);
+    void save(const std::string & fileName);
 
     void createMap();
     void loadMap();
     void saveMap();
 
-    std::shared_ptr<class Engine> & engine() { return myEngine; }
-    const std::shared_ptr<class Engine> & engine() const { return myEngine; }
+    std::shared_ptr<class Engine> engine() { return myEngine.lock(); }
+    const std::shared_ptr<class Engine> engine() const { return myEngine.lock(); }
 
     std::shared_ptr<class Player> & player() { return myPlayer; }
     const std::shared_ptr<class Player> & player() const { return myPlayer; }
@@ -189,7 +188,7 @@ namespace ADWIF
     const std::map<std::string, Material *> & materials() const { return myMaterials; }
     const std::map<std::string, Biome *> & biomes() const { return myBiomes; }
 
-    boost::asio::io_service & service() const { return myService; }
+    boost::asio::io_service & service() const { return *myService; }
 
   private:
 
@@ -203,7 +202,7 @@ namespace ADWIF
     void sanityCheck();
 
   private:
-    std::shared_ptr<class Engine> myEngine;
+    std::weak_ptr<class Engine> myEngine;
     std::shared_ptr<class Player> myPlayer;
     std::shared_ptr<class Map> myMap;
     std::shared_ptr<class MapBank> myBank;
@@ -219,7 +218,7 @@ namespace ADWIF
 
     std::shared_ptr<class MapGenerator> myGenerator;
 
-    mutable boost::asio::io_service myService;
+    mutable std::shared_ptr<boost::asio::io_service> myService;
     boost::thread_group myThreads;
     std::shared_ptr<boost::asio::io_service::work> myServiceLock;
   };

@@ -57,19 +57,17 @@ namespace ADWIF
     myBank(nullptr), myIndexStream(), myRaces(), myProfessions(), mySkills(), myFactions(),
     myMaterials(), myBiomes(), myService(), myThreads(), myServiceLock()
   {
-    myServiceLock.reset(new boost::asio::io_service::work(myService));
+    myService.reset(new boost::asio::io_service);
+    myServiceLock.reset(new boost::asio::io_service::work(*myService));
     int nthreads = boost::thread::hardware_concurrency() - 1;
     if (nthreads < 1) nthreads = 1;
     while(nthreads--)
-      myThreads.create_thread(boost::bind(&boost::asio::io_service::run, &myService));
+      myThreads.create_thread(boost::bind(&boost::asio::io_service::run, myService));
   }
 
   Game::~Game()
   {
-    clearData();
-    myServiceLock.reset();
-//     myService.stop();
-    myThreads.join_all();
+    shutdown();
   }
 
   void Game::player(const std::shared_ptr<Player> & player)
@@ -82,43 +80,54 @@ namespace ADWIF
     reloadData();
   }
 
+  void Game::shutdown(bool graceful)
+  {
+    myServiceLock.reset();
+    if (!graceful)
+      myService->stop();
+    else
+      myService->run();
+    myThreads.join_all();
+    clearData();
+  }
+
   void Game::reloadData()
   {
     clearData();
 
     if (!PhysFS::exists("races.json"))
     {
-      myEngine->reportError(true, "Could not locate 'races.json'");
+      engine()->reportError(true, "Could not locate 'races.json'");
       return;
     }
 
     if (!PhysFS::exists("factions.json"))
     {
-      myEngine->reportError(true, "Could not locate 'factions.json'");
+      engine()->reportError(true, "Could not locate 'factions.json'");
       return;
     }
 
     if (!PhysFS::exists("professions.json"))
     {
-      myEngine->reportError(true, "Could not locate 'professions.json'");
+      engine()->reportError(true, "Could not locate 'professions.json'");
       return;
     }
 
     if (!PhysFS::exists("skills.json"))
     {
-      myEngine->reportError(true, "Could not locate 'skills.json'");
+      engine()->reportError(true, "Could not locate 'skills.json'");
       return;
     }
 
     if (!PhysFS::exists("biomes.json"))
     {
-      myEngine->reportError(true, "Could not locate 'biomes.json'");
+      engine()->reportError(true, "Could not locate 'biomes.json'");
       return;
     }
 
     if (!PhysFS::exists("materials.json"))
     {
-      myEngine->reportError(true, "Could not locate 'materials.json'");
+      engine()->reportError(true, "Could not locate 'materials.json'");
       return;
     }
 
@@ -128,37 +137,37 @@ namespace ADWIF
 
     if (!fraces)
     {
-      myEngine->reportError(true, "Could not open 'races.json'");
+      engine()->reportError(true, "Could not open 'races.json'");
       return;
     }
 
     if (!ffactions)
     {
-      myEngine->reportError(true, "Could not open 'factions.json'");
+      engine()->reportError(true, "Could not open 'factions.json'");
       return;
     }
 
     if (!fprofessions)
     {
-      myEngine->reportError(true, "Could not open 'professions.json'");
+      engine()->reportError(true, "Could not open 'professions.json'");
       return;
     }
 
     if (!fskills)
     {
-      myEngine->reportError(true, "Could not open 'skills.json'");
+      engine()->reportError(true, "Could not open 'skills.json'");
       return;
     }
 
     if (!fbiomes)
     {
-      myEngine->reportError(true, "Could not open 'biomes.json'");
+      engine()->reportError(true, "Could not open 'biomes.json'");
       return;
     }
 
     if (!fmaterials)
     {
-      myEngine->reportError(true, "Could not open 'materials.json'");
+      engine()->reportError(true, "Could not open 'materials.json'");
       return;
     }
 
@@ -171,7 +180,7 @@ namespace ADWIF
 
       if (!reader.parse(fskills, skills))
       {
-        myEngine->reportError(true, "Error parsing 'skills.json':\n" +
+        engine()->reportError(true, "Error parsing 'skills.json':\n" +
                               reader.getFormattedErrorMessages());
         return;
       }
@@ -180,7 +189,7 @@ namespace ADWIF
 
       if (mySkills.empty())
       {
-        myEngine->reportError(true, "Error parsing 'skills.json': No skill information found");
+        engine()->reportError(true, "Error parsing 'skills.json': No skill information found");
         return;
       }
 
@@ -188,7 +197,7 @@ namespace ADWIF
 
       if (!reader.parse(fprofessions, professions))
       {
-        myEngine->reportError(true, "Error parsing 'professions.json':\n" +
+        engine()->reportError(true, "Error parsing 'professions.json':\n" +
                               reader.getFormattedErrorMessages());
         return;
       }
@@ -197,7 +206,7 @@ namespace ADWIF
 
       if (myProfessions.empty())
       {
-        myEngine->reportError(true, "Error parsing 'professions.json': No profession information found");
+        engine()->reportError(true, "Error parsing 'professions.json': No profession information found");
         return;
       }
 
@@ -205,7 +214,7 @@ namespace ADWIF
 
       if (!reader.parse(ffactions, factions))
       {
-        myEngine->reportError(true, "Error parsing 'factions.json':\n" + reader.getFormattedErrorMessages());
+        engine()->reportError(true, "Error parsing 'factions.json':\n" + reader.getFormattedErrorMessages());
         return;
       }
 
@@ -213,7 +222,7 @@ namespace ADWIF
 
       if (myFactions.empty())
       {
-        myEngine->reportError(true, "Error parsing 'factions.json': No faction information found");
+        engine()->reportError(true, "Error parsing 'factions.json': No faction information found");
         return;
       }
 
@@ -221,7 +230,7 @@ namespace ADWIF
 
       if (!reader.parse(fraces, races))
       {
-        myEngine->reportError(true, "Error parsing 'races.json':\n" + reader.getFormattedErrorMessages());
+        engine()->reportError(true, "Error parsing 'races.json':\n" + reader.getFormattedErrorMessages());
         return;
       }
 
@@ -229,7 +238,7 @@ namespace ADWIF
 
       if (myRaces.empty())
       {
-        myEngine->reportError(true, "Error parsing 'races.json': No race information found");
+        engine()->reportError(true, "Error parsing 'races.json': No race information found");
         return;
       }
 
@@ -237,7 +246,7 @@ namespace ADWIF
 
       if (!reader.parse(fmaterials, materials))
       {
-        myEngine->reportError(true, "Error parsing 'materials.json':\n" +
+        engine()->reportError(true, "Error parsing 'materials.json':\n" +
         reader.getFormattedErrorMessages());
         return;
       }
@@ -246,7 +255,7 @@ namespace ADWIF
 
       if (myMaterials.empty())
       {
-        myEngine->reportError(true, "Error parsing 'materials.json': No material information found");
+        engine()->reportError(true, "Error parsing 'materials.json': No material information found");
         return;
       }
 
@@ -254,7 +263,7 @@ namespace ADWIF
 
       if (!reader.parse(fbiomes, biomes))
       {
-        myEngine->reportError(true, "Error parsing 'biomes.json':\n" +
+        engine()->reportError(true, "Error parsing 'biomes.json':\n" +
         reader.getFormattedErrorMessages());
         return;
       }
@@ -263,7 +272,7 @@ namespace ADWIF
 
       if (myBiomes.empty())
       {
-        myEngine->reportError(true, "Error parsing 'biomes.json': No biome information found");
+        engine()->reportError(true, "Error parsing 'biomes.json': No biome information found");
         return;
       }
 
@@ -271,7 +280,7 @@ namespace ADWIF
     }
     catch (std::runtime_error & e)
     {
-      myEngine->reportError(true, e.what());
+      engine()->reportError(true, e.what());
     }
   }
 
@@ -388,6 +397,16 @@ namespace ADWIF
     myGenerator->notifySave();
   }
 
+  void Game::load(const std::string & fileName)
+  {
+
+  }
+
+  void Game::save(const std::string & fileName)
+  {
+    saveMap();
+  }
+
   void Game::loadSkills(const Json::Value & skills)
   {
     const std::string errorMessage = "Error parsing 'skills.json': ";
@@ -398,7 +417,7 @@ namespace ADWIF
 
     if (!reader.parse(fschema, schema))
     {
-      myEngine->reportError(true, "Error parsing schema 'schema/skills.json':\n" +
+      engine()->reportError(true, "Error parsing schema 'schema/skills.json':\n" +
       reader.getFormattedErrorMessages());
       return;
     }
@@ -435,7 +454,7 @@ namespace ADWIF
 
     if (!reader.parse(fschema, schema))
     {
-      myEngine->reportError(true, "Error parsing schema 'schema/professions.json':\n" +
+      engine()->reportError(true, "Error parsing schema 'schema/professions.json':\n" +
       reader.getFormattedErrorMessages());
       return;
     }
@@ -471,7 +490,7 @@ namespace ADWIF
 
     if (!reader.parse(fschema, schema))
     {
-      myEngine->reportError(true, "Error parsing schema 'schema/races.json':\n" +
+      engine()->reportError(true, "Error parsing schema 'schema/races.json':\n" +
       reader.getFormattedErrorMessages());
       return;
     }
@@ -507,7 +526,7 @@ namespace ADWIF
 
     if (!reader.parse(fschema, schema))
     {
-      myEngine->reportError(true, "Error parsing schema 'schema/factions.json':\n" +
+      engine()->reportError(true, "Error parsing schema 'schema/factions.json':\n" +
       reader.getFormattedErrorMessages());
       return;
     }
@@ -556,7 +575,7 @@ namespace ADWIF
 
     if (!reader.parse(fmaterials, schema))
     {
-      myEngine->reportError(true, "Error parsing schema 'schema/materials.json':\n" +
+      engine()->reportError(true, "Error parsing schema 'schema/materials.json':\n" +
       reader.getFormattedErrorMessages());
       return;
     }
@@ -594,7 +613,7 @@ namespace ADWIF
 
     if (!reader.parse(fbiomes, schema))
     {
-      myEngine->reportError(true, "Error parsing schema 'schema/biomes.json':\n" +
+      engine()->reportError(true, "Error parsing schema 'schema/biomes.json':\n" +
       reader.getFormattedErrorMessages());
       return;
     }
@@ -901,8 +920,6 @@ namespace ADWIF
 
     return biome;
   }
-
-
 }
 
 
