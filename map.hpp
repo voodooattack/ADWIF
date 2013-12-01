@@ -41,7 +41,7 @@ namespace ADWIF
   class Map
   {
   public:
-    Map(std::shared_ptr<boost::asio::io_service> service, const std::shared_ptr<class MapBank> & bank,
+    Map(boost::asio::io_service & service, const std::shared_ptr<class MapBank> & bank,
         const std::string & mapPath, bool load, unsigned int chunkSizeX,
         unsigned int chunkSizeY, unsigned int chunkSizeZ, const MapCell & bgValue = MapCell());
     ~Map();

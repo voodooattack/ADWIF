@@ -30,9 +30,6 @@
 //#include <v8.h>
 #include <json/json.h>
 
-#include <boost/thread.hpp>
-#include <boost/asio/io_service.hpp>
-
 #include <unordered_map>
 
 #include "animation.hpp"
@@ -188,8 +185,6 @@ namespace ADWIF
     const std::map<std::string, Material *> & materials() const { return myMaterials; }
     const std::map<std::string, Biome *> & biomes() const { return myBiomes; }
 
-    boost::asio::io_service & service() const { return *myService; }
-
   private:
 
     void loadSkills(const Json::Value & skills);
@@ -217,10 +212,6 @@ namespace ADWIF
     std::map<std::string, Biome *> myBiomes;
 
     std::shared_ptr<class MapGenerator> myGenerator;
-
-    mutable std::shared_ptr<boost::asio::io_service> myService;
-    boost::thread_group myThreads;
-    std::shared_ptr<boost::asio::io_service::work> myServiceLock;
   };
 }
 

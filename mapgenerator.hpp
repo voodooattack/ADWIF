@@ -157,7 +157,6 @@ namespace ADWIF
     boost::logic::tribool isGenerated(int x, int y, int z)
     {
       boost::recursive_mutex::scoped_lock guard(myGenerationLock);
-      std::cerr << myGenerationMap[x][y][z+myDepth/2] << std::endl;
       return myGenerationMap[x][y][z+myDepth/2];
     }
 
@@ -184,6 +183,7 @@ namespace ADWIF
     std::unordered_map<uint32_t, std::string> myColourIndex;
     std::mt19937 myRandomEngine;
     boost::multi_array<boost::tribool, 3> myGenerationMap;
+    boost::multi_array<bool, 3> myPriorityFlags;
     boost::recursive_mutex myGenerationLock;
     boost::multi_array<BiomeCell, 2> myBiomeMap;
     std::vector<Region> myRegions;

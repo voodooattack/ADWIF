@@ -55,7 +55,7 @@
     "name": "Water",
     "disp":{
       "Floor": [{ "sym":"~", "usym":"≈"}],
-      "Wall":  [{ "sym":"~", "usym":"░", "style":{ "bgcolour":"Blue", "attributes":["Bold"] }}],
+      "Wall":  [{ "sym":"~", "usym":"≈", "style":{ "bgcolour":"Blue", "attributes":["Bold"] }}],
       "RampU": [{ "sym":"^", "usym":"▴" }],
       "RampD": [{ "sym":"^", "usym":"▾" }]
     },
@@ -67,7 +67,7 @@
     "name": "SaltWater",
     "disp":{
       "Floor": [{ "sym":"~", "usym":"≈"}],
-      "Wall":  [{ "sym":"~", "usym":"░", "style":{ "fgcolour":"White", "bgcolour":"Blue", "attributes":["Dim"] }}],
+      "Wall":  [{ "sym":"~", "usym":"≈", "style":{ "fgcolour":"White", "bgcolour":"Blue", "attributes":["Dim"] }}],
       "RampU": [{ "sym":"^", "usym":"▴", "style":{ "attributes":["Bold"] }}],
       "RampD": [{ "sym":"v", "usym":"▾", "style":{ "attributes":["Bold"] }}]
     },

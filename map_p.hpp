@@ -80,7 +80,7 @@ namespace ADWIF
     };
 
   public:
-    MapImpl(Map * parent, std::shared_ptr<boost::asio::io_service> service, const std::shared_ptr<MapBank> & bank,
+    MapImpl(Map * parent, boost::asio::io_service & service, const std::shared_ptr<MapBank> & bank,
             const std::string & mapPath, bool load, unsigned int chunkSizeX,
             unsigned int chunkSizeY, unsigned int chunkSizeZ, const MapCell & bgValue = MapCell());
     ~MapImpl();
@@ -148,7 +148,7 @@ namespace ADWIF
     unsigned long int myMemThresholdMB;
     duration_type myDurationThreshold;
     duration_type myPruningInterval;
-    std::shared_ptr<boost::asio::io_service> myService;
+    boost::asio::io_service & myService;
     mutable boost::recursive_mutex myLock;
     mutable boost::atomic_bool myPruningInProgressFlag;
     boost::thread myPruneThread;

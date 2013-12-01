@@ -82,7 +82,7 @@ namespace ADWIF
 
   struct MapCell: public ItemContainer
   {
-    MapCell(): type(TerrainType::Hole), structure(None), material("Air"), smaterial(), biome(), symIdx(0), visible(true),
+    MapCell(): type(TerrainType::Hole), structure(None), material("Air"), smaterial(), biome(), symIdx(0), visible(false),
       background(false), generated(false), contents(), cmaterial(nullptr), csmaterial(nullptr), cbiome(nullptr) {}
     ~MapCell() { }
 

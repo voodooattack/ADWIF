@@ -129,12 +129,12 @@ namespace ADWIF
 
   MapGenerator::MapGenerator(const std::shared_ptr<Game> & game):
     myGame(game), myMapImg(), myHeightMap(), myChunkSizeX(32), myChunkSizeY(32), myChunkSizeZ(16),
-    myColourIndex(), myRandomEngine(), myGenerationMap(), myBiomeMap(), myRegions(), myHeight(0), myWidth(0),
-    myDepth(512), mySeed(time(NULL)), myGenerationLock(), myGeneratorCount(0), myGeneratorAbortFlag(false),
+    myColourIndex(), myRandomEngine(), myGenerationMap(), myPriorityFlags(),
+    myBiomeMap(), myRegions(), myHeight(0), myWidth(0), myDepth(512), mySeed(time(NULL)),
+    myGenerationLock(), myGeneratorCount(0), myGeneratorAbortFlag(false),
     myLastChunkX(-1), myLastChunkY(-1), myLastChunkZ(-1), myModules(), myHeightSource(), myInitialisedFlag(false)
   {
     myRandomEngine.seed(mySeed);
-    myGenerationMap.resize(boost::extents[myWidth][myHeight][myDepth]);
     myGeneratorAbortFlag.store(false);
   }
 
@@ -184,8 +184,9 @@ namespace ADWIF
       myColourIndex[b.second->mapColour] = b.second->name;
     myHeight = myMapImg.getHeight();
     myWidth = myMapImg.getWidth();
-    myGenerationMap.resize(boost::extents[myWidth][myHeight][myDepth]);
     myBiomeMap.resize(boost::extents[myWidth][myHeight]);
+    myGenerationMap.resize(boost::extents[myWidth][myHeight][myDepth]);
+    myPriorityFlags.resize(boost::extents[myWidth][myHeight][myDepth]);
     for(unsigned int y = 0; y < myHeight; y++)
       for(unsigned int x = 0; x < myWidth; x++)
       {
@@ -576,9 +577,9 @@ namespace ADWIF
       };
 
       for (Cluster & c : clusters)
-        game()->service().post(boost::bind<void>(calculateHullThread, c));
+        game()->engine()->service().post(boost::bind<void>(calculateHullThread, c));
 
-      while(clusterCompletionCount > 0) game()->service().poll_one();
+      while(clusterCompletionCount > 0) game()->engine()->service().poll_one();
 
       for (Region & r : myRegions)
       {
@@ -647,11 +648,6 @@ namespace ADWIF
         }
   }
 
-//   void MapGenerator::generateSome(int x, int y, int z, int w, int h, int d, bool regenerate)
-//   {
-//     int chunkX = x / myChunkSizeX, chunkY = y / myChunkSizeY, chunkZ = z / myChunkSizeZ;
-//   }
-
   void MapGenerator::generateOne(int x, int y, int z, bool regenerate, bool lazy)
   {
     if (x < 0 || y < 0 || x >= myHeight || y >= myWidth)
@@ -666,6 +662,8 @@ namespace ADWIF
       if (myGenerationMap[x][y][z+myDepth/2] == true && !regenerate) return;
       myGenerationMap[x][y][z+myDepth/2] = boost::indeterminate;
     }
+
+    Map * map = game()->map().get();
 
     AtomicRefCount<std::size_t> refCount(myGeneratorCount);
 
@@ -719,7 +717,7 @@ namespace ADWIF
       }
     }
 
-    std::cerr << boost::format("found %i neighbours for cell %ix%i%i: ") % neighbours.size() % x % y % z;
+    std::cerr << boost::format("found %i neighbours for cell %ix%ix%i: ") % neighbours.size() % x % y % z;
     for(const point & p : neighbours)
       std::cerr << p << " (" << myBiomeMap[p.x()][p.y()].name << ") ";
     std::cerr << std::endl;
@@ -736,12 +734,14 @@ namespace ADWIF
         return floor(myHeightSource->GetValue(x, y, 0) * (myDepth / 2));
     };
 
+    // PASS 1 ============================================================================
+
     for (unsigned int yy = offy; yy < offy + myChunkSizeY; yy++)
     {
+      if (lazy && !myPriorityFlags[x][y][z+myDepth/2])
+        boost::this_thread::sleep_for(boost::chrono::nanoseconds(50));
       for (unsigned int xx = offx; xx < offx + myChunkSizeX; xx++)
       {
-        if (lazy)
-          boost::this_thread::sleep_for(boost::chrono::nanoseconds(50));
 
         if (myGeneratorAbortFlag)
         {
@@ -753,13 +753,16 @@ namespace ADWIF
         int height = getHeight(xx,yy);
         for (int zz = offz; zz <= (offz + myChunkSizeZ > height ? height : offz + myChunkSizeZ); zz++)
         {
-          if (zz == height)
+          MapCell c(map->get(xx, yy, zz));
+          if (c.generated && !regenerate) continue;
+          if (!c.generated)
           {
-            MapCell c(game()->map()->get(xx, yy, zz));
-            if (c.generated && !regenerate) continue;
             std::string smat = biome->materials[ud(myRandomEngine)];
             c.material = smat;
             c.cmaterial = game()->materials()[smat];
+          }
+          if (zz == height)
+          {
             std::uniform_int_distribution<int> ud2(0, c.cmaterial->disp[TerrainType::Floor].size() - 1);
             c.symIdx = ud2(myRandomEngine);
             c.biome = biome->name;
@@ -776,55 +779,73 @@ namespace ADWIF
                  getHeight(xx-1,yy-1) == height + 1 ||
                  getHeight(xx-1,yy+1) == height + 1))
             {
-              c.type = TerrainType::RampU;
               MapCell cc = c;
+              c.type = TerrainType::RampU;
               cc.type = TerrainType::RampD;
               cc.generated = true;
-              game()->map()->set(xx, yy, height+1, cc);
+              map->set(xx, yy, height+1, cc);
             }
-
-            game()->map()->set(xx, yy, zz, c);
           }
           else if (zz < height)
           {
-            MapCell c(game()->map()->get(xx, yy, zz));
-            if (c.generated && !regenerate) continue;
-            std::string smat = biome->materials[ud(myRandomEngine)];
-            c.cmaterial = game()->materials()[smat];
+            if (c.cmaterial->disp.find(TerrainType::Wall) == c.cmaterial->disp.end())
+              continue;
             c.type = TerrainType::Wall;
-            c.material = smat;
             c.symIdx = 0;
             c.visible = false;
             c.generated = true;
-            if (c.cmaterial->disp.find(TerrainType::Wall) == c.cmaterial->disp.end())
-              continue;
-            if (!c.cmaterial->liquid && zz == height - 1)
-            {
-              bool dobreak = false;
-              for (int j = -1; j < 2; j++)
-              {
-                for (int i = -1; i < 2; i++)
-                {
-                  int h = getHeight(xx+i,yy+j);
-                  if ( h <= zz)
-                  {
-                    const MapCell & n = game()->map()->get(xx+i, yy+j, zz);
-                    if (n.visible || (n.cmaterial && n.cmaterial->liquid))
-                    {
-                      c.visible = true;
-                      dobreak = true;
-                      break;
-                    }
-                  }
-                }
-                if (dobreak) break;
-              }
-            } else if (c.cmaterial->liquid)
-              c.visible = true;
-            game()->map()->set(xx, yy, zz, c);
           }
           else
             continue;
+          map->set(xx, yy, zz, c);
+        }
+      }
+    }
+
+    // PASS 2 ============================================================================
+
+    for (unsigned int yy = offy; yy < offy + myChunkSizeY; yy++)
+    {
+      for (unsigned int xx = offx; xx < offx + myChunkSizeX; xx++)
+      {
+        if (lazy && !myPriorityFlags[x][y][z+myDepth/2])
+          boost::this_thread::sleep_for(boost::chrono::nanoseconds(50));
+
+        if (myGeneratorAbortFlag)
+        {
+          boost::recursive_mutex::scoped_lock guard(myGenerationLock);
+          myGenerationMap[x][y][z+myDepth/2] = false;
+          return;
+        }
+
+        int height = getHeight(xx,yy);
+        for (int zz = offz; zz <= (offz + myChunkSizeZ > height ? height : offz + myChunkSizeZ); zz++)
+        {
+          MapCell c(map->get(xx, yy, zz));
+          if (c.cmaterial && c.cmaterial->liquid)
+          {
+            c.visible = true;
+            map->set(xx, yy, zz, c);
+          }
+          else if (c.type == TerrainType::Wall)
+          {
+            const MapCell & w = map->get(xx-1, yy, zz);
+            const MapCell & e = map->get(xx+1, yy, zz);
+            const MapCell & n = map->get(xx, yy-1, zz);
+            const MapCell & s = map->get(xx, yy+1, zz);
+
+            if (
+              ((!e.background && e.type != TerrainType::Wall) ||
+               (!w.background && w.type != TerrainType::Wall) ||
+               (!s.background && s.type != TerrainType::Wall) ||
+               (!n.background && n.type != TerrainType::Wall) ||
+               (!e.background && e.cmaterial && e.cmaterial->liquid) ||
+               (!e.background && w.cmaterial && w.cmaterial->liquid) ||
+               (!e.background && s.cmaterial && s.cmaterial->liquid) ||
+               (!e.background && n.cmaterial && n.cmaterial->liquid)))
+              c.visible = true;
+            map->set(xx, yy, zz, c);
+          }
         }
       }
     }
@@ -849,7 +870,10 @@ namespace ADWIF
 
     myLastChunkX = chunkX; myLastChunkY = chunkY; myLastChunkZ = chunkZ;
 
-//     abort();
+//     if (isGenerated(chunkX, chunkY, chunkZ) == boost::indeterminate)
+//       abort();
+
+    myPriorityFlags[chunkX][chunkY][chunkZ+myDepth/2] = true;
 
     for (int r = -radius; r <= radius; r++)
     {
@@ -858,27 +882,33 @@ namespace ADWIF
           for (int k = -r; k <= r; k++)
             if (isGenerated(chunkX+i, chunkY+j, chunkZ+k) == false)
               if (!(i == 0 && j == 0 && k == 0))
-                game()->service().post(boost::bind<void>(&MapGenerator::generateOne, shared_from_this(),
+                game()->engine()->service().post(boost::bind<void>(&MapGenerator::generateOne, shared_from_this(),
                                                         chunkX+i, chunkY+j, chunkZ+k, false, true));
     }
 
+
+
     if (isGenerated(chunkX, chunkY, chunkZ) == false)
+    {
       generateOne(chunkX, chunkY, chunkZ);
+    }
 
     do
     {
       if (isGenerated(chunkX, chunkY, chunkZ) == true)
         break;
       else
-        game()->service().poll_one();
+        game()->engine()->service().poll_one();
       boost::this_thread::sleep_for(boost::chrono::microseconds(50));
     } while(true);
+
+    myPriorityFlags[chunkX][chunkY][chunkZ+myDepth/2] = false;
   }
 
   void MapGenerator::abort()
   {
     myGeneratorAbortFlag.store(true);
-    while (myGeneratorCount) game()->service().poll_one();
+    while (myGeneratorCount) game()->engine()->service().poll_one();
     myGeneratorAbortFlag.store(false);
   }
 

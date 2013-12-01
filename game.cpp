@@ -55,14 +55,8 @@ namespace ADWIF
 
   Game::Game(const std::shared_ptr<ADWIF::Engine> & engine): myEngine(engine), myPlayer(nullptr), myMap(nullptr),
     myBank(nullptr), myIndexStream(), myRaces(), myProfessions(), mySkills(), myFactions(),
-    myMaterials(), myBiomes(), myService(), myThreads(), myServiceLock()
+    myMaterials(), myBiomes()
   {
-    myService.reset(new boost::asio::io_service);
-    myServiceLock.reset(new boost::asio::io_service::work(*myService));
-    int nthreads = boost::thread::hardware_concurrency() - 1;
-    if (nthreads < 1) nthreads = 1;
-    while(nthreads--)
-      myThreads.create_thread(boost::bind(&boost::asio::io_service::run, myService));
   }
 
   Game::~Game()
@@ -82,13 +76,7 @@ namespace ADWIF
 
   void Game::shutdown(bool graceful)
   {
-    myServiceLock.reset();
     myGenerator->abort();
-    if (!graceful)
-      myService->stop();
-    else
-      myService->run();
-    myThreads.join_all();
     clearData();
   }
 
@@ -320,10 +308,11 @@ namespace ADWIF
     bg.type = TerrainType::Hole;
     bg.material = "Air";
     bg.symIdx = 0;
+    bg.visible = true;
     bg.background = true;
 
     myBank.reset(new MapBank(myIndexStream));
-    myMap.reset(new Map(myService, myBank, saveDir + dirSep + "map", false, 512, 512, 32, bg));
+    myMap.reset(new Map(engine()->service(), myBank, saveDir + dirSep + "map", false, 512, 512, 32, bg));
 
     myGenerator.reset(new MapGenerator(shared_from_this()));
 
@@ -340,7 +329,7 @@ namespace ADWIF
     myGenerator->heightmapImage(hmapImg);
 
     myGenerator->chunkSizeX(800);
-    myGenerator->chunkSizeY(400);
+    myGenerator->chunkSizeY(240);
     myGenerator->chunkSizeZ(16);
 
     myGenerator->depth(256);
@@ -366,7 +355,7 @@ namespace ADWIF
     bg.symIdx = 0;
 
     myBank.reset(new MapBank(myIndexStream));
-    myMap.reset(new Map(myService, myBank, saveDir + dirSep + "map", true, 512, 512, 32, bg));
+    myMap.reset(new Map(engine()->service(), myBank, saveDir + dirSep + "map", true, 512, 512, 32, bg));
 
     myGenerator.reset(new MapGenerator(shared_from_this()));
 

@@ -23,6 +23,9 @@
 #include <vector>
 #include <memory>
 
+#include <boost/thread.hpp>
+#include <boost/asio/io_service.hpp>
+
 namespace ADWIF
 {
   class Engine
@@ -45,7 +48,9 @@ namespace ADWIF
     void sleep(unsigned ms);
 
     void addState(std::shared_ptr<class GameState> & state);
-    void reportError(bool fatal, const std::string & report) ;
+    void reportError(bool fatal, const std::string & report);
+
+    boost::asio::io_service & service() const { return *myService; }
 
   private:
     bool checkScreenSize();
@@ -57,6 +62,10 @@ namespace ADWIF
     > myStates;
     unsigned int myDelay;
     bool myRunningFlag;
+
+    mutable std::shared_ptr<boost::asio::io_service> myService;
+    boost::thread_group myThreads;
+    std::shared_ptr<boost::asio::io_service::work> myServiceLock;
   };
 }
 
