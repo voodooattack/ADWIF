@@ -19,6 +19,9 @@
 
 #ifndef MAPGENERATOR_H
 #define MAPGENERATOR_H
+
+#include "animation.hpp"
+
 #include <vector>
 #include <string>
 #include <map>
@@ -35,10 +38,16 @@
 #include <boost/atomic.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 
+#include <boost/logic/tribool.hpp>
+
+#ifdef NOISE_DIR_IS_LIBNOISE
+#include <libnoise/noise.h>
+#else
+#include <noise/noise.h>
+#endif
+
 #include <json/value.h>
 #include <FreeImagePlus.h>
-
-#include "animation.hpp"
 
 namespace ADWIF
 {
@@ -59,11 +68,12 @@ namespace ADWIF
       ar & x;
       ar & y;
       ar & height;
+      ar & flat;
     }
 
     bool operator== (const BiomeCell & other) const
     {
-      return x == other.x && y == other.y && height == other.height && name == other.name;
+      return x == other.x && y == other.y && height == other.height && name == other.name && flat == other.flat;
     }
   };
 
@@ -116,7 +126,7 @@ namespace ADWIF
     void init();
     void generateAll();
     void generateAround( int x,  int y, int z = 0,  int radius = 1,  int radiusZ = 1);
-    void generateOne( int x,  int y, int z, bool regenerate = false);
+    void generateOne( int x,  int y, int z, bool regenerate = false, bool lazy = false);
 
     template<class Archive>
     void serialize(Archive & ar, const unsigned int version)
@@ -141,14 +151,21 @@ namespace ADWIF
 
     void abort();
 
-    bool isGenerated(int x, int y, int z)
+  private:
+    void generateBiomeMap();
+
+    boost::logic::tribool isGenerated(int x, int y, int z)
     {
       boost::recursive_mutex::scoped_lock guard(myGenerationLock);
+      std::cerr << myGenerationMap[x][y][z+myDepth/2] << std::endl;
       return myGenerationMap[x][y][z+myDepth/2];
     }
 
-  private:
-    void generateBiomeMap();
+    void setGenerated(int x, int y, int z, const boost::logic::tribool & g)
+    {
+      boost::recursive_mutex::scoped_lock guard(myGenerationLock);
+      myGenerationMap[x][y][z+myDepth/2] = g;
+    }
 
   private:
 
@@ -166,7 +183,7 @@ namespace ADWIF
     int myChunkSizeX, myChunkSizeY, myChunkSizeZ;
     std::unordered_map<uint32_t, std::string> myColourIndex;
     std::mt19937 myRandomEngine;
-    boost::multi_array<bool, 3> myGenerationMap;
+    boost::multi_array<boost::tribool, 3> myGenerationMap;
     boost::recursive_mutex myGenerationLock;
     boost::multi_array<BiomeCell, 2> myBiomeMap;
     std::vector<Region> myRegions;
@@ -174,6 +191,10 @@ namespace ADWIF
     unsigned int mySeed;
     boost::atomic_size_t myGeneratorCount;
     boost::atomic_bool myGeneratorAbortFlag;
+    int myLastChunkX, myLastChunkY, myLastChunkZ;
+    std::vector<std::shared_ptr<noise::module::Module>> myModules;
+    std::shared_ptr<noise::module::Module> myHeightSource;
+    std::shared_ptr<noise::module::Module> myHeightMapModule;
     bool myInitialisedFlag;
   };
 }

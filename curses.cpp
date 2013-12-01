@@ -202,10 +202,14 @@ namespace ADWIF
         {
           if (c.structure == Structure::None)
           {
-            auto mit = game->materials().find(c.material);
-            if (mit == game->materials().end())
-              throw std::runtime_error("material '" + c.material + "' undefined");
-            const Material * mat = mit->second;
+            const Material * mat = c.cmaterial;
+            if (!mat)
+            {
+              auto mit = game->materials().find(c.material);
+              if (mit == game->materials().end())
+                throw std::runtime_error("material '" + c.material + "' undefined");
+              mat = mit->second;
+            }
             auto dit = mat->disp.find(c.type);
             if (dit == mat->disp.end())
               throw std::runtime_error("terrain type '" + terrainTypeStr(c.type) + "' undefined in material '" + mat->name + "'");

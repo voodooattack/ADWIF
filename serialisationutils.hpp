@@ -33,6 +33,7 @@
 #include <boost/geometry/io/wkt/wkt.hpp>
 #include <boost/geometry/io/io.hpp>
 #include <boost/geometry/geometries/adapted/boost_polygon.hpp>
+#include <boost/logic/tribool.hpp>
 #include <unordered_map>
 
 
@@ -40,6 +41,29 @@ namespace boost
 {
   namespace serialization
   {
+    template<class Archive>
+    inline void save(Archive & ar, const boost::logic::tribool & t, const unsigned int /* file_version */)
+    {
+      char s = (t == false ? 0 : (t == boost::indeterminate ? 1 : 2));
+      ar << s;
+    }
+
+    template<class Archive>
+    inline void load(Archive & ar, boost::logic::tribool & t, const unsigned int /* file_version */)
+    {
+      char s;
+      ar >> s;
+      if (s == 0) t = false;
+      else if (s == 1) t = boost::indeterminate;
+      else t = true;
+    }
+
+    template<class Archive>
+    inline void serialize(Archive & ar, boost::logic::tribool & t, const unsigned int file_version)
+    {
+      boost::serialization::split_free(ar, t, file_version);
+    }
+
     template< class Archive, class T >
     inline void save(Archive & ar, const multi_array<T, 2> & t,
                      const unsigned int /* version */)
@@ -307,7 +331,6 @@ namespace boost
     {
       boost::serialization::split_free(ar, t, file_version);
     }
-
   }
 }
 #endif // SERIALISATIONUTILS_H

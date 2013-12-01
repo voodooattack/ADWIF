@@ -82,10 +82,10 @@ namespace ADWIF
 
     virtual double GetValue(double x, double y, double z) const {
       int chunkX = x / myChunkSizeX, chunkY = y / myChunkSizeY;
-      int xl = myBiomeMap.index_bases()[0], xh = myBiomeMap.shape()[0];
-      int yl = myBiomeMap.index_bases()[1], yh = myBiomeMap.shape()[1];
+      int xmin = myBiomeMap.index_bases()[0], xmax = myBiomeMap.shape()[0];
+      int ymin = myBiomeMap.index_bases()[1], ymax = myBiomeMap.shape()[1];
 
-      if (chunkX < xl || chunkY < yl || chunkX >= xh || chunkY >= yh)
+      if (chunkX < xmin || chunkY < ymin || chunkX >= xmax || chunkY >= ymax)
         return 0;
 
       if (myBiomeMap[chunkX][chunkY].flat)
@@ -95,23 +95,23 @@ namespace ADWIF
 
       std::memset(m, 0, 4 * 4 * sizeof(double));
 
-      int jl = 0, jh = 3;
-      int il = 0, ih = 3;
+      int startx = 0, endx = 3;
+      int starty = 0, endy = 3;
 
-      while (chunkX + il < xl) il++;
-      while (chunkX + il > xh) jl--;
-      while (chunkY + jl < yl) jl++;
-      while (chunkY + jl > yh) jl--;
+      while (chunkX + startx < xmin) startx++;
+      while (chunkX + startx > xmax) starty--;
+      while (chunkY + starty < ymin) starty++;
+      while (chunkY + starty > ymax) starty--;
 
-      while (chunkX + ih < xl) ih++;
-      while (chunkX + ih > xh) jh--;
-      while (chunkY + jh < yl) jh++;
-      while (chunkY + jh > yh) jh--;
+      while (chunkX + endx < xmin) endx++;
+      while (chunkX + endx > xmax) endy--;
+      while (chunkY + endy < ymin) endy++;
+      while (chunkY + endy > ymax) endy--;
 
       //TODO: Shift the interpolation grid outside flat cells
 
-      for (int j = jl; j <= jh; j++)
-        for (int i = il; i <= ih; i++)
+      for (int j = starty; j <= endy; j++)
+        for (int i = startx; i <= endx; i++)
           m[i][j] = myBiomeMap[chunkX+i-1][chunkY+j-1].height;
 
       double vx = fmod(x, myChunkSizeX) / myChunkSizeX, vy = fmod(y, myChunkSizeY) / myChunkSizeY;
@@ -131,10 +131,11 @@ namespace ADWIF
     myGame(game), myMapImg(), myHeightMap(), myChunkSizeX(32), myChunkSizeY(32), myChunkSizeZ(16),
     myColourIndex(), myRandomEngine(), myGenerationMap(), myBiomeMap(), myRegions(), myHeight(0), myWidth(0),
     myDepth(512), mySeed(time(NULL)), myGenerationLock(), myGeneratorCount(0), myGeneratorAbortFlag(false),
-    myInitialisedFlag(false)
+    myLastChunkX(-1), myLastChunkY(-1), myLastChunkZ(-1), myModules(), myHeightSource(), myInitialisedFlag(false)
   {
     myRandomEngine.seed(mySeed);
     myGenerationMap.resize(boost::extents[myWidth][myHeight][myDepth]);
+    myGeneratorAbortFlag.store(false);
   }
 
   MapGenerator::~MapGenerator() { }
@@ -146,6 +147,35 @@ namespace ADWIF
       generateBiomeMap();
       myInitialisedFlag = true;
     }
+
+    myModules.clear();
+
+    std::shared_ptr<HeightMapModule> heightmapSource(new HeightMapModule(myBiomeMap, myChunkSizeX, myChunkSizeY));
+    std::shared_ptr<noise::module::Perlin> perlinSource(new noise::module::Perlin);
+    std::shared_ptr<noise::module::ScaleBias> scaleBiasFilter(new noise::module::ScaleBias);
+    std::shared_ptr<noise::module::Add> addFilter(new noise::module::Add);
+
+    perlinSource->SetSeed(mySeed);
+    perlinSource->SetFrequency(0.06);
+    perlinSource->SetPersistence(0.0);
+    perlinSource->SetLacunarity(1.50);
+    perlinSource->SetOctaveCount(4);
+    perlinSource->SetNoiseQuality(noise::QUALITY_BEST);
+
+    scaleBiasFilter->SetSourceModule(0, *perlinSource);
+    scaleBiasFilter->SetBias(0.0);
+    scaleBiasFilter->SetScale(0.01);
+
+    addFilter->SetSourceModule(0, *heightmapSource);
+    addFilter->SetSourceModule(1, *scaleBiasFilter);
+
+    myModules.push_back(heightmapSource);
+    myModules.push_back(perlinSource);
+    myModules.push_back(scaleBiasFilter);
+    myModules.push_back(addFilter);
+
+    myHeightSource = addFilter;
+    myHeightMapModule = heightmapSource;
   }
 
   void MapGenerator::generateBiomeMap()
@@ -622,13 +652,20 @@ namespace ADWIF
 //     int chunkX = x / myChunkSizeX, chunkY = y / myChunkSizeY, chunkZ = z / myChunkSizeZ;
 //   }
 
-  void MapGenerator::generateOne(int x, int y, int z, bool regenerate)
+  void MapGenerator::generateOne(int x, int y, int z, bool regenerate, bool lazy)
   {
     if (x < 0 || y < 0 || x >= myHeight || y >= myWidth)
       return;
 
-    if (myGeneratorAbortFlag || !regenerate && isGenerated(x,y,z))
+    if (myGeneratorAbortFlag)
       return;
+
+    {
+      boost::recursive_mutex::scoped_lock guard(myGenerationLock);
+      if (myGenerationMap[x][y][z+myDepth/2] == boost::indeterminate) return;
+      if (myGenerationMap[x][y][z+myDepth/2] == true && !regenerate) return;
+      myGenerationMap[x][y][z+myDepth/2] = boost::indeterminate;
+    }
 
     AtomicRefCount<std::size_t> refCount(myGeneratorCount);
 
@@ -687,43 +724,32 @@ namespace ADWIF
       std::cerr << p << " (" << myBiomeMap[p.x()][p.y()].name << ") ";
     std::cerr << std::endl;
 
-    HeightMapModule heightmapSource(myBiomeMap, myChunkSizeX, myChunkSizeY);
-    noise::module::Perlin perlinSource;
-    noise::module::ScaleBias scaleBiasFilter;
-    noise::module::Add addFilter;
-
-    perlinSource.SetSeed(mySeed);
-    perlinSource.SetFrequency(0.06);
-    perlinSource.SetPersistence(0.0);
-    perlinSource.SetLacunarity(1.50);
-    perlinSource.SetOctaveCount(1);
-    perlinSource.SetNoiseQuality(noise::QUALITY_BEST);
-
-    scaleBiasFilter.SetSourceModule(0, perlinSource);
-    scaleBiasFilter.SetBias(0.0);
-    scaleBiasFilter.SetScale(0.01);
-
-    addFilter.SetSourceModule(0, heightmapSource);
-    addFilter.SetSourceModule(1, scaleBiasFilter);
-
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     std::uniform_int_distribution<int> ud(0, biome->materials.size()-1);
     std::bernoulli_distribution bd(0.001);
 
     auto getHeight = [&](unsigned int x, unsigned int y) -> int {
-//       if (biome->flat)
-        return floor(heightmapSource.GetValue(x, y, 0) * (myDepth / 2));
-//       else
-//         return floor(addFilter.GetValue(x, y, 0) * (myDepth / 2));
+      if (biome->flat)
+        return floor(myHeightMapModule->GetValue(x, y, 0) * (myDepth / 2));
+      else
+        return floor(myHeightSource->GetValue(x, y, 0) * (myDepth / 2));
     };
 
     for (unsigned int yy = offy; yy < offy + myChunkSizeY; yy++)
     {
       for (unsigned int xx = offx; xx < offx + myChunkSizeX; xx++)
       {
+        if (lazy)
+          boost::this_thread::sleep_for(boost::chrono::nanoseconds(50));
+
         if (myGeneratorAbortFlag)
+        {
+          boost::recursive_mutex::scoped_lock guard(myGenerationLock);
+          myGenerationMap[x][y][z+myDepth/2] = false;
           return;
+        }
+
         int height = getHeight(xx,yy);
         for (int zz = offz; zz <= (offz + myChunkSizeZ > height ? height : offz + myChunkSizeZ); zz++)
         {
@@ -731,17 +757,16 @@ namespace ADWIF
           {
             MapCell c(game()->map()->get(xx, yy, zz));
             if (c.generated && !regenerate) continue;
-            std::string mat = biome->materials[ud(myRandomEngine)];
-            auto amat = game()->materials()[mat];
-            std::uniform_int_distribution<int> ud2(0, game()->materials()[mat]->disp[TerrainType::Floor].size() - 1);
-            c.material = mat;
+            std::string smat = biome->materials[ud(myRandomEngine)];
+            c.material = smat;
+            c.cmaterial = game()->materials()[smat];
+            std::uniform_int_distribution<int> ud2(0, c.cmaterial->disp[TerrainType::Floor].size() - 1);
             c.symIdx = ud2(myRandomEngine);
             c.biome = biome->name;
             c.generated = true;
             c.background = false;
             c.type = TerrainType::Floor;
-
-            if (!amat->liquid &&
+            if (!c.cmaterial->liquid &&
                 (getHeight(xx+1,yy) == height + 1 ||
                  getHeight(xx,yy+1) == height + 1 ||
                  getHeight(xx-1,yy) == height + 1 ||
@@ -754,6 +779,7 @@ namespace ADWIF
               c.type = TerrainType::RampU;
               MapCell cc = c;
               cc.type = TerrainType::RampD;
+              cc.generated = true;
               game()->map()->set(xx, yy, height+1, cc);
             }
 
@@ -763,16 +789,16 @@ namespace ADWIF
           {
             MapCell c(game()->map()->get(xx, yy, zz));
             if (c.generated && !regenerate) continue;
-            std::string mat = biome->materials[ud(myRandomEngine)];
-            auto amat = game()->materials()[mat];
+            std::string smat = biome->materials[ud(myRandomEngine)];
+            c.cmaterial = game()->materials()[smat];
             c.type = TerrainType::Wall;
-            c.material = mat;
+            c.material = smat;
             c.symIdx = 0;
             c.visible = false;
             c.generated = true;
-            if (amat->disp.find(TerrainType::Wall) == game()->materials()[mat]->disp.end())
+            if (c.cmaterial->disp.find(TerrainType::Wall) == c.cmaterial->disp.end())
               continue;
-            if (!amat->liquid && zz == height - 1)
+            if (!c.cmaterial->liquid && zz == height - 1)
             {
               bool dobreak = false;
               for (int j = -1; j < 2; j++)
@@ -780,16 +806,21 @@ namespace ADWIF
                 for (int i = -1; i < 2; i++)
                 {
                   int h = getHeight(xx+i,yy+j);
-                  if ( h <= zz && game()->map()->get(xx+i, yy+j, zz).visible)
+                  if ( h <= zz)
                   {
-                    c.visible = true;
-                    dobreak = true;
-                    break;
+                    const MapCell & n = game()->map()->get(xx+i, yy+j, zz);
+                    if (n.visible || (n.cmaterial && n.cmaterial->liquid))
+                    {
+                      c.visible = true;
+                      dobreak = true;
+                      break;
+                    }
                   }
                 }
                 if (dobreak) break;
               }
-            }
+            } else if (c.cmaterial->liquid)
+              c.visible = true;
             game()->map()->set(xx, yy, zz, c);
           }
           else
@@ -813,35 +844,42 @@ namespace ADWIF
     int chunkY = y / myChunkSizeY;
     int chunkZ = z / myChunkSizeZ;
 
+    if (chunkX == myLastChunkX && chunkY == myLastChunkY && chunkZ == myLastChunkZ)
+      return;
+
+    myLastChunkX = chunkX; myLastChunkY = chunkY; myLastChunkZ = chunkZ;
+
+//     abort();
+
     for (int r = -radius; r <= radius; r++)
     {
       for (int i = -r; i <= r; i++)
         for (int j = -r; j <= r; j++)
           for (int k = -r; k <= r; k++)
-            if (!isGenerated(chunkX+i, chunkY+j, chunkZ+k))
+            if (isGenerated(chunkX+i, chunkY+j, chunkZ+k) == false)
               if (!(i == 0 && j == 0 && k == 0))
                 game()->service().post(boost::bind<void>(&MapGenerator::generateOne, shared_from_this(),
-                                                        chunkX+i, chunkY+j, chunkZ+k, false));
+                                                        chunkX+i, chunkY+j, chunkZ+k, false, true));
     }
 
-    if (!isGenerated(chunkX, chunkY, chunkZ))
+    if (isGenerated(chunkX, chunkY, chunkZ) == false)
       generateOne(chunkX, chunkY, chunkZ);
 
     do
     {
-      if (isGenerated(chunkX, chunkY, chunkZ))
+      if (isGenerated(chunkX, chunkY, chunkZ) == true)
         break;
       else
-      {
         game()->service().poll_one();
-      }
-    } while(!myGeneratorAbortFlag);
+      boost::this_thread::sleep_for(boost::chrono::microseconds(50));
+    } while(true);
   }
 
   void MapGenerator::abort()
   {
     myGeneratorAbortFlag.store(true);
     while (myGeneratorCount) game()->service().poll_one();
+    myGeneratorAbortFlag.store(false);
   }
 
 }

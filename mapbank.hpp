@@ -83,7 +83,7 @@ namespace ADWIF
   struct MapCell: public ItemContainer
   {
     MapCell(): type(TerrainType::Hole), structure(None), material("Air"), smaterial(), biome(), symIdx(0), visible(true),
-      background(false), generated(false), contents() {}
+      background(false), generated(false), contents(), cmaterial(nullptr), csmaterial(nullptr), cbiome(nullptr) {}
     ~MapCell() { }
 
     TerrainType type;
@@ -94,6 +94,10 @@ namespace ADWIF
     unsigned char symIdx;
     bool visible, background, generated;
     std::vector<Item> contents;
+
+    // cached lookups
+    struct Material * cmaterial, * csmaterial;
+    struct Biome * cbiome;
 
     virtual size_t itemCount()  { return contents.size(); }
     virtual const Item & getItem(size_t index)  { return contents[index]; }

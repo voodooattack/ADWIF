@@ -73,10 +73,10 @@ namespace ADWIF
       GridType::Ptr grid;
       std::shared_ptr<GridType::Accessor> accessor;
       boost::atomic_size_t readerCount, writerCount;
-      time_point lastAccess;
+      boost::atomic<time_point> lastAccess;
+      boost::atomic_bool dirty;
       std::string fileName;
       boost::recursive_mutex lock;
-      bool dirty;
     };
 
   public:

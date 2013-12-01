@@ -38,7 +38,7 @@ namespace ADWIF
     myEngine(engine), myGame(game), myViewOffX(0), myViewOffY(0), myViewOffZ(0)
   {
     myEngine->delay(0);
-    myEngine->input()->setTimeout(300);
+    myEngine->input()->setTimeout(1000);
   }
 
   MapGenState::~MapGenState() {
@@ -51,6 +51,7 @@ namespace ADWIF
 
     myViewOffX = 171 * myGame->generator()->chunkSizeX();
     myViewOffY = 169 * myGame->generator()->chunkSizeY();
+    myViewOffZ = 0;
 
     myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
                                         myViewOffY + myEngine->renderer()->height() / 2,
@@ -81,6 +82,10 @@ namespace ADWIF
   {
     if (key == Key::Escape)
     {
+      std::string str = "Saving map, please wait.";
+      myEngine->renderer()->style(White, Black, Style::Bold);
+      myEngine->renderer()->drawText(1,1, str + std::string(myEngine->renderer()->width() - 2 - str.size(),  ' '));
+      myEngine->renderer()->refresh();
       myGame->saveMap();
       done(true);
     }

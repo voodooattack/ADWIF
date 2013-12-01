@@ -145,7 +145,7 @@ namespace ADWIF
               [](const std::pair<Vec3Type, std::shared_ptr<Chunk>> & first,
                  const std::pair<Vec3Type, std::shared_ptr<Chunk>> & second)
     {
-      return first.second->lastAccess < second.second->lastAccess;
+      return first.second->lastAccess.load() < second.second->lastAccess.load();
     });
 
     std::size_t memUse = 0;
@@ -183,7 +183,7 @@ namespace ADWIF
       while (i != accessTimesSorted.end())
       {
         // std::cerr << "pruning: " << i->second->pos << std::endl;
-        if (pruneAll || myClock.now() - i->second->lastAccess > myDurationThreshold ||
+        if (pruneAll || myClock.now() - i->second->lastAccess.load() > myDurationThreshold ||
             (memUse > myMemThresholdMB))
         {
           // std::cerr << "scheduling save operation for: " << i->second->pos << std::endl;
@@ -229,15 +229,16 @@ namespace ADWIF
     }
     else
     {
-      myChunks[vec].reset(new Chunk);
-      myChunks[vec]->pos = vec;
-      myChunks[vec]->fileName = getChunkName(vec);
-      myChunks[vec]->dirty = false;
-      myChunks[vec]->readerCount.store(0);
-      myChunks[vec]->writerCount.store(0);
+      std::shared_ptr<Chunk> newChunk;
+      newChunk.reset(new Chunk);
+      newChunk->pos = vec;
+      newChunk->fileName = getChunkName(vec);
+      newChunk->dirty = false;
+      newChunk->lastAccess = myClock.now();
+      newChunk->readerCount.store(0);
+      newChunk->writerCount.store(0);
+      return myChunks[vec] = newChunk;
     }
-
-    return myChunks[vec];
   }
 
   void MapImpl::loadChunk(std::shared_ptr<Chunk> & chunk) const
