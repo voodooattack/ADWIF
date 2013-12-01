@@ -34,6 +34,7 @@
 
 #include "animation.hpp"
 #include "map.hpp"
+#include "engine.hpp"
 
 namespace ADWIF
 {

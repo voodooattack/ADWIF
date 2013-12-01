@@ -29,27 +29,20 @@
 namespace ADWIF
 {
   Engine::Engine(std::shared_ptr<ADWIF::Renderer> renderer, std::shared_ptr<ADWIF::Input> input):
-    myRenderer(renderer), myInput(input), myDelay(50), myRunningFlag(true), myService(), myThreads(), myServiceLock()
+    myRenderer(renderer), myInput(input), myDelay(50), myRunningFlag(true), myScheduler(new boost::cgl::scheduler)
   {
-    myService.reset(new boost::asio::io_service);
-    myServiceLock.reset(new boost::asio::io_service::work(*myService));
-    int nthreads = boost::thread::hardware_concurrency() - 1;
-    if (nthreads < 1) nthreads = 1;
-    while(nthreads--)
-      myThreads.create_thread(boost::bind(&boost::asio::io_service::run, myService));
+    myScheduler->run();
   }
 
   Engine::~Engine()
   {
     while (myStates.size())
       myStates.pop_back();
+    myScheduler->stop();
     if (myInput)
       myInput->shutdown();
     if (myRenderer)
       myRenderer->shutdown();
-    myServiceLock.reset();
-    myService->stop();
-    myThreads.join_all();
   }
 
   int Engine::start()

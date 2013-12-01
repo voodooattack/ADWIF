@@ -648,7 +648,7 @@ namespace ADWIF
         }
   }
 
-  void MapGenerator::generateOne(int x, int y, int z, bool regenerate, bool lazy)
+  void MapGenerator::generateOne(int x, int y, int z, bool regenerate, bool cooperative)
   {
     if (x < 0 || y < 0 || x >= myHeight || y >= myWidth)
       return;
@@ -738,8 +738,8 @@ namespace ADWIF
 
     for (unsigned int yy = offy; yy < offy + myChunkSizeY; yy++)
     {
-      if (lazy && !myPriorityFlags[x][y][z+myDepth/2])
-        boost::this_thread::sleep_for(boost::chrono::nanoseconds(50));
+      if (cooperative && !myPriorityFlags[x][y][z+myDepth/2])
+        game()->engine()->scheduler()->yield();
       for (unsigned int xx = offx; xx < offx + myChunkSizeX; xx++)
       {
 
@@ -808,8 +808,8 @@ namespace ADWIF
     {
       for (unsigned int xx = offx; xx < offx + myChunkSizeX; xx++)
       {
-        if (lazy && !myPriorityFlags[x][y][z+myDepth/2])
-          boost::this_thread::sleep_for(boost::chrono::nanoseconds(50));
+        if (cooperative && !myPriorityFlags[x][y][z+myDepth/2])
+          game()->engine()->scheduler()->yield();
 
         if (myGeneratorAbortFlag)
         {
@@ -882,11 +882,9 @@ namespace ADWIF
           for (int k = -r; k <= r; k++)
             if (isGenerated(chunkX+i, chunkY+j, chunkZ+k) == false)
               if (!(i == 0 && j == 0 && k == 0))
-                game()->engine()->service().post(boost::bind<void>(&MapGenerator::generateOne, shared_from_this(),
+                game()->engine()->scheduler()->schedule(boost::bind<void>(&MapGenerator::generateOne, shared_from_this(),
                                                         chunkX+i, chunkY+j, chunkZ+k, false, true));
     }
-
-
 
     if (isGenerated(chunkX, chunkY, chunkZ) == false)
     {
@@ -898,7 +896,7 @@ namespace ADWIF
       if (isGenerated(chunkX, chunkY, chunkZ) == true)
         break;
       else
-        game()->engine()->service().poll_one();
+//         game()->engine()->service().poll_one();
       boost::this_thread::sleep_for(boost::chrono::microseconds(50));
     } while(true);
 

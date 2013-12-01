@@ -26,6 +26,8 @@
 #include <boost/thread.hpp>
 #include <boost/asio/io_service.hpp>
 
+#include "scheduler.hpp"
+
 namespace ADWIF
 {
   class Engine
@@ -50,7 +52,8 @@ namespace ADWIF
     void addState(std::shared_ptr<class GameState> & state);
     void reportError(bool fatal, const std::string & report);
 
-    boost::asio::io_service & service() const { return *myService; }
+    std::shared_ptr<boost::cgl::scheduler> scheduler() const { return myScheduler; }
+    boost::asio::io_service & service() const { return myScheduler->io_service(); }
 
   private:
     bool checkScreenSize();
@@ -62,10 +65,7 @@ namespace ADWIF
     > myStates;
     unsigned int myDelay;
     bool myRunningFlag;
-
-    mutable std::shared_ptr<boost::asio::io_service> myService;
-    boost::thread_group myThreads;
-    std::shared_ptr<boost::asio::io_service::work> myServiceLock;
+    std::shared_ptr<boost::cgl::scheduler> myScheduler;
   };
 }
 

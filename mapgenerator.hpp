@@ -126,7 +126,7 @@ namespace ADWIF
     void init();
     void generateAll();
     void generateAround( int x,  int y, int z = 0,  int radius = 1,  int radiusZ = 1);
-    void generateOne( int x,  int y, int z, bool regenerate = false, bool lazy = false);
+    void generateOne( int x,  int y, int z, bool regenerate = false, bool cooperative = false);
 
     template<class Archive>
     void serialize(Archive & ar, const unsigned int version)
