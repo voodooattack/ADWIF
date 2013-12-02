@@ -72,11 +72,10 @@ namespace ADWIF
       Vec3Type pos;
       GridType::Ptr grid;
       std::shared_ptr<GridType::Accessor> accessor;
-      boost::atomic_size_t readerCount, writerCount;
       boost::atomic<time_point> lastAccess;
       boost::atomic_bool dirty;
       std::string fileName;
-      boost::recursive_mutex lock;
+      mutable boost::shared_mutex lock;
     };
 
   public:
@@ -90,33 +89,33 @@ namespace ADWIF
 
     const MapCell & background() const;
 
-    uint64_t getVoxelCount() const {
-      uint64_t count = 0;
-      boost::recursive_mutex::scoped_lock guard(myLock);
-      for(auto const & i : myChunks)
-        if (i.second)
-        {
-          boost::recursive_mutex::scoped_lock guard(i.second->lock);
-          if (i.second->grid)
-            count += i.second->grid->activeVoxelCount();
-        }
-      return count;
-    }
-
-    unsigned long int getMemUsage() const {
-      unsigned long int count = 0;
-      boost::recursive_mutex::scoped_lock guard(myLock);
-      for(auto const & i : myChunks)
-      {
-        if (i.second)
-        {
-          boost::recursive_mutex::scoped_lock guard(i.second->lock);
-          if (i.second->grid && i.second)
-            count += i.second->grid->memUsage();
-        }
-      }
-      return count;
-    }
+//     uint64_t getVoxelCount() const {
+//       uint64_t count = 0;
+//       boost::recursive_mutex::scoped_lock guard(myLock);
+//       for(auto const & i : myChunks)
+//         if (i.second)
+//         {
+//           boost::shared_lock<boost::recursive_mutex> guard(i.second->lock);
+//           if (i.second->grid)
+//             count += i.second->grid->activeVoxelCount();
+//         }
+//       return count;
+//     }
+//
+//     unsigned long int getMemUsage() const {
+//       unsigned long int count = 0;
+//       boost::recursive_mutex::scoped_lock guard(myLock);
+//       for(auto const & i : myChunks)
+//       {
+//         if (i.second)
+//         {
+//           boost::shared_lock<boost::recursive_mutex> guard(i.second->lock);
+//           if (i.second->grid && i.second)
+//             count += i.second->grid->memUsage();
+//         }
+//       }
+//       return count;
+//     }
 
     std::shared_ptr<MapBank> bank() const;
 
@@ -126,7 +125,7 @@ namespace ADWIF
     std::string getChunkName(const Vec3Type & v) const;
     std::shared_ptr<Chunk> & getChunk(int x, int y, int z) const;
 
-    void loadChunk(std::shared_ptr<Chunk> & chunk) const;
+    void loadChunk(std::shared_ptr<Chunk> & chunk, boost::upgrade_lock<boost::shared_mutex> & guard) const;
     void saveChunk(std::shared_ptr<Chunk> & chunk) const;
 
     void pruneTask();

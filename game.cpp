@@ -76,7 +76,8 @@ namespace ADWIF
 
   void Game::shutdown(bool graceful)
   {
-    myGenerator->abort();
+    if (myGenerator)
+      myGenerator->abort();
     clearData();
   }
 
@@ -328,7 +329,7 @@ namespace ADWIF
     myGenerator->mapImage(mapImg);
     myGenerator->heightmapImage(hmapImg);
 
-    myGenerator->chunkSizeX(800);
+    myGenerator->chunkSizeX(400);
     myGenerator->chunkSizeY(240);
     myGenerator->chunkSizeZ(16);
 

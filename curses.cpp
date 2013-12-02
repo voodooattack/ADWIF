@@ -48,6 +48,7 @@ namespace ADWIF
     start_color();
     use_default_colors();
     assume_default_colors(COLOR_WHITE, COLOR_BLACK);
+    idlok(stdscr, TRUE);
     clear();
     refresh();
   }
@@ -151,6 +152,7 @@ namespace ADWIF
     if (myWindow)
       endWindow();
     myWindow = newwin(h, w, y, x);
+    idlok(myWindow, TRUE);
     doClip = true;
   }
 
@@ -158,7 +160,7 @@ namespace ADWIF
   {
     if (myWindow)
     {
-      wrefresh(myWindow);
+      wnoutrefresh(myWindow);
       delwin(myWindow);
     }
     myWindow = nullptr;
@@ -167,13 +169,7 @@ namespace ADWIF
 
   void CursesRenderer::drawChar(int x, int y, int c)
   {
-    //mvwadd_wchnstr(win(), y, x, (const cchar_t*)c, 1);
     mvwaddnwstr(win(), y, x, (const wchar_t*) &c, 1);
-    //mvwaddchnstr(win(), y, x, (chtype*) &c, sizeof(c));
-/*    attr_t a;
-    short pair;
-    wattr_get(win(), &a, &pair, 0);
-    mvwchgat(win(), y, x, 1, getattrs(win()), pair, NULL);*/
   }
 
   void CursesRenderer::drawText(int x, int y, const std::string & text)
@@ -224,11 +220,12 @@ namespace ADWIF
 
   void CursesRenderer::clear()
   {
-    wclear(win());
+    werase(win());
+    clearok(win(), TRUE);
     myColourMap.assign(COLOR_PAIRS, false);
   }
 
-  void CursesRenderer::refresh() { wrefresh(win()); }
+  void CursesRenderer::refresh() { doupdate(); }
 
   bool CursesRenderer::resized() const
   {

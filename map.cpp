@@ -37,7 +37,7 @@ namespace ADWIF
     myMap(parent), myChunks(), myBank(bank), myChunkSize(chunkSizeX, chunkSizeY, chunkSizeZ),
     myAccessTolerance(200000), myBackgroundValue(0), myMapPath(mapPath), myClock(),
     myAccessCounter(0), myMemThresholdMB(2048), myDurationThreshold(boost::chrono::minutes(1)),
-    myPruningInterval(boost::chrono::seconds(1)), myService(service),
+    myPruningInterval(boost::chrono::seconds(10)), myService(service),
     myLock(), myPruningInProgressFlag()/*, myPruneTimer(myService)*/
   {
     if (!myInitialisedFlag)
@@ -66,17 +66,20 @@ namespace ADWIF
   const MapCell & MapImpl::get(int x, int y, int z) const
   {
     std::shared_ptr<Chunk> chunk = getChunk(x, y, z);
-    boost::recursive_mutex::scoped_lock guard(chunk->lock);
+    boost::upgrade_lock<boost::shared_mutex> guard(chunk->lock);
     if(!chunk->accessor)
-      loadChunk(chunk);
-    if (myAccessCounter++ % myAccessTolerance == 0)
-      prune(false);
-    while(chunk->writerCount)
-      boost::this_thread::sleep_for(boost::chrono::microseconds(50));
-    chunk->readerCount++;
+    {
+      loadChunk(chunk, guard);
+    }
+//     boost::shared_lock<boost::shared_mutex> guard(chunk->lock);
+//     if (myAccessCounter++ % myAccessTolerance == 0)
+//       prune(false);
+//     while(chunk->writerCount)
+//       boost::this_thread::sleep_for(boost::chrono::microseconds(50));
+//     chunk->readerCount++;
     const MapCell & value = myBank->get(chunk->accessor->getValue(
       ovdb::Coord(x % myChunkSize.x(), y % myChunkSize.y(), z % myChunkSize.z())));
-    chunk->readerCount--;
+//     chunk->readerCount--;
     return value;
   }
 
@@ -88,24 +91,25 @@ namespace ADWIF
     uint64_t hash = myBank->put(cell);
 
     std::shared_ptr<Chunk> chunk = getChunk(x, y, z);
-    boost::recursive_mutex::scoped_lock guard(chunk->lock);
+    boost::upgrade_lock<boost::shared_mutex> guard(chunk->lock);
     if(!chunk->accessor)
-      loadChunk(chunk);
-    while(chunk->readerCount)
-      boost::this_thread::sleep_for(boost::chrono::microseconds(50));
-    chunk->writerCount++;
+      loadChunk(chunk, guard);
+    boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
+//     while(chunk->readerCount)
+//       boost::this_thread::sleep_for(boost::chrono::microseconds(50));
+//     chunk->writerCount++;
     if (hash == myBackgroundValue)
       chunk->accessor->setValueOff(
         ovdb::Coord(x % myChunkSize.x(), y % myChunkSize.y(), z % myChunkSize.z()), hash);
     else
       chunk->accessor->setValue(
         ovdb::Coord(x % myChunkSize.x(), y % myChunkSize.y(), z % myChunkSize.z()), hash);
-    chunk->writerCount--;
+//     chunk->writerCount--;
 
     chunk->dirty = true;
 
-    if (!myChunks.empty() && (myAccessCounter++ % myAccessTolerance == 0))
-      prune(false);
+//     if (!myChunks.empty() && (myAccessCounter++ % myAccessTolerance == 0))
+//       prune(false);
   }
 
   void MapImpl::pruneTask()
@@ -138,12 +142,15 @@ namespace ADWIF
                               return !pair.second || !pair.second->grid;
                             }), accessTimesSorted.end());
 
+    {
+      boost::recursive_mutex::scoped_lock guard(myLock);
     std::sort(accessTimesSorted.begin(), accessTimesSorted.end(),
               [](const std::pair<Vec3Type, std::shared_ptr<Chunk>> & first,
                  const std::pair<Vec3Type, std::shared_ptr<Chunk>> & second)
     {
       return first.second->lastAccess.load() < second.second->lastAccess.load();
     });
+    }
 
     std::size_t memUse = 0;
 
@@ -154,7 +161,8 @@ namespace ADWIF
       std::transform(accessTimesSorted.begin(), accessTimesSorted.end(),
                      std::inserter(memoryMap, memoryMap.begin()),
                      [](const std::pair<Vec3Type, std::shared_ptr<Chunk>> pair) {
-                       boost::recursive_mutex::scoped_try_lock guard(pair.second->lock);
+                       boost::upgrade_lock<boost::shared_mutex> guard(pair.second->lock);
+                       boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
                        if (guard.owns_lock())
                          return std::make_pair(pair.first,
                                                pair.second->grid ? pair.second->grid->memUsage() : 0);
@@ -232,16 +240,17 @@ namespace ADWIF
       newChunk->fileName = getChunkName(vec);
       newChunk->dirty = false;
       newChunk->lastAccess = myClock.now();
-      newChunk->readerCount.store(0);
-      newChunk->writerCount.store(0);
+// //       newChunk->readerCount.store(0);
+// //       newChunk->writerCount.store(0);
       return myChunks[vec] = newChunk;
     }
   }
 
-  void MapImpl::loadChunk(std::shared_ptr<Chunk> & chunk) const
+  void MapImpl::loadChunk(std::shared_ptr<Chunk> & chunk, boost::upgrade_lock<boost::shared_mutex> & guard) const
   {
     // std::cerr << "loading: " << chunk->pos << std::endl;
-    boost::recursive_mutex::scoped_lock guard(chunk->lock);
+//     boost::upgrade_lock<boost::shared_mutex> guard(chunk->lock);
+    boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
     if (boost::filesystem::exists(myMapPath + dirSep + chunk->fileName) &&
         boost::filesystem::file_size(myMapPath + dirSep + chunk->fileName))
     {
@@ -271,7 +280,8 @@ namespace ADWIF
     if (!chunk->dirty)
       return;
     // std::cerr << "saving: " << chunk->pos << std::endl;
-    boost::recursive_mutex::scoped_lock guard(chunk->lock);
+    boost::upgrade_lock<boost::shared_mutex> guard(chunk->lock);
+    boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
     if (!chunk->grid)
       return;
     iostreams::file_sink fs(myMapPath + dirSep + chunk->fileName);

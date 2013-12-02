@@ -734,15 +734,16 @@ namespace ADWIF
         return floor(myHeightSource->GetValue(x, y, 0) * (myDepth / 2));
     };
 
+    int counter = 0;
+
     // PASS 1 ============================================================================
 
     for (unsigned int yy = offy; yy < offy + myChunkSizeY; yy++)
     {
-      if (cooperative && !myPriorityFlags[x][y][z+myDepth/2])
+      if (cooperative && !myPriorityFlags[x][y][z+myDepth/2] && counter++ % 100 == 0)
         game()->engine()->scheduler()->yield();
       for (unsigned int xx = offx; xx < offx + myChunkSizeX; xx++)
       {
-
         if (myGeneratorAbortFlag)
         {
           boost::recursive_mutex::scoped_lock guard(myGenerationLock);
@@ -806,11 +807,10 @@ namespace ADWIF
 
     for (unsigned int yy = offy; yy < offy + myChunkSizeY; yy++)
     {
+      if (cooperative && !myPriorityFlags[x][y][z+myDepth/2] && counter++ % 100 == 0)
+        game()->engine()->scheduler()->yield();
       for (unsigned int xx = offx; xx < offx + myChunkSizeX; xx++)
       {
-        if (cooperative && !myPriorityFlags[x][y][z+myDepth/2])
-          game()->engine()->scheduler()->yield();
-
         if (myGeneratorAbortFlag)
         {
           boost::recursive_mutex::scoped_lock guard(myGenerationLock);
@@ -826,6 +826,17 @@ namespace ADWIF
           {
             c.visible = true;
             map->set(xx, yy, zz, c);
+            for (int i = -1; i <= 1; i++)
+              for (int j = -1; j <= 1; j++)
+//                 for (int k = -1; k <= 1; k++)
+                {
+                  MapCell cc(map->get(xx+i,yy+j,zz/*+k*/));
+                  if (!cc.visible)
+                  {
+                    cc.visible = true;
+                    map->set(xx+i,yy+j,zz/*+k*/, cc);
+                  }
+                }
           }
           else if (c.type == TerrainType::Wall)
           {
@@ -834,11 +845,16 @@ namespace ADWIF
             const MapCell & n = map->get(xx, yy-1, zz);
             const MapCell & s = map->get(xx, yy+1, zz);
 
+            double hw = getHeight(xx-1, yy);
+            double he = getHeight(xx+1, yy);
+            double hn = getHeight(xx, yy-1);
+            double hs = getHeight(xx, yy+1);
+
             if (
-              ((!e.background && e.type != TerrainType::Wall) ||
-               (!w.background && w.type != TerrainType::Wall) ||
-               (!s.background && s.type != TerrainType::Wall) ||
-               (!n.background && n.type != TerrainType::Wall) ||
+              ((he < zz || (!e.background && e.type != TerrainType::Wall)) ||
+               (hw < zz || (!w.background && w.type != TerrainType::Wall)) ||
+               (hs < zz || (!s.background && s.type != TerrainType::Wall)) ||
+               (hn < zz || (!n.background && n.type != TerrainType::Wall)) ||
                (!e.background && e.cmaterial && e.cmaterial->liquid) ||
                (!e.background && w.cmaterial && w.cmaterial->liquid) ||
                (!e.background && s.cmaterial && s.cmaterial->liquid) ||
@@ -853,6 +869,7 @@ namespace ADWIF
     {
       boost::recursive_mutex::scoped_lock guard(myGenerationLock);
       myGenerationMap[x][y][z+myDepth/2] = true;
+      myPriorityFlags[x][y][z+myDepth/2] = false;
     }
   }
 
@@ -870,10 +887,10 @@ namespace ADWIF
 
     myLastChunkX = chunkX; myLastChunkY = chunkY; myLastChunkZ = chunkZ;
 
-//     if (isGenerated(chunkX, chunkY, chunkZ) == boost::indeterminate)
-//       abort();
-
     myPriorityFlags[chunkX][chunkY][chunkZ+myDepth/2] = true;
+
+    if (isGenerated(chunkX, chunkY, chunkZ) == false)
+      abort();
 
     for (int r = -radius; r <= radius; r++)
     {
@@ -881,14 +898,8 @@ namespace ADWIF
         for (int j = -r; j <= r; j++)
           for (int k = -r; k <= r; k++)
             if (isGenerated(chunkX+i, chunkY+j, chunkZ+k) == false)
-              if (!(i == 0 && j == 0 && k == 0))
-                game()->engine()->scheduler()->schedule(boost::bind<void>(&MapGenerator::generateOne, shared_from_this(),
-                                                        chunkX+i, chunkY+j, chunkZ+k, false, true));
-    }
-
-    if (isGenerated(chunkX, chunkY, chunkZ) == false)
-    {
-      generateOne(chunkX, chunkY, chunkZ);
+              game()->engine()->scheduler()->schedule(boost::bind<void>(&MapGenerator::generateOne, shared_from_this(),
+                                                      chunkX+i, chunkY+j, chunkZ+k, false, true));
     }
 
     do
@@ -896,11 +907,8 @@ namespace ADWIF
       if (isGenerated(chunkX, chunkY, chunkZ) == true)
         break;
       else
-//         game()->engine()->service().poll_one();
-      boost::this_thread::sleep_for(boost::chrono::microseconds(50));
+        boost::this_thread::sleep_for(boost::chrono::microseconds(50));
     } while(true);
-
-    myPriorityFlags[chunkX][chunkY][chunkZ+myDepth/2] = false;
   }
 
   void MapGenerator::abort()
