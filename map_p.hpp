@@ -88,35 +88,6 @@ namespace ADWIF
     void set(int x, int y, int z, const MapCell & cell);
 
     const MapCell & background() const;
-
-//     uint64_t getVoxelCount() const {
-//       uint64_t count = 0;
-//       boost::recursive_mutex::scoped_lock guard(myLock);
-//       for(auto const & i : myChunks)
-//         if (i.second)
-//         {
-//           boost::shared_lock<boost::recursive_mutex> guard(i.second->lock);
-//           if (i.second->grid)
-//             count += i.second->grid->activeVoxelCount();
-//         }
-//       return count;
-//     }
-//
-//     unsigned long int getMemUsage() const {
-//       unsigned long int count = 0;
-//       boost::recursive_mutex::scoped_lock guard(myLock);
-//       for(auto const & i : myChunks)
-//       {
-//         if (i.second)
-//         {
-//           boost::shared_lock<boost::recursive_mutex> guard(i.second->lock);
-//           if (i.second->grid && i.second)
-//             count += i.second->grid->memUsage();
-//         }
-//       }
-//       return count;
-//     }
-
     std::shared_ptr<MapBank> bank() const;
 
     void prune(bool pruneAll = false) const;

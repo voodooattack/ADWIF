@@ -17,7 +17,7 @@
       "RampU": [{ "sym":"^", "usym":"▴" }],
       "RampD": [{ "sym":"v", "usym":"▾" }]
     },
-    "style":{"fgcolour":"White", "attributes":["Dim"] },
+    "style":{"fgcolour":"White", "attributes":["Normal"] },
     "meltTo":"Water"
   },
   {

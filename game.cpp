@@ -16,7 +16,7 @@
  *  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-
+#include "config.hpp"
 #include "game.hpp"
 #include "adwif.hpp"
 #include "engine.hpp"
@@ -37,7 +37,10 @@
 #include <physfs.hpp>
 #include <sstream>
 #include <unistd.h>
+
+#ifdef ADWIF_UNICODE
 #include <utf8.h>
+#endif
 
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/array.hpp>
@@ -845,11 +848,17 @@ namespace ADWIF
         std::string u8;
         if (!o["usym"].empty() && options.count("unicode"))
           u8 = o["usym"].asString();
-        else if (o["sym"].empty() && !options.count("unicode"))
-          continue;
+        else
+          if (o["sym"].empty() && !options.count("unicode"))
+            continue;
         else
           u8 = o["sym"].asString();
+#ifdef ADWIF_UNICODE
         int codePoint = utf8::peek_next(u8.begin(), u8.end());
+#else
+        if (o["sym"].empty()) continue;
+        int codePoint = o["sym"].asString()[0];
+#endif
         material->disp[strTerrainType(i)].push_back({codePoint, jsonToPalEntry(o["style"], material->style)});
       }
     }
@@ -899,10 +908,19 @@ namespace ADWIF
     else
       biome->flat = false;
 
-    std::string u8 = value["sym"].asString();
+    std::string u8;
+#ifdef ADWIF_UNICODE
+    if (value["usym"].empty())
+      u8 = value["sym"].asString();
+    else
+      u8 = value["usym"].asString();
     std::u32string codePoint;
     utf8::utf8to32(u8.begin(), u8.end(), codePoint.begin());
     biome->sym = codePoint[0];
+#else
+    u8 = value["sym"].asString();
+    biome->sym = u8[0];
+#endif
 
     for (auto const & i : value["materials"])
       biome->materials.push_back(i.asString());

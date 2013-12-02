@@ -209,7 +209,7 @@ namespace ADWIF
       myCurrentAnimation->prev();
     else if (myCurrentAnimation && (key == Key::Down || key == Key::Num2))
       myCurrentAnimation->next();
-    else if (key == '\r' || key == '\n')
+    else if (key == '\r' || key == '\n' || key == Key::Enter)
     {
       if (myState == State::ShowOverview)
       {

@@ -46,33 +46,54 @@ endif()
 
 #execute_process(COMMAND make -C ${V8_ROOT} -f ${V8_ROOT}/Makefile i18nsupport=off werror=no native)
 
+set(ADWIF_RENDERER "curses" CACHE STRING
+  "Select a rendering backend, valid values are 'curses' and 'tcod'")
+set_property(CACHE ADWIF_RENDERER PROPERTY STRINGS
+              "curses" "tcod")
+
 set(Boost_USE_MULTITHREADED ON)
-set(CURSES_NEED_WIDE on)
+
+if(ADWIF_RENDERER STREQUAL "curses")
+  set(CURSES_NEED_WIDE on)
+  find_package(curses REQUIRED)
+  set(ADWIF_RENDERER_USE_CURSES True)
+  set(ADWIF_RENDERER_SOURCES "curses.cpp")
+  set(ADWIF_RENDERER_INCLUDES ${CURSES_INCLUDE_DIR})
+  set(ADWIF_RENDERER_LIBRARIES ${CURSES_LIBRARIES})
+elseif(ADWIF_RENDERER STREQUAL "tcod")
+  find_package(TCOD REQUIRED)
+  set(ADWIF_RENDERER_USE_TCOD True)
+  set(ADWIF_RENDERER_SOURCES "tcod.cpp")
+  set(ADWIF_RENDERER_INCLUDES ${LIBTCOD_INCLUDE_DIRS})
+  set(ADWIF_RENDERER_LIBRARIES ${LIBTCOD_LIBRARIES})
+endif()
+
+option(ADWIF_UNICODE "Whether or not to use unicode output" ON)
+
+if(ADWIF_UNICODE)
+find_package(UTF8CPP REQUIRED)
+endif()
 
 find_package(V8 REQUIRED)
-find_package(curses REQUIRED)
 find_package(PhysFS REQUIRED)
 find_package(Threads REQUIRED)
 find_package(TBB REQUIRED)
 find_package(JsonCpp REQUIRED)
 find_package(OpenVDB REQUIRED)
 find_package(Half REQUIRED)
-find_package(UTF8CPP REQUIRED)
 find_package(FreeImage REQUIRED)
 find_package(Noise REQUIRED)
 #find_package(Eigen3 REQUIRED)
 find_package(Boost 1.54.0 COMPONENTS serialization coroutine context filesystem system iostreams regex program_options thread chrono REQUIRED)
 
-if(NOISE_DIR_IS_LIBNOISE)
-  add_definitions(-DNOISE_DIR_IS_LIBNOISE)
-endif(NOISE_DIR_IS_LIBNOISE)
+configure_file ("${PROJECT_SOURCE_DIR}/config.hpp.in" "${PROJECT_BINARY_DIR}/config.hpp")
 
-include_directories(${PROJECT_SOURCE_DIR} ${CURSES_INCLUDE_DIR} ${PHYSFS_INCLUDE_DIR} ${V8_INCLUDE_DIR} ${Boost_INCLUDE_DIRS} ${HALF_INCLUDE_DIRS}
-                    ${PHYSFS_CPP_ROOT}/include ${JSONCPP_INCLUDE_DIR} ${OPENVDB_INCLUDE_DIRS} ${TBB_INCLUDE_DIRS} ${UTF8CPP_INCLUDE_DIR}
-                    ${FREEIMAGE_INCLUDE_PATH} ${NOISE_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIR})
-add_executable(adwif scheduler.cpp threadingutils.cpp imageutils.cpp serialisationutils.cpp mapbank.cpp mapeditorstate.cpp mapgenerator.cpp mapgenstate.cpp item.cpp map.cpp fileutils.cpp jsonutils.cpp renderer.cpp animationutils.cpp util.cpp scripting.cpp game.cpp player.cpp newgamestate.cpp introanimation.cpp animation.cpp mainmenustate.cpp introstate.cpp engine.cpp curses.cpp main.cpp)
+include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR} ${ADWIF_RENDERER_INCLUDES} ${PHYSFS_INCLUDE_DIR} ${V8_INCLUDE_DIR}
+                    ${Boost_INCLUDE_DIRS} ${HALF_INCLUDE_DIRS} ${PHYSFS_CPP_ROOT}/include ${JSONCPP_INCLUDE_DIR} ${OPENVDB_INCLUDE_DIRS}
+                    ${TBB_INCLUDE_DIRS} ${UTF8CPP_INCLUDE_DIR} ${FREEIMAGE_INCLUDE_PATH} ${NOISE_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIR})
+add_executable(adwif ${ADWIF_RENDERER_SOURCES} scheduler.cpp threadingutils.cpp imageutils.cpp serialisationutils.cpp mapbank.cpp mapeditorstate.cpp mapgenerator.cpp mapgenstate.cpp item.cpp map.cpp fileutils.cpp jsonutils.cpp renderer.cpp animationutils.cpp util.cpp scripting.cpp game.cpp player.cpp newgamestate.cpp introanimation.cpp animation.cpp mainmenustate.cpp introstate.cpp engine.cpp main.cpp)
 add_dependencies(adwif physfs++)
-target_link_libraries(adwif ${CURSES_LIBRARIES} ${PHYSFS_LIBRARY} ${V8_LIBRARIES} ${Boost_LIBRARIES} ${HALF_LIBRARIES} ${FREEIMAGE_LIBRARIES}
+target_link_libraries(adwif ${ADWIF_RENDERER_LIBRARIES} ${PHYSFS_LIBRARY} ${V8_LIBRARIES} ${Boost_LIBRARIES} ${HALF_LIBRARIES} ${FREEIMAGE_LIBRARIES}
                       ${CMAKE_THREAD_LIBS_INIT} ${JSONCPP_LIBRARIES} ${OPENVDB_LIBRARIES} ${TBB_LIBRARIES} ${NOISE_LIBRARY} physfs++)
 
 #add_custom_command(TARGET adwif POST_BUILD COMMENT

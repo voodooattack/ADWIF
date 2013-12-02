@@ -71,15 +71,10 @@ namespace ADWIF
     {
       loadChunk(chunk, guard);
     }
-//     boost::shared_lock<boost::shared_mutex> guard(chunk->lock);
 //     if (myAccessCounter++ % myAccessTolerance == 0)
 //       prune(false);
-//     while(chunk->writerCount)
-//       boost::this_thread::sleep_for(boost::chrono::microseconds(50));
-//     chunk->readerCount++;
     const MapCell & value = myBank->get(chunk->accessor->getValue(
       ovdb::Coord(x % myChunkSize.x(), y % myChunkSize.y(), z % myChunkSize.z())));
-//     chunk->readerCount--;
     return value;
   }
 
@@ -95,16 +90,12 @@ namespace ADWIF
     if(!chunk->accessor)
       loadChunk(chunk, guard);
     boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
-//     while(chunk->readerCount)
-//       boost::this_thread::sleep_for(boost::chrono::microseconds(50));
-//     chunk->writerCount++;
     if (hash == myBackgroundValue)
       chunk->accessor->setValueOff(
         ovdb::Coord(x % myChunkSize.x(), y % myChunkSize.y(), z % myChunkSize.z()), hash);
     else
       chunk->accessor->setValue(
         ovdb::Coord(x % myChunkSize.x(), y % myChunkSize.y(), z % myChunkSize.z()), hash);
-//     chunk->writerCount--;
 
     chunk->dirty = true;
 
@@ -240,8 +231,6 @@ namespace ADWIF
       newChunk->fileName = getChunkName(vec);
       newChunk->dirty = false;
       newChunk->lastAccess = myClock.now();
-// //       newChunk->readerCount.store(0);
-// //       newChunk->writerCount.store(0);
       return myChunks[vec] = newChunk;
     }
   }

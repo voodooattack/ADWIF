@@ -17,14 +17,14 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "config.hpp"
+
 #include <signal.h>
-//#include <stdio.h>
 #include <physfs.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 
 #include "engine.hpp"
-#include "curses.hpp"
 #include "fileutils.hpp"
 
 #include "map.hpp"
@@ -32,6 +32,12 @@
 #include "mapeditorstate.hpp"
 
 #include "util.hpp"
+
+#ifdef ADWIF_RENDERER_USE_CURSES
+#include "curses.hpp"
+#elif defined(ADWIF_RENDERER_USE_TCOD)
+#include "tcod.hpp"
+#endif
 
 namespace ADWIF
 {
@@ -88,9 +94,14 @@ int main(int argc, char ** argv)
   std::shared_ptr<Input> input;
   std::shared_ptr<Engine> engine;
 
+#ifdef ADWIF_RENDERER_USE_CURSES
   renderer.reset(new CursesRenderer());
   input.reset(new CursesInput(renderer));
+#elif defined(ADWIF_RENDERER_USE_TCOD)
+  renderer.reset(new TCODRenderer());
+  input.reset(new TCODInput(renderer));
 
+#endif
   if (!renderer->init())
   {
     std::cerr << "Error initialising the display system." << std::endl;

@@ -286,7 +286,7 @@ namespace ADWIF
     myRenderer->refresh();
     while (1)
     {
-      int c = getch();
+      int c = wgetch(myRenderer->win());
       if (c == 'Y' || (!caseSensetive && c == 'y'))
       {
         result = true;

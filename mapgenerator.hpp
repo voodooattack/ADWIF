@@ -20,6 +20,8 @@
 #ifndef MAPGENERATOR_H
 #define MAPGENERATOR_H
 
+#include "config.hpp"
+
 #include "animation.hpp"
 
 #include <vector>

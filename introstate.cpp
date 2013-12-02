@@ -58,7 +58,7 @@ namespace ADWIF
 
   void IntroState::consume(int key)
   {
-    if (key == '\n' || key == '\r' || key == ' ')
+    if (key == '\n' || key == '\r' || key == ' ' || key == Key::Enter)
     {
       auto state = std::shared_ptr<GameState>(new MainMenuState(myEngine));
       myEngine->addState(state);
