@@ -90,6 +90,7 @@ namespace ADWIF
       myRenderer->drawText(2, msgHeight + 1, result);
       if (!suffix.empty())
         myRenderer->drawText(result.size() + 4, msgHeight + 1, suffix);
+      myRenderer->drawText(result.size() + 2, msgHeight + 1, "_");
       myRenderer->endWindow();
       myRenderer->refresh();
 
@@ -101,7 +102,9 @@ namespace ADWIF
         result = "";
         break;
       }
-      else if (key >= ' ' && key <= '~')
+      else if (key == Key::Backspace && !result.empty())
+        result.resize(result.size()-1);
+      else if (key >= ' ' && key <= '~' && result.size() < maxLen)
         result += (char)key;
     }
 //     wborder(myRenderer->win(), 0, 0, 0, 0, 0, 0, 0, 0);
