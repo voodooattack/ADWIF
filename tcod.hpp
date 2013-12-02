@@ -54,11 +54,22 @@ namespace ADWIF
     {
       myBackgroundColour = colourToTCOD(bg, true, styleMask);
       myForegroundColour = colourToTCOD(fg, false, styleMask);
+      myStyle = styleMask;
     }
     virtual void style(int x, int y, int len, Colour fg, Colour bg, int styleMask)
     {
       myConsole->setCharBackground(x, y, colourToTCOD(bg, true, styleMask));
       myConsole->setCharForeground(x, y, colourToTCOD(fg, false, styleMask));
+      myStyle = styleMask;
+      if (styleMask & Style::AltCharSet)
+      {
+        for (int xx = x; xx < x + len; xx++)
+        {
+          int c = myConsole->getChar(xx, y);
+          extChar(c);
+          myConsole->setChar(xx, y, c);
+        }
+      }
     }
     virtual void startWindow(int x, int y, int w, int h) {
       myConsole = new TCODConsole(w, h);
@@ -77,6 +88,8 @@ namespace ADWIF
       }
     }
     virtual void drawChar(int x, int y, int c) {
+      if (myStyle & Style::AltCharSet)
+        extChar(c);
       myConsole->putCharEx(x, y, c, myForegroundColour, myBackgroundColour);
     }
     virtual void drawText(int x, int y, const std::string & text)
@@ -84,7 +97,15 @@ namespace ADWIF
       TCODColor bg = myConsole->getDefaultBackground(), fg = myConsole->getDefaultForeground();
       myConsole->setDefaultBackground(myBackgroundColour);
       myConsole->setDefaultForeground(myForegroundColour);
-      myConsole->printRect(x, y, myConsole->getWidth(), myConsole->getHeight(), text.c_str());
+      if (myStyle & Style::AltCharSet)
+      {
+        std::string ext = text;
+        for(unsigned int i = 0; i < ext.size(); i++)
+          extChar(ext[i]);
+        myConsole->printRect(x, y, myConsole->getWidth(), myConsole->getHeight(), ext.c_str());
+      }
+      else
+        myConsole->printRect(x, y, myConsole->getWidth(), myConsole->getHeight(), text.c_str());
       myConsole->setDefaultBackground(bg);
       myConsole->setDefaultForeground(fg);
     }
@@ -94,10 +115,25 @@ namespace ADWIF
   private:
     TCODColor myBackgroundColour;
     TCODColor myForegroundColour;
+    int myStyle;
     TCODConsole * myConsole;
     int myConX, myConY;
 
   private:
+    template<typename T>
+    void extChar(T & c)
+    {
+      switch (c)
+      {
+        case 'l': c = TCOD_CHAR_NW; break;
+        case 'q': c = TCOD_CHAR_HLINE; break;
+        case 'x': c = TCOD_CHAR_VLINE; break;
+        case 'k': c = TCOD_CHAR_NE; break;
+        case 'j': c = TCOD_CHAR_SE; break;
+        case 'm': c = TCOD_CHAR_SW; break;
+      }
+    }
+
     TCODColor colourToTCOD(Colour c, bool bg, int styleMask)
     {
 //       std::cout << std::boolalpha << bg << " " << styleMask << std::endl;
