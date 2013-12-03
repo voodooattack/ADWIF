@@ -33,7 +33,7 @@
             "type":"array",
             "items":{
               "type":"string",
-              "oneOf": ["Normal", "Bold", "Dim", "Underline", "StandOut", "AltCharSet"],
+              "oneOf": ["Normal", "Bold", "Dim", "Dark", "Underline", "StandOut", "AltCharSet"],
               "caseSensetive":false
             }
           }

@@ -53,7 +53,8 @@ namespace ADWIF
     virtual void drawChar(int x, int y, int c);
     virtual void drawText(int x, int y, const std::string & text) ;
     virtual void drawEntity(const class Entity *, int x, int y) { }
-    virtual void drawRegion(int x, int y, int z, int w, int h, int scrx, int scry, const class Game * game, const class Map *);
+
+    virtual bool supportsMultiLayers() const { return false; }
 
   private:
     WINDOW * win();

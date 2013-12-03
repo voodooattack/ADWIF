@@ -50,6 +50,7 @@ namespace ADWIF
     extern const int Bold;
     extern const int Underline;
     extern const int Dim;
+    extern const int Dark;
     extern const int StandOut;
     extern const int AltCharSet;
   };
@@ -72,7 +73,9 @@ namespace ADWIF
     virtual void drawChar(int x, int y, int c) = 0;
     virtual void drawText(int x, int y, const std::string & text) = 0;
     virtual void drawEntity(const class Entity *, int x, int y) = 0;
-    virtual void drawRegion(int x, int y, int z, int w, int h, int scrx, int scry, const class Game * game, const class Map * map) = 0;
+    virtual void drawRegion(int x, int y, int z, int w, int h, int scrx, int scry, const class Game * game, class Map * map);
+
+    virtual bool supportsMultiLayers() const = 0;
   };
 }
 

@@ -18,6 +18,8 @@
  */
 
 #include "renderer.hpp"
+#include "game.hpp"
+#include "map.hpp"
 
 #include <string>
 #include <vector>
@@ -76,6 +78,8 @@ namespace ADWIF
       strs.push_back("Underline");
     if (style & Style::Dim)
       strs.push_back("Dim");
+    if (style & Style::Dark)
+      strs.push_back("Dark");
     if (style & Style::StandOut)
       strs.push_back("StandOut");
     if (style & Style::AltCharSet)
@@ -98,6 +102,8 @@ namespace ADWIF
         style |= Style::Underline;
       else if (s == "dim")
         style |= Style::Dim;
+      else if (s == "dark")
+        style |= Style::Dark;
       else if (s == "standout")
         style |= Style::StandOut;
       else if (s == "altcharset")
@@ -107,6 +113,69 @@ namespace ADWIF
     }
 
     return style;
+  }
+
+  void Renderer::drawRegion(int x, int y, int z, int w, int h, int scrx, int scry, const Game * game, Map * map)
+  {
+    auto drawCell = [&](const MapCell & c, int x, int y, int overrideStyle = -1)
+    {
+      if (c.structure == Structure::None)
+      {
+        const Material * mat = c.cmaterial;
+        if (!mat)
+        {
+          auto mit = game->materials().find(c.material);
+          if (mit == game->materials().end())
+            throw std::runtime_error("material '" + c.material + "' undefined");
+          mat = mit->second;
+        }
+        auto dit = mat->disp.find(c.type);
+        if (dit == mat->disp.end())
+          throw std::runtime_error("terrain type '" + terrainTypeStr(c.type) + "' undefined in material '" + mat->name + "'");
+        const Material::dispEntry & disp = dit->second[c.symIdx < dit->second.size() ? c.symIdx : dit->second.size() - 1];
+        style(disp.style.fg, disp.style.bg, overrideStyle == -1 ? disp.style.style : overrideStyle);
+        drawChar(x, y, disp.sym);
+      }
+    };
+
+    for (int yy = 0; yy < h; yy++)
+    {
+      for (int xx = 0; xx < w; xx++)
+      {
+        const MapCell & c = map->get(x + xx, y + yy, z);
+        if (!c.visible && c.type == TerrainType::Wall)
+        {
+          style(Colour::Black, Colour::Black, Style::Normal);
+          drawChar(scrx + xx, scry + yy, ' ');
+        }
+        else if (c.type == TerrainType::Hole || c.background)
+        {
+          if (!supportsMultiLayers())
+          {
+            style(Colour::Cyan, Colour::Cyan, Style::Dim);
+            drawChar(scrx + xx, scry + yy, ' ');
+          }
+          else
+          {
+            const MapCell & cc = map->get(x + xx, y + yy, z-1);
+            if (!cc.visible && cc.type == TerrainType::Wall)
+            {
+              style(Colour::Black, Colour::Black, Style::Normal);
+              drawChar(scrx + xx, scry + yy, ' ');
+            }
+            else if (cc.type == TerrainType::Hole || cc.background)
+            {
+              style(Colour::Cyan, Colour::Cyan, Style::Dark);
+              drawChar(scrx + xx, scry + yy, ' ');
+            }
+            else
+              drawCell(cc, scrx + xx, scry + yy, Style::Dark);
+          }
+        }
+        else
+          drawCell(c, scrx + xx, scry + yy);
+      }
+    }
   }
 
 }

@@ -177,47 +177,6 @@ namespace ADWIF
     mvwaddnstr(win(), y, x, text.c_str(), text.size());
   }
 
-  void CursesRenderer::drawRegion(int x, int y, int z, int w, int h, int scrx, int scry, const Game * game, const Map * map)
-  {
-    for(int yy = 0; yy < h; yy++)
-    {
-      for(int xx = 0; xx < w; xx++)
-      {
-        const MapCell & c = map->get(x + xx, y + yy, z);
-        if (!c.visible && c.type == TerrainType::Wall)
-        {
-          style(Colour::Black, Colour::Black, Style::Normal);
-          drawChar(scrx + xx, scry + yy, ' ');
-        }
-        else if (c.type == TerrainType::Hole)
-        {
-          style(Colour::Black, Colour::Cyan, Style::Normal);
-          drawChar(scrx + xx, scry + yy, ' ');
-        }
-        else
-        {
-          if (c.structure == Structure::None)
-          {
-            const Material * mat = c.cmaterial;
-            if (!mat)
-            {
-              auto mit = game->materials().find(c.material);
-              if (mit == game->materials().end())
-                throw std::runtime_error("material '" + c.material + "' undefined");
-              mat = mit->second;
-            }
-            auto dit = mat->disp.find(c.type);
-            if (dit == mat->disp.end())
-              throw std::runtime_error("terrain type '" + terrainTypeStr(c.type) + "' undefined in material '" + mat->name + "'");
-            const Material::dispEntry & disp = dit->second[c.symIdx < dit->second.size() ? c.symIdx : dit->second.size() - 1];
-            style(disp.style.fg, disp.style.bg, disp.style.style);
-            drawChar(scrx + xx, scry + yy, disp.sym);
-          }
-        }
-      }
-    }
-  }
-
   void CursesRenderer::clear()
   {
     werase(win());
@@ -321,6 +280,7 @@ namespace ADWIF
     extern const int Bold = A_BOLD;
     extern const int Underline = A_UNDERLINE;
     extern const int Dim = A_DIM;
+    extern const int Dark = A_DIM;
     extern const int StandOut = A_STANDOUT;
     extern const int AltCharSet = A_ALTCHARSET;
   };

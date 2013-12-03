@@ -334,9 +334,9 @@ namespace ADWIF
 
     myGenerator->chunkSizeX(400);
     myGenerator->chunkSizeY(240);
-    myGenerator->chunkSizeZ(16);
+    myGenerator->chunkSizeZ(4);
 
-    myGenerator->depth(256);
+    myGenerator->depth(128);
 
     if (boost::filesystem::exists(saveDir + dirSep + "generator"))
       boost::filesystem::remove(saveDir + dirSep + "generator");

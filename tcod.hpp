@@ -41,6 +41,7 @@ namespace ADWIF
       TCODConsole::initRoot (80, 48, "A Dance with Ice and Fire", false, TCOD_RENDERER_GLSL);
       TCODConsole::root->setDefaultBackground(TCODColor::black);
       TCODConsole::root->setDefaultForeground(TCODColor::silver);
+      TCODConsole::root->setBackgroundFlag(TCOD_BKGND_SET);
       myConsole = TCODConsole::root;
       return true;
     }
@@ -75,6 +76,7 @@ namespace ADWIF
       myConsole = new TCODConsole(w, h);
       myConsole->setDefaultBackground(TCODColor::black);
       myConsole->setDefaultForeground(TCODColor::silver);
+      myConsole->setBackgroundFlag(TCOD_BKGND_SET);
       myConX = x;
       myConY = y;
     }
@@ -90,7 +92,10 @@ namespace ADWIF
     virtual void drawChar(int x, int y, int c) {
       if (myStyle & Style::AltCharSet)
         extChar(c);
-      myConsole->putCharEx(x, y, c, myForegroundColour, myBackgroundColour);
+      if (c == ' ')
+        myConsole->putCharEx(x, y, c, myForegroundColour, myForegroundColour);
+      else
+        myConsole->putCharEx(x, y, c, myForegroundColour, myBackgroundColour);
     }
     virtual void drawText(int x, int y, const std::string & text)
     {
@@ -109,8 +114,10 @@ namespace ADWIF
       myConsole->setDefaultBackground(bg);
       myConsole->setDefaultForeground(fg);
     }
+
     virtual void drawEntity(const class Entity *, int x, int y) { }
-    virtual void drawRegion(int x, int y, int z, int w, int h, int scrx, int scry, const class Game * game, const class Map *);
+
+    virtual bool supportsMultiLayers() const { return true; }
 
   private:
     TCODColor myBackgroundColour;
@@ -139,19 +146,19 @@ namespace ADWIF
 //       std::cout << std::boolalpha << bg << " " << styleMask << std::endl;
       if (!bg)
       {
-        if (styleMask & Style::Bold)
+        if (styleMask & Style::Dark)
         {
           switch (c)
           {
-            case Default: return TCODColor::white;
-            case Black: return TCODColor::darkestGrey;
-            case Red: return TCODColor::red;
-            case Green: return TCODColor::green;
-            case Yellow: return TCODColor::yellow;
-            case Blue: return TCODColor::blue;
-            case Magenta: return TCODColor::magenta;
-            case Cyan: return TCODColor::cyan;
-            case White: return TCODColor::white;
+            case Default: return TCODColor::darkestGrey;
+            case Black: return TCODColor::black;
+            case Red: return TCODColor::darkestRed;
+            case Green: return TCODColor::darkestGreen;
+            case Yellow: return TCODColor::darkestYellow;
+            case Blue: return TCODColor::darkestBlue;
+            case Magenta: return TCODColor::darkestMagenta;
+            case Cyan: return TCODColor::darkestCyan;
+            case White: return TCODColor::darkestGrey;
             default: return TCODColor::black;
           }
         }
@@ -171,7 +178,23 @@ namespace ADWIF
             default: return TCODColor::black;
           }
         }
-        else /*if (styleMask & Style::Normal)*/
+        else if (styleMask & Style::Bold)
+        {
+          switch (c)
+          {
+            case Default: return TCODColor::white;
+            case Black: return TCODColor::darkestGrey;
+            case Red: return TCODColor::red;
+            case Green: return TCODColor::green;
+            case Yellow: return TCODColor::yellow;
+            case Blue: return TCODColor::blue;
+            case Magenta: return TCODColor::magenta;
+            case Cyan: return TCODColor::cyan;
+            case White: return TCODColor::white;
+            default: return TCODColor::black;
+          }
+        }
+        else  /*if (styleMask & Style::Normal)*/
         {
           switch (c)
           {

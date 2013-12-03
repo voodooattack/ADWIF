@@ -49,8 +49,10 @@ namespace ADWIF
   {
     myGame->createMap();
 
-    myViewOffX = 171 * myGame->generator()->chunkSizeX();
-    myViewOffY = 169 * myGame->generator()->chunkSizeY();
+//     myViewOffX = 171 * myGame->generator()->chunkSizeX();
+//     myViewOffY = 169 * myGame->generator()->chunkSizeY();
+    myViewOffX = 0;
+    myViewOffY = 0;
     myViewOffZ = 0;
 
     myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,

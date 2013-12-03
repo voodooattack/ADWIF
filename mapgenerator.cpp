@@ -160,11 +160,11 @@ namespace ADWIF
     perlinSource->SetPersistence(0.0);
     perlinSource->SetLacunarity(1.50);
     perlinSource->SetOctaveCount(4);
-    perlinSource->SetNoiseQuality(noise::QUALITY_BEST);
+    perlinSource->SetNoiseQuality(noise::QUALITY_FAST);
 
     scaleBiasFilter->SetSourceModule(0, *perlinSource);
     scaleBiasFilter->SetBias(0.0);
-    scaleBiasFilter->SetScale(0.01);
+    scaleBiasFilter->SetScale(0.005);
 
     addFilter->SetSourceModule(0, *heightmapSource);
     addFilter->SetSourceModule(1, *scaleBiasFilter);
@@ -729,12 +729,71 @@ namespace ADWIF
 
     auto getHeight = [&](unsigned int x, unsigned int y) -> int {
       if (biome->flat)
-        return floor(myHeightMapModule->GetValue(x, y, 0) * (myDepth / 2));
+        return floor(myHeightMapModule->GetValue(x, y, 0) * (myDepth * myChunkSizeZ / 2));
       else
-        return floor(myHeightSource->GetValue(x, y, 0) * (myDepth / 2));
+        return floor(myHeightSource->GetValue(x, y, 0) * (myDepth * myChunkSizeZ / 2));
     };
 
     int counter = 0;
+
+    auto generateCell = [&](int xx, int yy, int zz, int height)
+    {
+      MapCell c(map->get(xx, yy, zz));
+      if (c.generated && !regenerate) return;
+      if (!c.generated)
+      {
+        std::string smat = biome->materials[ud(myRandomEngine)];
+        c.material = smat;
+        c.cmaterial = game()->materials()[smat];
+      }
+      if (zz == height)
+      {
+        std::uniform_int_distribution<int> ud2(0, c.cmaterial->disp[TerrainType::Floor].size() - 1);
+        c.symIdx = ud2(myRandomEngine);
+        c.biome = biome->name;
+        c.generated = true;
+        c.background = false;
+        c.type = TerrainType::Floor;
+        if ((getHeight(xx+1,yy) == height + 1 ||
+          getHeight(xx,yy+1) == height + 1 ||
+          getHeight(xx-1,yy) == height + 1 ||
+          getHeight(xx,yy-1) == height + 1 ||
+          getHeight(xx+1,yy+1) == height + 1 ||
+          getHeight(xx+1,yy-1) == height + 1 ||
+          getHeight(xx-1,yy-1) == height + 1 ||
+          getHeight(xx-1,yy+1) == height + 1))
+        {
+          if (!c.cmaterial->liquid)
+          {
+            MapCell cc = c;
+            c.type = TerrainType::RampU;
+            cc.type = TerrainType::RampD;
+            cc.generated = true;
+            map->set(xx, yy, height+1, cc);
+          }
+        }
+      }
+      else if (zz < height)
+      {
+        if (c.cmaterial->disp.find(TerrainType::Wall) == c.cmaterial->disp.end())
+          return;
+        c.type = TerrainType::Wall;
+        c.symIdx = 0;
+        c.visible = false;
+        c.generated = true;
+
+        double hw = getHeight(xx-1, yy);
+        double he = getHeight(xx+1, yy);
+        double hn = getHeight(xx, yy-1);
+        double hs = getHeight(xx, yy+1);
+
+        if (he < zz || hw < zz || hs < zz || hn < zz)
+          c.visible = true;
+      }
+      else
+        return;
+      map->set(xx, yy, zz, c);
+    };
 
     // PASS 1 ============================================================================
 
@@ -748,58 +807,12 @@ namespace ADWIF
         {
           boost::recursive_mutex::scoped_lock guard(myGenerationLock);
           myGenerationMap[x][y][z+myDepth/2] = false;
+          myPriorityFlags[x][y][z+myDepth/2] = false;
           return;
         }
-
         int height = getHeight(xx,yy);
         for (int zz = offz; zz <= (offz + myChunkSizeZ > height ? height : offz + myChunkSizeZ); zz++)
-        {
-          MapCell c(map->get(xx, yy, zz));
-          if (c.generated && !regenerate) continue;
-          if (!c.generated)
-          {
-            std::string smat = biome->materials[ud(myRandomEngine)];
-            c.material = smat;
-            c.cmaterial = game()->materials()[smat];
-          }
-          if (zz == height)
-          {
-            std::uniform_int_distribution<int> ud2(0, c.cmaterial->disp[TerrainType::Floor].size() - 1);
-            c.symIdx = ud2(myRandomEngine);
-            c.biome = biome->name;
-            c.generated = true;
-            c.background = false;
-            c.type = TerrainType::Floor;
-            if (!c.cmaterial->liquid &&
-                (getHeight(xx+1,yy) == height + 1 ||
-                 getHeight(xx,yy+1) == height + 1 ||
-                 getHeight(xx-1,yy) == height + 1 ||
-                 getHeight(xx,yy-1) == height + 1 ||
-                 getHeight(xx+1,yy+1) == height + 1 ||
-                 getHeight(xx+1,yy-1) == height + 1 ||
-                 getHeight(xx-1,yy-1) == height + 1 ||
-                 getHeight(xx-1,yy+1) == height + 1))
-            {
-              MapCell cc = c;
-              c.type = TerrainType::RampU;
-              cc.type = TerrainType::RampD;
-              cc.generated = true;
-              map->set(xx, yy, height+1, cc);
-            }
-          }
-          else if (zz < height)
-          {
-            if (c.cmaterial->disp.find(TerrainType::Wall) == c.cmaterial->disp.end())
-              continue;
-            c.type = TerrainType::Wall;
-            c.symIdx = 0;
-            c.visible = false;
-            c.generated = true;
-          }
-          else
-            continue;
-          map->set(xx, yy, zz, c);
-        }
+          generateCell(xx, yy, zz, height);
       }
     }
 
@@ -898,9 +911,12 @@ namespace ADWIF
         for (int j = -r; j <= r; j++)
           for (int k = -r; k <= r; k++)
             if (isGenerated(chunkX+i, chunkY+j, chunkZ+k) == false)
+              if (!(i == 0 && j == 0 && k == 0))
               game()->engine()->scheduler()->schedule(boost::bind<void>(&MapGenerator::generateOne, shared_from_this(),
                                                       chunkX+i, chunkY+j, chunkZ+k, false, true));
     }
+
+    generateOne(chunkX, chunkY, chunkZ);
 
     do
     {

@@ -26,49 +26,6 @@
 namespace ADWIF
 {
 
-  void TCODRenderer::drawRegion(int x, int y, int z, int w, int h, int scrx, int scry, const Game * game, const Map * map)
-  {
-    auto drawCell = [&](const MapCell & c, int x, int y) {
-      if (c.structure == Structure::None)
-      {
-        const Material * mat = c.cmaterial;
-        if (!mat)
-        {
-          auto mit = game->materials().find(c.material);
-          if (mit == game->materials().end())
-            throw std::runtime_error("material '" + c.material + "' undefined");
-          mat = mit->second;
-        }
-        auto dit = mat->disp.find(c.type);
-        if (dit == mat->disp.end())
-          throw std::runtime_error("terrain type '" + terrainTypeStr(c.type) + "' undefined in material '" + mat->name + "'");
-        const Material::dispEntry & disp = dit->second[c.symIdx < dit->second.size() ? c.symIdx : dit->second.size() - 1];
-        style(disp.style.fg, disp.style.bg, disp.style.style);
-        drawChar(x, y, disp.sym);
-      }
-    };
-
-    for (int yy = 0; yy < h; yy++)
-    {
-      for (int xx = 0; xx < w; xx++)
-      {
-        const MapCell & c = map->get(x + xx, y + yy, z);
-        if (!c.visible && c.type == TerrainType::Wall)
-        {
-          style(Colour::Black, Colour::Black, Style::Normal);
-          drawChar(scrx + xx, scry + yy, ' ');
-        }
-        else if (c.type == TerrainType::Hole)
-        {
-          style(Colour::Black, Colour::Cyan, Style::Normal);
-          drawChar(scrx + xx, scry + yy, ' ');
-        }
-        else
-          drawCell(c, scrx + xx, scry + yy);
-      }
-    }
-  }
-
   std::string TCODInput::prompt(const std::string & text, unsigned int maxLen, const std::string & suffix)
   {
     std::vector<std::string> msgBuf = split(text, '\n');
@@ -160,8 +117,9 @@ namespace ADWIF
     extern const int Bold = 1;
     extern const int Underline = 2;
     extern const int Dim = 4;
-    extern const int StandOut = 8;
-    extern const int AltCharSet = 16;
+    extern const int Dark = 8;
+    extern const int StandOut = 16;
+    extern const int AltCharSet = 32;
   };
 
   namespace Key
