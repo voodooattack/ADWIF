@@ -30,9 +30,6 @@
 #include <boost/functional/hash/extensions.hpp>
 #include <boost/functional/hash/hash.hpp>
 
-#include <boost/lockfree/queue.hpp>
-#include <boost/asio/basic_waitable_timer.hpp>
-
 #include "map.hpp"
 
 namespace ovdb = openvdb::v1_1;
@@ -79,7 +76,7 @@ namespace ADWIF
     };
 
   public:
-    MapImpl(Map * parent, boost::asio::io_service & service, const std::shared_ptr<MapBank> & bank,
+    MapImpl(Map * parent, const std::shared_ptr<class Engine> & engine, const std::shared_ptr<MapBank> & bank,
             const std::string & mapPath, bool load, unsigned int chunkSizeX,
             unsigned int chunkSizeY, unsigned int chunkSizeZ, const MapCell & bgValue = MapCell());
     ~MapImpl();
@@ -118,7 +115,7 @@ namespace ADWIF
     unsigned long int myMemThresholdMB;
     duration_type myDurationThreshold;
     duration_type myPruningInterval;
-    boost::asio::io_service & myService;
+    std::weak_ptr<class Engine> myEngine;
     mutable boost::recursive_mutex myLock;
     mutable boost::atomic_bool myPruningInProgressFlag;
     boost::thread myPruneThread;

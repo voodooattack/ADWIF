@@ -59,6 +59,7 @@ namespace ADWIF
 {
   class HeightMapModule: public noise::module::Module
   {
+  public:
     inline static double cubicInterpolate (const double p[4], double x) {
       return p[1] + 0.5 * x*(p[2] - p[0] + x*(2.0*p[0] - 5.0*p[1] +
         4.0*p[2] - p[3] + x*(3.0*(p[1] - p[2]) + p[3] - p[0])));
@@ -73,7 +74,6 @@ namespace ADWIF
       return cubicInterpolate(arr, x);
     }
 
-  public:
     HeightMapModule(const boost::multi_array<BiomeCell, 2> & biomeMap,
                     int chunkSizeX, int chunkSizeY): Module(0), myBiomeMap(biomeMap),
                     myChunkSizeX(chunkSizeX), myChunkSizeY(chunkSizeY) { }
@@ -88,12 +88,16 @@ namespace ADWIF
       if (chunkX < xmin || chunkY < ymin || chunkX >= xmax || chunkY >= ymax)
         return 0;
 
-      if (myBiomeMap[chunkX][chunkY].flat)
-        return myBiomeMap[chunkX][chunkY].height;
+//       if (myBiomeMap[chunkX][chunkY].flat)
+//         return myBiomeMap[chunkX][chunkY].height;
 
       double m[4][4];
 
       std::memset(m, 0, 4 * 4 * sizeof(double));
+
+//       for (int j = 0; j < 4; j++)
+//         for (int i = 0; i < 4; i++)
+//           m[i][j] = myBiomeMap[chunkX][chunkY].height;
 
       int startx = 0, endx = 3;
       int starty = 0, endy = 3;
@@ -130,7 +134,8 @@ namespace ADWIF
   MapGenerator::MapGenerator(const std::shared_ptr<Game> & game):
     myGame(game), myMapImg(), myHeightMap(), myChunkSizeX(32), myChunkSizeY(32), myChunkSizeZ(16),
     myColourIndex(), myRandomEngine(), myGenerationMap(), myPriorityFlags(),
-    myBiomeMap(), myRegions(), myHeight(0), myWidth(0), myDepth(512), mySeed(time(NULL)),
+    myBiomeMap(), myRegions(), myHeight(0), myWidth(0), myDepth(512),
+    mySeed(boost::chrono::system_clock::now().time_since_epoch().count()),
     myGenerationLock(), myGeneratorCount(0), myGeneratorAbortFlag(false),
     myLastChunkX(-1), myLastChunkY(-1), myLastChunkZ(-1), myModules(), myHeightSource(), myInitialisedFlag(false)
   {
@@ -156,11 +161,11 @@ namespace ADWIF
     std::shared_ptr<noise::module::Add> addFilter(new noise::module::Add);
 
     perlinSource->SetSeed(mySeed);
-    perlinSource->SetFrequency(0.06);
-    perlinSource->SetPersistence(0.0);
+    perlinSource->SetFrequency(0.03);
+    perlinSource->SetPersistence(0.2);
     perlinSource->SetLacunarity(1.50);
     perlinSource->SetOctaveCount(4);
-    perlinSource->SetNoiseQuality(noise::QUALITY_FAST);
+    perlinSource->SetNoiseQuality(noise::QUALITY_STD);
 
     scaleBiasFilter->SetSourceModule(0, *perlinSource);
     scaleBiasFilter->SetBias(0.0);
@@ -663,6 +668,8 @@ namespace ADWIF
       myGenerationMap[x][y][z+myDepth/2] = boost::indeterminate;
     }
 
+    game()->engine()->log("MapGenerator"), boost::str(boost::format("generating cell: %ix%ix%i") % x % y % z);
+
     Map * map = game()->map().get();
 
     AtomicRefCount<std::size_t> refCount(myGeneratorCount);
@@ -682,59 +689,131 @@ namespace ADWIF
       throw std::runtime_error(boost::str(boost::format("could not find region for biome cell %ix%i") % x %y));
 
     std::vector<point> neighbours;
+
     {
-      voronoi_diagram vd;
       flat_set<point> vdpoints;
       const point coords(x,y);
 
       vdpoints.insert(coords);
 
-      std::cerr << boost::format("map cell %ix%ix%i intersects regions: ")  % x % y % z;
+      auto msg(game()->engine()->log("MapGenerator"));
+      msg, boost::format("map cell %ix%ix%i intersects regions: ") % x % y % z;
       for(auto & r : regions)
       {
-        std::cerr << r.centroid << " (" <<  r.biome << ") ";
-        std::copy(r.poly.begin(), r.poly.end(), std::inserter(vdpoints, vdpoints.end()));
+        msg, r.centroid, " (", r.biome, ") ";
+        for(const point & p : r.poly)
+          if (boost::polygon::distance_squared(p, coords) < 4)
+            vdpoints.insert(p);
       }
-      std::cerr << std::endl;
+      msg.flush();
 
-      boost::polygon::construct_voronoi(vdpoints.begin(), vdpoints.end(), &vd);
-
-      for(const voronoi_diagram::cell_type & c : vd.cells())
+      if (vdpoints.size() < 3)
       {
-        const point & p = *(vdpoints.begin() + c.source_index());
-        if (p == coords)
+        for (auto const & p : vdpoints)
+          if (p != coords)
+            neighbours.push_back(p);
+      }
+      else
+      {
+        voronoi_diagram vd;
+
+        boost::polygon::construct_voronoi(vdpoints.begin(), vdpoints.end(), &vd);
+
+        for(const voronoi_diagram::cell_type & c : vd.cells())
         {
-          const voronoi_diagram::edge_type * edge = c.incident_edge();
-          do
+          const point & p = *(vdpoints.begin() + c.source_index());
+          if (p == coords)
           {
-            const voronoi_diagram::cell_type * nc = edge->twin()->cell();
-            const point & np = *(vdpoints.begin() + nc->source_index());
-            neighbours.push_back(np);
-            edge = edge->next();
-          } while(edge != c.incident_edge());
-          break;
+            const voronoi_diagram::edge_type * edge = c.incident_edge();
+            do
+            {
+  //             if (!edge->twin()) { edge = edge->next(); continue; } // bug?
+              const voronoi_diagram::cell_type * nc = edge->twin()->cell();
+              const point & np = *(vdpoints.begin() + nc->source_index());
+              neighbours.push_back(np);
+              edge = edge->next();
+            } while(edge != c.incident_edge());
+            break;
+          }
         }
       }
     }
 
-    std::cerr << boost::format("found %i neighbours for cell %ix%ix%i: ") % neighbours.size() % x % y % z;
+    auto msg(game()->engine()->log("MapGenerator"));
+    msg, boost::format("found %i neighbours for cell %ix%ix%i: ") % neighbours.size() % x % y % z;
     for(const point & p : neighbours)
-      std::cerr << p << " (" << myBiomeMap[p.x()][p.y()].name << ") ";
-    std::cerr << std::endl;
+      msg, p, " (", myBiomeMap[p.x()][p.y()].name, ") ";
+    msg.flush();
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    std::vector<std::string> possible;
+    std::vector<double> probabilities;
+
+    possible.assign(biome->materials.begin(), biome->materials.end());
+
+    for (const point & p : neighbours)
+    {
+      Biome * b = game()->biomes()[myBiomeMap[p.x()][p.y()].name];
+//       std::copy(b->materials.begin(), b->materials.end(), std::back_inserter(possible));
+      for (const std::string m : b->materials)
+//         if (!game()->materials()[m]->liquid)
+      {
+        double dist = boost::polygon::distance_squared(point(x,y), p);
+        probabilities.push_back(dist ? 1/dist : 1);
+        possible.push_back(m);
+      }
+    }
+
+    std::discrete_distribution<int> dd(probabilities.begin(), probabilities.end());
     std::uniform_int_distribution<int> ud(0, biome->materials.size()-1);
     std::bernoulli_distribution bd(0.001);
 
-    auto getHeight = [&](unsigned int x, unsigned int y) -> int {
-      if (biome->flat)
-        return floor(myHeightMapModule->GetValue(x, y, 0) * (myDepth * myChunkSizeZ / 2));
-      else
-        return floor(myHeightSource->GetValue(x, y, 0) * (myDepth * myChunkSizeZ / 2));
-    };
+    game()->engine()->log("MapGenerator"), "possible materials: ", possible.size();
+
+    std::function<std::string(int,int,int,int)> getMaterial;
+
+    noise::module::Perlin perlinMat;
+    noise::module::ScaleBias scaleMat;
+    noise::module::Clamp clampMat;
+
+    if (possible.size() > 1)
+    {
+      perlinMat.SetSeed(mySeed << 2);
+      perlinMat.SetFrequency(0.06);
+      perlinMat.SetPersistence(0.4);
+      perlinMat.SetLacunarity(1.50);
+      perlinMat.SetOctaveCount(possible.size());
+      perlinMat.SetNoiseQuality(noise::QUALITY_FAST);
+
+      scaleMat.SetSourceModule(0, perlinMat);
+      scaleMat.SetBias(possible.size());
+      scaleMat.SetScale(possible.size());
+
+      clampMat.SetSourceModule(0, scaleMat);
+      clampMat.SetBounds(0, possible.size()-1);
+
+      getMaterial = [&](int xx, int yy, int zz, int height) -> std::string
+      {
+//         int idx = floor(clampMat.GetValue(xx,yy,zz));
+        int idx = dd(myRandomEngine);
+//         std::cerr << clampType.GetValue(xx,yy,zz) << std::endl;
+        return possible[idx];
+      };
+    }
+    else
+      getMaterial = [&](int xx, int yy, int zz, int height) -> std::string { return possible[0]; };
 
     int counter = 0;
+
+
+    auto getHeight = [&](unsigned int x, unsigned int y) -> int {
+      if (biome->flat)
+        return 0;
+//         return floor(myHeightMapModule->GetValue(x, y, 0) * myChunkSizeZ * (myDepth / 2));
+      else
+        return floor(myHeightSource->GetValue(x, y, 0) * myChunkSizeZ * (myDepth / 2));
+    };
 
     auto generateCell = [&](int xx, int yy, int zz, int height)
     {
@@ -742,7 +821,7 @@ namespace ADWIF
       if (c.generated && !regenerate) return;
       if (!c.generated)
       {
-        std::string smat = biome->materials[ud(myRandomEngine)];
+        std::string smat = getMaterial(xx, yy, zz, height);
         c.material = smat;
         c.cmaterial = game()->materials()[smat];
       }
@@ -757,11 +836,7 @@ namespace ADWIF
         if ((getHeight(xx+1,yy) == height + 1 ||
           getHeight(xx,yy+1) == height + 1 ||
           getHeight(xx-1,yy) == height + 1 ||
-          getHeight(xx,yy-1) == height + 1 ||
-          getHeight(xx+1,yy+1) == height + 1 ||
-          getHeight(xx+1,yy-1) == height + 1 ||
-          getHeight(xx-1,yy-1) == height + 1 ||
-          getHeight(xx-1,yy+1) == height + 1))
+          getHeight(xx,yy-1) == height + 1))
         {
           if (!c.cmaterial->liquid)
           {
@@ -818,72 +893,74 @@ namespace ADWIF
 
     // PASS 2 ============================================================================
 
-    for (unsigned int yy = offy; yy < offy + myChunkSizeY; yy++)
-    {
-      if (cooperative && !myPriorityFlags[x][y][z+myDepth/2] && counter++ % 100 == 0)
-        game()->engine()->scheduler()->yield();
-      for (unsigned int xx = offx; xx < offx + myChunkSizeX; xx++)
-      {
-        if (myGeneratorAbortFlag)
-        {
-          boost::recursive_mutex::scoped_lock guard(myGenerationLock);
-          myGenerationMap[x][y][z+myDepth/2] = false;
-          return;
-        }
-
-        int height = getHeight(xx,yy);
-        for (int zz = offz; zz <= (offz + myChunkSizeZ > height ? height : offz + myChunkSizeZ); zz++)
-        {
-          MapCell c(map->get(xx, yy, zz));
-          if (c.cmaterial && c.cmaterial->liquid)
-          {
-            c.visible = true;
-            map->set(xx, yy, zz, c);
-            for (int i = -1; i <= 1; i++)
-              for (int j = -1; j <= 1; j++)
-//                 for (int k = -1; k <= 1; k++)
-                {
-                  MapCell cc(map->get(xx+i,yy+j,zz/*+k*/));
-                  if (!cc.visible)
-                  {
-                    cc.visible = true;
-                    map->set(xx+i,yy+j,zz/*+k*/, cc);
-                  }
-                }
-          }
-          else if (c.type == TerrainType::Wall)
-          {
-            const MapCell & w = map->get(xx-1, yy, zz);
-            const MapCell & e = map->get(xx+1, yy, zz);
-            const MapCell & n = map->get(xx, yy-1, zz);
-            const MapCell & s = map->get(xx, yy+1, zz);
-
-            double hw = getHeight(xx-1, yy);
-            double he = getHeight(xx+1, yy);
-            double hn = getHeight(xx, yy-1);
-            double hs = getHeight(xx, yy+1);
-
-            if (
-              ((he < zz || (!e.background && e.type != TerrainType::Wall)) ||
-               (hw < zz || (!w.background && w.type != TerrainType::Wall)) ||
-               (hs < zz || (!s.background && s.type != TerrainType::Wall)) ||
-               (hn < zz || (!n.background && n.type != TerrainType::Wall)) ||
-               (!e.background && e.cmaterial && e.cmaterial->liquid) ||
-               (!e.background && w.cmaterial && w.cmaterial->liquid) ||
-               (!e.background && s.cmaterial && s.cmaterial->liquid) ||
-               (!e.background && n.cmaterial && n.cmaterial->liquid)))
-              c.visible = true;
-            map->set(xx, yy, zz, c);
-          }
-        }
-      }
-    }
+//     for (unsigned int yy = offy; yy < offy + myChunkSizeY; yy++)
+//     {
+//       if (cooperative && !myPriorityFlags[x][y][z+myDepth/2] && counter++ % 100 == 0)
+//         game()->engine()->scheduler()->yield();
+//       for (unsigned int xx = offx; xx < offx + myChunkSizeX; xx++)
+//       {
+//         if (myGeneratorAbortFlag)
+//         {
+//           boost::recursive_mutex::scoped_lock guard(myGenerationLock);
+//           myGenerationMap[x][y][z+myDepth/2] = false;
+//           return;
+//         }
+//
+//         int height = getHeight(xx,yy);
+//         for (int zz = offz; zz <= (offz + myChunkSizeZ > height ? height : offz + myChunkSizeZ); zz++)
+//         {
+//           MapCell c(map->get(xx, yy, zz));
+//           if (c.cmaterial && c.cmaterial->liquid)
+//           {
+//             c.visible = true;
+//             map->set(xx, yy, zz, c);
+//             for (int i = -1; i <= 1; i++)
+//               for (int j = -1; j <= 1; j++)
+// //                 for (int k = -1; k <= 1; k++)
+//                 {
+//                   MapCell cc(map->get(xx+i,yy+j,zz/*+k*/));
+//                   if (!cc.visible)
+//                   {
+//                     cc.visible = true;
+//                     map->set(xx+i,yy+j,zz/*+k*/, cc);
+//                   }
+//                 }
+//           }
+//           else if (c.type == TerrainType::Wall)
+//           {
+//             const MapCell & w = map->get(xx-1, yy, zz);
+//             const MapCell & e = map->get(xx+1, yy, zz);
+//             const MapCell & n = map->get(xx, yy-1, zz);
+//             const MapCell & s = map->get(xx, yy+1, zz);
+//
+//             double hw = getHeight(xx-1, yy);
+//             double he = getHeight(xx+1, yy);
+//             double hn = getHeight(xx, yy-1);
+//             double hs = getHeight(xx, yy+1);
+//
+//             if (
+//               ((he < zz || (!e.background && e.type != TerrainType::Wall)) ||
+//                (hw < zz || (!w.background && w.type != TerrainType::Wall)) ||
+//                (hs < zz || (!s.background && s.type != TerrainType::Wall)) ||
+//                (hn < zz || (!n.background && n.type != TerrainType::Wall)) ||
+//                (!e.background && e.cmaterial && e.cmaterial->liquid) ||
+//                (!e.background && w.cmaterial && w.cmaterial->liquid) ||
+//                (!e.background && s.cmaterial && s.cmaterial->liquid) ||
+//                (!e.background && n.cmaterial && n.cmaterial->liquid)))
+//               c.visible = true;
+//             map->set(xx, yy, zz, c);
+//           }
+//         }
+//       }
+//     }
 
     {
       boost::recursive_mutex::scoped_lock guard(myGenerationLock);
       myGenerationMap[x][y][z+myDepth/2] = true;
       myPriorityFlags[x][y][z+myDepth/2] = false;
     }
+
+    game()->engine()->log("MapGenerator"), boost::str(boost::format("generated cell: %ix%ix%i") % x % y % z);
   }
 
   void MapGenerator::notifyLoad() {  }
@@ -912,7 +989,7 @@ namespace ADWIF
           for (int k = -r; k <= r; k++)
             if (isGenerated(chunkX+i, chunkY+j, chunkZ+k) == false)
               if (!(i == 0 && j == 0 && k == 0))
-              game()->engine()->scheduler()->schedule(boost::bind<void>(&MapGenerator::generateOne, shared_from_this(),
+              game()->engine()->scheduler()->schedule(boost::bind<void>(&MapGenerator::generateOne, this,
                                                       chunkX+i, chunkY+j, chunkZ+k, false, true));
     }
 

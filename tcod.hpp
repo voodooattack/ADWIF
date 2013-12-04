@@ -38,7 +38,8 @@ namespace ADWIF
   public:
     virtual bool init()
     {
-      TCODConsole::initRoot (80, 48, "A Dance with Ice and Fire", false, TCOD_RENDERER_GLSL);
+//       TCODConsole::setCustomFont("font.png", TCOD_FONT_LAYOUT_ASCII_INROW | TCOD_FONT_TYPE_GREYSCALE, 32, 2048);
+      TCODConsole::initRoot (80, 48, "A Dance with Ice and Fire", false, TCOD_RENDERER_SDL);
       TCODConsole::root->setDefaultBackground(TCODColor::black);
       TCODConsole::root->setDefaultForeground(TCODColor::silver);
       TCODConsole::root->setBackgroundFlag(TCOD_BKGND_SET);
@@ -132,12 +133,12 @@ namespace ADWIF
     {
       switch (c)
       {
-        case 'l': c = TCOD_CHAR_NW; break;
-        case 'q': c = TCOD_CHAR_HLINE; break;
-        case 'x': c = TCOD_CHAR_VLINE; break;
-        case 'k': c = TCOD_CHAR_NE; break;
-        case 'j': c = TCOD_CHAR_SE; break;
-        case 'm': c = TCOD_CHAR_SW; break;
+        case 'l': c = (T)TCOD_CHAR_NW; break;
+        case 'q': c = (T)TCOD_CHAR_HLINE; break;
+        case 'x': c = (T)TCOD_CHAR_VLINE; break;
+        case 'k': c = (T)TCOD_CHAR_NE; break;
+        case 'j': c = (T)TCOD_CHAR_SE; break;
+        case 'm': c = (T)TCOD_CHAR_SW; break;
       }
     }
 
@@ -253,6 +254,8 @@ namespace ADWIF
       }
       if (key.vk == TCODK_SPACE)
         return ' ';
+      if (key.vk == TCODK_KPENTER)
+        return Key::Enter;
       if (key.vk != TCODK_NONE && key.vk != TCODK_CHAR)
         return (key.vk<<16);
       else if (key.c)

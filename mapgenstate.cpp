@@ -29,6 +29,7 @@
 #include <physfs.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/format.hpp>
 #include <fstream>
 #include <stdio.h>
 
@@ -49,11 +50,29 @@ namespace ADWIF
   {
     myGame->createMap();
 
+    myViewOffX = 170 * myGame->generator()->chunkSizeX();
+    myViewOffY = 180 * myGame->generator()->chunkSizeY();
+    myViewOffZ = 34;
+
 //     myViewOffX = 171 * myGame->generator()->chunkSizeX();
 //     myViewOffY = 169 * myGame->generator()->chunkSizeY();
-    myViewOffX = 0;
-    myViewOffY = 0;
-    myViewOffZ = 0;
+//     myViewOffZ = 0;
+
+//     myViewOffX = 67556;
+//     myViewOffY = 63187;
+//     myViewOffZ = 34;
+
+//     myViewOffX = 68772;
+//     myViewOffY = 40306;
+//     myViewOffZ = -92;
+
+//     myViewOffX = 68366;
+//     myViewOffY = 40959;
+//     myViewOffZ = 0;
+
+//     myViewOffX = 0;
+//     myViewOffY = 0;
+//     myViewOffZ = 0;
 
     myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
                                         myViewOffY + myEngine->renderer()->height() / 2,
@@ -68,14 +87,16 @@ namespace ADWIF
 
   void MapGenState::step()
   {
+    int chunkX = myViewOffX / myGame->generator()->chunkSizeX();
+    int chunkY = myViewOffY / myGame->generator()->chunkSizeY();
+    int chunkZ = myViewOffZ / myGame->generator()->chunkSizeZ();
+
     myEngine->renderer()->clear();
     myEngine->renderer()->drawRegion(myViewOffX, myViewOffY, myViewOffZ, myEngine->renderer()->width(),
                                      myEngine->renderer()->height(), 0, 0, myGame.get(), myGame->map().get());
     myEngine->renderer()->style(White, Black, Style::Bold);
     myEngine->renderer()->drawChar(myEngine->renderer()->width() / 2, myEngine->renderer()->height() / 2, '@');
-    std::string str = "Position: " + boost::lexical_cast<std::string>(myViewOffX) +
-      "x" + boost::lexical_cast<std::string>(myViewOffY) +
-      "x" + boost::lexical_cast<std::string>(myViewOffZ);
+    std::string str = boost::str(boost::format("Position %ix%ix%i (%ix%ix%i)") % myViewOffX % myViewOffY % myViewOffZ % chunkX % chunkY % chunkZ);
     myEngine->renderer()->style(White, Black, Style::Bold);
     myEngine->renderer()->drawText(1,1, str + std::string(myEngine->renderer()->width() - 2 - str.size(),  ' '));
   }

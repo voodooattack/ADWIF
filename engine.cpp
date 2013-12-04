@@ -146,4 +146,6 @@ namespace ADWIF
     //return myInput->getTimeout();
 
   }
+
+  void Log::flush() { if (myEngine) myEngine->logMessage(myMessage.str()); myEngine.reset(); }
 }

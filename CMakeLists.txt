@@ -5,6 +5,8 @@ include(cotire)
 project(adwif)
 enable_language(CXX)
 
+set(ADWIF_SOURCES imageutils.cpp mapbank.cpp mapeditorstate.cpp mapgenerator.cpp mapgenstate.cpp item.cpp map.cpp fileutils.cpp jsonutils.cpp renderer.cpp animationutils.cpp util.cpp scripting.cpp game.cpp player.cpp newgamestate.cpp introanimation.cpp animation.cpp mainmenustate.cpp introstate.cpp engine.cpp main.cpp)
+
 set(DEP_DIR ${PROJECT_SOURCE_DIR}/deps)
 set(V8_ROOT ${DEP_DIR}/v8)
 set(PHYSFS_CPP_ROOT ${DEP_DIR}/physfs-cpp)
@@ -91,7 +93,7 @@ configure_file ("${PROJECT_SOURCE_DIR}/config.hpp.in" "${PROJECT_BINARY_DIR}/con
 include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR} ${ADWIF_RENDERER_INCLUDES} ${PHYSFS_INCLUDE_DIR} ${V8_INCLUDE_DIR}
                     ${Boost_INCLUDE_DIRS} ${HALF_INCLUDE_DIRS} ${PHYSFS_CPP_ROOT}/include ${JSONCPP_INCLUDE_DIR} ${OPENVDB_INCLUDE_DIRS}
                     ${TBB_INCLUDE_DIRS} ${UTF8CPP_INCLUDE_DIR} ${FREEIMAGE_INCLUDE_PATH} ${NOISE_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIR})
-add_executable(adwif ${ADWIF_RENDERER_SOURCES} scheduler.cpp threadingutils.cpp imageutils.cpp serialisationutils.cpp mapbank.cpp mapeditorstate.cpp mapgenerator.cpp mapgenstate.cpp item.cpp map.cpp fileutils.cpp jsonutils.cpp renderer.cpp animationutils.cpp util.cpp scripting.cpp game.cpp player.cpp newgamestate.cpp introanimation.cpp animation.cpp mainmenustate.cpp introstate.cpp engine.cpp main.cpp)
+add_executable(adwif ${ADWIF_RENDERER_SOURCES} ${ADWIF_SOURCES})
 add_dependencies(adwif physfs++)
 target_link_libraries(adwif ${ADWIF_RENDERER_LIBRARIES} ${PHYSFS_LIBRARY} ${V8_LIBRARIES} ${Boost_LIBRARIES} ${HALF_LIBRARIES} ${FREEIMAGE_LIBRARIES}
                       ${CMAKE_THREAD_LIBS_INIT} ${JSONCPP_LIBRARIES} ${OPENVDB_LIBRARIES} ${TBB_LIBRARIES} ${NOISE_LIBRARY} physfs++)

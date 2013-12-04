@@ -316,7 +316,7 @@ namespace ADWIF
     bg.background = true;
 
     myBank.reset(new MapBank(myIndexStream));
-    myMap.reset(new Map(engine()->service(), myBank, saveDir + dirSep + "map", false, 512, 512, 32, bg));
+    myMap.reset(new Map(engine(), myBank, saveDir + dirSep + "map", false, 512, 512, 32, bg));
 
     myGenerator.reset(new MapGenerator(shared_from_this()));
 
@@ -359,7 +359,7 @@ namespace ADWIF
     bg.symIdx = 0;
 
     myBank.reset(new MapBank(myIndexStream));
-    myMap.reset(new Map(engine()->service(), myBank, saveDir + dirSep + "map", true, 512, 512, 32, bg));
+    myMap.reset(new Map(engine(), myBank, saveDir + dirSep + "map", true, 512, 512, 32, bg));
 
     myGenerator.reset(new MapGenerator(shared_from_this()));
 
@@ -378,6 +378,7 @@ namespace ADWIF
 
   void Game::saveMap()
   {
+    myGenerator->abort();
     myMap->save();
     myBank->prune(true);
 

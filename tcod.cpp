@@ -49,7 +49,8 @@ namespace ADWIF
       myRenderer->drawText(2, msgHeight + 1, result);
       if (!suffix.empty())
         myRenderer->drawText(result.size() + 4, msgHeight + 1, suffix);
-      myRenderer->drawText(result.size() + 2, msgHeight + 1, "_");
+      myRenderer->style(Colour::White, Colour::Black, Style::Bold);
+      myRenderer->drawChar(result.size() + 2, msgHeight + 1, '_');
       myRenderer->endWindow();
       myRenderer->refresh();
 
@@ -66,16 +67,6 @@ namespace ADWIF
       else if (key >= ' ' && key <= '~' && result.size() < maxLen)
         result += (char)key;
     }
-//     wborder(myRenderer->win(), 0, 0, 0, 0, 0, 0, 0, 0);
-//     int yoff = 1;
-//     for (auto & s : msgBuf)
-//       myRenderer->drawText(2, yoff++, s);
-//     if (!suffix.empty())
-//       myRenderer->drawText(maxLen + 4, msgHeight + 1, suffix);
-//     myRenderer->refresh();
-//     wmove(myRenderer->win(), msgHeight + 1, 2);
-//     wgetnstr(myRenderer->win(), result, maxLen);
-//     reset(0);
     setTimeout(0);
     return result;
   }

@@ -60,7 +60,7 @@
     "name":"Arctic",
     "sym":".",
     "style":{"fgcolour":"Yellow", "attributes":["Dim"]},
-    "materials":["Snow", "Ice", "Dirt"],
+    "materials":["Snow"],
     "layerStart":0,
     "layerEnd:":2,
     "mapColour":"#ffffff"

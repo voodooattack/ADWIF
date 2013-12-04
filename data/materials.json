@@ -12,7 +12,14 @@
   {
     "name":"Snow",
     "disp":{
-      "Floor": [{ "sym":"." }, { "sym":"," }, { "sym":"`" }, { "sym":";" }],
+      "Floor": [{ "sym":"." }, { "sym":"," }, { "sym":"`" }, { "sym":";" },
+                { "sym":",", "style":{"attributes":["Bold"] } },
+                { "sym":".", "style":{"attributes":["Bold"] } },
+                { "sym":"`", "style":{"attributes":["Bold"] } },
+                { "sym":",", "style":{"attributes":["Dim"] } },
+                { "sym":".", "style":{"attributes":["Dim"] } },
+                { "sym":"`", "style":{"attributes":["Dim"] } }
+      ],
       "Wall":  [{ "sym":" ", "usym":"░", "style":{ "fgcolour":"Black", "bgcolour":"White" }, "attributes":["Bold"] }],
       "RampU": [{ "sym":"^", "usym":"▴" }],
       "RampD": [{ "sym":"v", "usym":"▾" }]

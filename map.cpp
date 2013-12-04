@@ -19,6 +19,7 @@
 
 #include "map.hpp"
 #include "map_p.hpp"
+#include "engine.hpp"
 
 #include <boost/filesystem.hpp>
 #include <boost/iostreams/device/file.hpp>
@@ -33,12 +34,14 @@ namespace iostreams = boost::iostreams;
 
 namespace ADWIF
 {
-  MapImpl::MapImpl(ADWIF::Map * parent, boost::asio::io_service & service, const std::shared_ptr< ADWIF::MapBank > & bank, const std::string & mapPath, bool load, unsigned int chunkSizeX, unsigned int chunkSizeY, unsigned int chunkSizeZ, const ADWIF::MapCell & bgValue):
-    myMap(parent), myChunks(), myBank(bank), myChunkSize(chunkSizeX, chunkSizeY, chunkSizeZ),
+  MapImpl::MapImpl(ADWIF::Map * parent, const std::shared_ptr<class Engine> & engine,
+                   const std::shared_ptr< ADWIF::MapBank > & bank, const std::string & mapPath,
+                   bool load, unsigned int chunkSizeX, unsigned int chunkSizeY, unsigned int chunkSizeZ,
+                   const ADWIF::MapCell & bgValue):
+    myMap(parent), myEngine(engine), myChunks(), myBank(bank), myChunkSize(chunkSizeX, chunkSizeY, chunkSizeZ),
     myAccessTolerance(200000), myBackgroundValue(0), myMapPath(mapPath), myClock(),
     myAccessCounter(0), myMemThresholdMB(2048), myDurationThreshold(boost::chrono::minutes(1)),
-    myPruningInterval(boost::chrono::seconds(10)), myService(service),
-    myLock(), myPruningInProgressFlag()/*, myPruneTimer(myService)*/
+    myPruningInterval(boost::chrono::seconds(10)),myLock(), myPruningInProgressFlag()/*, myPruneTimer(myService)*/
   {
     if (!myInitialisedFlag)
     {
@@ -126,21 +129,21 @@ namespace ADWIF
     }
 
     accessTimesSorted.erase(std::remove_if(accessTimesSorted.begin(), accessTimesSorted.end(),
-                            [](const std::pair<Vec3Type, std::shared_ptr<Chunk>> pair)
+                            [&](const std::pair<Vec3Type, std::shared_ptr<Chunk>> pair)
                             {
                               //if (!pair.second || !pair.second->grid)
-                                // std::cerr << "discarding (empty): " << pair.second->pos << std::endl;
+                              //  myEngine.lock()->log(), "discarding (empty): ", pair.second->pos;
                               return !pair.second || !pair.second->grid;
                             }), accessTimesSorted.end());
 
     {
       boost::recursive_mutex::scoped_lock guard(myLock);
-    std::sort(accessTimesSorted.begin(), accessTimesSorted.end(),
-              [](const std::pair<Vec3Type, std::shared_ptr<Chunk>> & first,
-                 const std::pair<Vec3Type, std::shared_ptr<Chunk>> & second)
-    {
-      return first.second->lastAccess.load() < second.second->lastAccess.load();
-    });
+      std::sort(accessTimesSorted.begin(), accessTimesSorted.end(),
+                [](const std::pair<Vec3Type, std::shared_ptr<Chunk>> & first,
+                  const std::pair<Vec3Type, std::shared_ptr<Chunk>> & second)
+      {
+        return first.second->lastAccess.load() < second.second->lastAccess.load();
+      });
     }
 
     std::size_t memUse = 0;
@@ -182,9 +185,9 @@ namespace ADWIF
         if (pruneAll || myClock.now() - i->second->lastAccess.load() > myDurationThreshold ||
             (memUse > myMemThresholdMB))
         {
-          // std::cerr << "scheduling save operation for: " << i->second->pos << std::endl;
+          myEngine.lock()->log("Map"), "scheduling save operation for: ", i->second->pos;
           if (i->second->dirty)
-            myService.dispatch(boost::bind(&MapImpl::saveChunk, this, i->second));
+            myEngine.lock()->service().dispatch(boost::bind(&MapImpl::saveChunk, this, i->second));
           else
           {
             i->second->grid.reset();
@@ -237,8 +240,7 @@ namespace ADWIF
 
   void MapImpl::loadChunk(std::shared_ptr<Chunk> & chunk, boost::upgrade_lock<boost::shared_mutex> & guard) const
   {
-    // std::cerr << "loading: " << chunk->pos << std::endl;
-//     boost::upgrade_lock<boost::shared_mutex> guard(chunk->lock);
+    myEngine.lock()->log("Map"), "loading: ", chunk->pos;
     boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
     if (boost::filesystem::exists(myMapPath + dirSep + chunk->fileName) &&
         boost::filesystem::file_size(myMapPath + dirSep + chunk->fileName))
@@ -251,13 +253,13 @@ namespace ADWIF
       ss.setCompressionEnabled(false);
       ovdb::GridPtrVecPtr vc = ss.getGrids();
       chunk->grid = ovdb::gridPtrCast<GridType>(vc->operator[](0));
-      // std::cerr << "loaded: " << chunk->pos << std::endl;
+      myEngine.lock()->log("Map"), "loaded: ", chunk->pos;
     }
     else
     {
       chunk->grid = GridType::create(myBackgroundValue);
       chunk->grid->setName(chunk->fileName);
-      // std::cerr << "created: " << chunk->pos << std::endl;
+      myEngine.lock()->log("Map"), "created: ", chunk->pos;
     }
     chunk->accessor.reset(new GridType::Accessor(chunk->grid->getAccessor()));
     chunk->lastAccess = myClock.now();
@@ -268,7 +270,7 @@ namespace ADWIF
   {
     if (!chunk->dirty)
       return;
-    // std::cerr << "saving: " << chunk->pos << std::endl;
+    myEngine.lock()->log("Map"), "saving: ", chunk->pos;
     boost::upgrade_lock<boost::shared_mutex> guard(chunk->lock);
     boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
     if (!chunk->grid)
@@ -284,18 +286,18 @@ namespace ADWIF
     chunk->accessor.reset();
     chunk->grid.reset();
     chunk->dirty = false;
-    // std::cerr << "saved: " << chunk->pos << std::endl;
+    myEngine.lock()->log("Map"), "saved: ", chunk->pos;
   }
 
   const MapCell & MapImpl::background() const { return myBank->get(myBackgroundValue); }
 
   std::shared_ptr<MapBank> MapImpl::bank() const { return myBank; }
 
-  Map::Map(boost::asio::io_service & service, const std::shared_ptr<MapBank> & bank,
+  Map::Map(const std::shared_ptr<class Engine> & engine, const std::shared_ptr<MapBank> & bank,
            const std::string & mapPath, bool load, unsigned int chunkSizeX,
            unsigned int chunkSizeY, unsigned int chunkSizeZ, const MapCell & bgValue): myImpl(nullptr)
   {
-    myImpl = new MapImpl(this, service, bank, mapPath, load,
+    myImpl = new MapImpl(this, engine, bank, mapPath, load,
                          chunkSizeX, chunkSizeY, chunkSizeZ, bgValue);
   }
 

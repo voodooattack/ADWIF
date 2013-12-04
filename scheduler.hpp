@@ -18,6 +18,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/optional.hpp>
 #include <boost/thread.hpp>
+#include <boost/chrono.hpp>
 #include <boost/asio.hpp>
 #include <boost/asio/handler_type.hpp>
 #include <boost/coroutine/all.hpp>
@@ -196,7 +197,6 @@ namespace boost {
     private:
       bool process()
       {
-        service->poll();
         detail::task_base * task = 0;
         if (tasks.pop(task))
         {
@@ -221,11 +221,8 @@ namespace boost {
         {
           if (process())
             boost::this_thread::yield();
-          else
-          {
-            static boost::posix_time::time_duration period = boost::posix_time::microseconds(100);
-            boost::this_thread::sleep(period);
-          }
+          if (!service->poll_one())
+            boost::this_thread::sleep_for(boost::chrono::microseconds(200));
         }
       }
 

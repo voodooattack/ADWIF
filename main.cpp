@@ -58,7 +58,8 @@ int main(int argc, char ** argv)
 
   std::ios_base::sync_with_stdio (false);
 
-  setlocale(LC_CTYPE, "");
+//   setlocale(LC_CTYPE, "");
+  setlocale(LC_ALL, "en_US.UTF-8");
 
   PhysFS::init(argv[0]);
 

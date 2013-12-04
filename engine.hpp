@@ -25,12 +25,32 @@
 
 #include <boost/thread.hpp>
 #include <boost/asio/io_service.hpp>
+#include <boost/thread/recursive_mutex.hpp>
 
 #include "scheduler.hpp"
 
 namespace ADWIF
 {
-  class Engine
+  class Log
+  {
+  public:
+    Log(const std::shared_ptr<const class Engine> & engine, const std::string & source) : myEngine(engine) { myMessage << source << ": "; }
+    Log(const Log & other): myMessage(other.myMessage.str()), myEngine(other.myEngine) { other.myEngine.reset(); }
+    Log& operator= (const Log & other) {
+      myMessage << other.myMessage.str();
+      myEngine = other.myEngine;
+      other.myEngine.reset();
+    }
+    ~Log() { flush(); }
+    template <typename T>
+    Log& operator, (const T & message) { myMessage << message; return *this; }
+    void flush();
+  private:
+    mutable std::shared_ptr<const class Engine> myEngine;
+    mutable std::stringstream myMessage;
+  };
+
+  class Engine: public std::enable_shared_from_this<Engine>
   {
   public:
     Engine(const std::shared_ptr<class Renderer> renderer, const std::shared_ptr<class Input> input);
@@ -51,6 +71,11 @@ namespace ADWIF
 
     void addState(std::shared_ptr<class GameState> & state);
     void reportError(bool fatal, const std::string & report);
+    Log log(const std::string & source) const { return Log(shared_from_this(), source); }
+    void logMessage(const std::string & msg) const {
+      boost::recursive_mutex::scoped_lock guard (myLogMutex);
+      std::cerr << msg + "\n";
+    }
 
     std::shared_ptr<boost::cgl::scheduler> scheduler() const { return myScheduler; }
     boost::asio::io_service & service() const { return myScheduler->io_service(); }
@@ -66,6 +91,7 @@ namespace ADWIF
     unsigned int myDelay;
     bool myRunningFlag;
     std::shared_ptr<boost::cgl::scheduler> myScheduler;
+    mutable boost::recursive_mutex myLogMutex;
   };
 }
 

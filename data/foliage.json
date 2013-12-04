@@ -8,7 +8,10 @@
       "Floor": [{ "sym":"," }, { "sym":"." }, { "sym":"`" },
                 { "sym":",", "style":{"attributes":["Bold"] } },
                 { "sym":".", "style":{"attributes":["Bold"] } },
-                { "sym":"`", "style":{"attributes":["Bold"] } }
+                { "sym":"`", "style":{"attributes":["Bold"] } },
+                { "sym":",", "style":{"attributes":["Dim"] } },
+                { "sym":".", "style":{"attributes":["Dim"] } },
+                { "sym":"`", "style":{"attributes":["Dim"] } }
       ],
       "Wall":  null,
       "RampU": [{ "sym":"^", "usym":"▴" }],
