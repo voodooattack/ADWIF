@@ -50,8 +50,8 @@ namespace ADWIF
   {
     myGame->createMap();
 
-    myViewOffX = 170 * myGame->generator()->chunkSizeX();
-    myViewOffY = 180 * myGame->generator()->chunkSizeY();
+    myViewOffX = 170 * myGame->generator()->chunkSizeX() + 600;
+    myViewOffY = 180 * myGame->generator()->chunkSizeY() + 300;
     myViewOffZ = 34;
 
 //     myViewOffX = 171 * myGame->generator()->chunkSizeX();
@@ -77,6 +77,9 @@ namespace ADWIF
     myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
                                         myViewOffY + myEngine->renderer()->height() / 2,
                                         myViewOffZ);
+    myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
+                                        myViewOffY + myEngine->renderer()->height() / 2,
+                                        myViewOffZ+1, 1);
   }
 
   void MapGenState::exit()
@@ -169,6 +172,9 @@ namespace ADWIF
     myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
                                         myViewOffY + myEngine->renderer()->height() / 2,
                                         myViewOffZ, 1);
+    myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
+                                        myViewOffY + myEngine->renderer()->height() / 2,
+                                        myViewOffZ+1, 1);
   }
 
   void MapGenState::activate() { }

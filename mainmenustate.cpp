@@ -26,7 +26,6 @@
 #include "introstate.hpp"
 #include "newgamestate.hpp"
 #include "animationutils.hpp"
-#include "mapeditorstate.hpp"
 #include "game.hpp"
 
 namespace ADWIF

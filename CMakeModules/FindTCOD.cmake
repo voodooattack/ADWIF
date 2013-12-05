@@ -10,10 +10,10 @@ find_path(LIBTCOD_INCLUDE_DIR libtcod.h
 
 find_library(LIBTCOD_LIBRARY NAMES libtcod tcod
              HINTS ${DEP_DIR}/libtcod/ )
-find_library(LIBTCOD_LIBRARYXX NAMES libtcodxx tcodxx
+find_library(LIBTCODXX_LIBRARY NAMES libtcodxx tcodxx
              HINTS ${DEP_DIR}/libtcod/ )
 
-set(LIBTCOD_LIBRARIES ${LIBTCOD_LIBRARY} ${LIBTCOD_LIBRARYXX} )
+set(LIBTCOD_LIBRARIES ${LIBTCOD_LIBRARY} ${LIBTCODXX_LIBRARY} )
 set(LIBTCOD_INCLUDE_DIRS ${LIBTCOD_INCLUDE_DIR} )
 
 include(FindPackageHandleStandardArgs)

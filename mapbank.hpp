@@ -96,8 +96,8 @@ namespace ADWIF
     std::vector<Item> contents;
 
     // cached lookups
-    struct Material * cmaterial, * csmaterial;
-    struct Biome * cbiome;
+    mutable struct Material * cmaterial, * csmaterial;
+    mutable struct Biome * cbiome;
 
     virtual size_t itemCount()  { return contents.size(); }
     virtual const Item & getItem(size_t index)  { return contents[index]; }

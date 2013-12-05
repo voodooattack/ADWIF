@@ -29,7 +29,6 @@
 
 #include "map.hpp"
 #include "introstate.hpp"
-#include "mapeditorstate.hpp"
 
 #include "util.hpp"
 
@@ -66,9 +65,13 @@ int main(int argc, char ** argv)
   po::options_description odesc("Usage");
 
   odesc.add_options()
-    ("help", "show this help message")
-    ("editor", "start in map editor mode")
-    ("unicode", "start in Unicode mode (only use this if your terminal and font support it)");
+#ifdef ADWIF_UNICODE
+    ("unicode", "start in Unicode mode (only use this if your terminal and font support it)")
+#endif
+#ifdef ADWIF_EDITOR
+    ("editor", "start in game editor mode")
+#endif
+    ("help", "show this help message");
 
   po::store(po::parse_command_line(argc, argv, odesc), options);
   po::notify(options);
@@ -101,8 +104,8 @@ int main(int argc, char ** argv)
 #elif defined(ADWIF_RENDERER_USE_TCOD)
   renderer.reset(new TCODRenderer());
   input.reset(new TCODInput(renderer));
-
 #endif
+
   if (!renderer->init())
   {
     std::cerr << "Error initialising the display system." << std::endl;
@@ -117,12 +120,7 @@ int main(int argc, char ** argv)
 
   engine.reset(new Engine(renderer, input));
 
-  std::shared_ptr<GameState> state;
-
-  if(options.count("editor"))
-    state.reset(new MapEditorState(engine));
-  else
-    state.reset(new IntroState(engine));
+  std::shared_ptr<GameState> state(new IntroState(engine));
 
   engine->addState(state);
 

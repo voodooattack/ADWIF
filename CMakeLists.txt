@@ -5,7 +5,7 @@ include(cotire)
 project(adwif)
 enable_language(CXX)
 
-set(ADWIF_SOURCES imageutils.cpp mapbank.cpp mapeditorstate.cpp mapgenerator.cpp mapgenstate.cpp item.cpp map.cpp fileutils.cpp jsonutils.cpp renderer.cpp animationutils.cpp util.cpp scripting.cpp game.cpp player.cpp newgamestate.cpp introanimation.cpp animation.cpp mainmenustate.cpp introstate.cpp engine.cpp main.cpp)
+set(ADWIF_SOURCES imageutils.cpp mapbank.cpp mapgenerator.cpp mapgenstate.cpp item.cpp map.cpp fileutils.cpp jsonutils.cpp renderer.cpp animationutils.cpp util.cpp scripting.cpp game.cpp player.cpp newgamestate.cpp introanimation.cpp animation.cpp mainmenustate.cpp introstate.cpp engine.cpp main.cpp)
 
 set(DEP_DIR ${PROJECT_SOURCE_DIR}/deps)
 set(V8_ROOT ${DEP_DIR}/v8)
@@ -73,7 +73,7 @@ endif()
 option(ADWIF_UNICODE "Whether or not to use unicode output" ON)
 
 if(ADWIF_UNICODE)
-find_package(UTF8CPP REQUIRED)
+  find_package(UTF8CPP REQUIRED)
 endif()
 
 find_package(V8 REQUIRED)

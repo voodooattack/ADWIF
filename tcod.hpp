@@ -39,6 +39,7 @@ namespace ADWIF
     virtual bool init()
     {
 //       TCODConsole::setCustomFont("font.png", TCOD_FONT_LAYOUT_ASCII_INROW | TCOD_FONT_TYPE_GREYSCALE, 32, 2048);
+      TCODConsole::setCustomFont("font.png", TCOD_FONT_LAYOUT_ASCII_INROW | TCOD_FONT_TYPE_GREYSCALE);
       TCODConsole::initRoot (80, 48, "A Dance with Ice and Fire", false, TCOD_RENDERER_SDL);
       TCODConsole::root->setDefaultBackground(TCODColor::black);
       TCODConsole::root->setDefaultForeground(TCODColor::silver);
@@ -156,7 +157,7 @@ namespace ADWIF
             case Red: return TCODColor::darkestRed;
             case Green: return TCODColor::darkestGreen;
             case Yellow: return TCODColor::darkestYellow;
-            case Blue: return TCODColor::darkestBlue;
+            case Blue: return TCODColor::darkBlue;
             case Magenta: return TCODColor::darkestMagenta;
             case Cyan: return TCODColor::darkestCyan;
             case White: return TCODColor::darkestGrey;
@@ -172,7 +173,7 @@ namespace ADWIF
             case Red: return TCODColor::darkerRed;
             case Green: return TCODColor::darkerGreen;
             case Yellow: return TCODColor::darkerYellow;
-            case Blue: return TCODColor::darkerBlue;
+            case Blue: return TCODColor::blue;
             case Magenta: return TCODColor::darkerMagenta;
             case Cyan: return TCODColor::darkerCyan;
             case White: return TCODColor::grey;
@@ -188,7 +189,7 @@ namespace ADWIF
             case Red: return TCODColor::red;
             case Green: return TCODColor::green;
             case Yellow: return TCODColor::yellow;
-            case Blue: return TCODColor::blue;
+            case Blue: return TCODColor::lightBlue;
             case Magenta: return TCODColor::magenta;
             case Cyan: return TCODColor::cyan;
             case White: return TCODColor::white;

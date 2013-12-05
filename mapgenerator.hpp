@@ -195,8 +195,7 @@ namespace ADWIF
     boost::atomic_bool myGeneratorAbortFlag;
     int myLastChunkX, myLastChunkY, myLastChunkZ;
     std::vector<std::shared_ptr<noise::module::Module>> myModules;
-    std::shared_ptr<noise::module::Module> myHeightSource;
-    std::shared_ptr<noise::module::Module> myHeightMapModule;
+    std::shared_ptr<noise::module::Module> myHeightPerlin, myHeightSource, myHeightMapModule;
     bool myInitialisedFlag;
   };
 }

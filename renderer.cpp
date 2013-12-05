@@ -165,7 +165,7 @@ namespace ADWIF
             }
             else if (cc.type == TerrainType::Hole || cc.background)
             {
-              style(Colour::Cyan, Colour::Cyan, Style::Dark);
+              style(Colour::Cyan, Colour::Cyan, Style::Dim);
               drawChar(scrx + xx, scry + yy, ' ');
             }
             else

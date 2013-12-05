@@ -47,7 +47,7 @@ namespace ADWIF
     void flush();
   private:
     mutable std::shared_ptr<const class Engine> myEngine;
-    mutable std::stringstream myMessage;
+    mutable std::ostringstream myMessage;
   };
 
   class Engine: public std::enable_shared_from_this<Engine>

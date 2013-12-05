@@ -93,22 +93,22 @@ namespace ADWIF
 
       double m[4][4];
 
-      std::memset(m, 0, 4 * 4 * sizeof(double));
+//       std::memset(m, 0, 4 * 4 * sizeof(double));
 
-//       for (int j = 0; j < 4; j++)
-//         for (int i = 0; i < 4; i++)
-//           m[i][j] = myBiomeMap[chunkX][chunkY].height;
+      for (int j = 0; j < 4; j++)
+        for (int i = 0; i < 4; i++)
+          m[i][j] = myBiomeMap[chunkX][chunkY].height;
 
       int startx = 0, endx = 3;
       int starty = 0, endy = 3;
 
       while (chunkX + startx < xmin) startx++;
-      while (chunkX + startx > xmax) starty--;
+      while (chunkX + startx > xmax) startx--;
       while (chunkY + starty < ymin) starty++;
       while (chunkY + starty > ymax) starty--;
 
       while (chunkX + endx < xmin) endx++;
-      while (chunkX + endx > xmax) endy--;
+      while (chunkX + endx > xmax) endx--;
       while (chunkY + endy < ymin) endy++;
       while (chunkY + endy > ymax) endy--;
 
@@ -155,32 +155,144 @@ namespace ADWIF
 
     myModules.clear();
 
-    std::shared_ptr<HeightMapModule> heightmapSource(new HeightMapModule(myBiomeMap, myChunkSizeX, myChunkSizeY));
-    std::shared_ptr<noise::module::Perlin> perlinSource(new noise::module::Perlin);
-    std::shared_ptr<noise::module::ScaleBias> scaleBiasFilter(new noise::module::ScaleBias);
-    std::shared_ptr<noise::module::Add> addFilter(new noise::module::Add);
+//     std::shared_ptr<HeightMapModule> heightmapSource(new HeightMapModule(myBiomeMap, myChunkSizeX, myChunkSizeY));
+//     std::shared_ptr<noise::module::Perlin> perlinSource(new noise::module::Perlin);
+//     std::shared_ptr<noise::module::ScaleBias> scaleBiasFilter(new noise::module::ScaleBias);
+//     std::shared_ptr<noise::module::Add> addFilter(new noise::module::Add);
+//
+//     std::shared_ptr<noise::module::Cache> cache1(new noise::module::Cache), cache2(new noise::module::Cache),
+//                                           cache3(new noise::module::Cache);
+//
+//     perlinSource->SetSeed(mySeed);
+//     perlinSource->SetFrequency(0.01);
+//     perlinSource->SetPersistence(0.03);
+//     perlinSource->SetLacunarity(2.50);
+//     perlinSource->SetOctaveCount(5);
+//     perlinSource->SetNoiseQuality(noise::QUALITY_BEST);
+//
+//     scaleBiasFilter->SetSourceModule(0, *perlinSource);
+//     scaleBiasFilter->SetBias(0.0);
+//     scaleBiasFilter->SetScale(0.01);
+//
+//     cache2->SetSourceModule(0, *heightmapSource);
+//     cache1->SetSourceModule(0, *scaleBiasFilter);
+//
+//     addFilter->SetSourceModule(0, *cache2);
+//     addFilter->SetSourceModule(1, *cache1);
+//
+//     cache3->SetSourceModule(0, *addFilter);
+//
+//     myModules.push_back(cache1);
+//     myModules.push_back(cache2);
+//     myModules.push_back(cache3);
+//     myModules.push_back(heightmapSource);
+//     myModules.push_back(perlinSource);
+//     myModules.push_back(scaleBiasFilter);
+//     myModules.push_back(addFilter);
+//
+//     myHeightPerlin = cache1;
+//     myHeightMapModule = cache2;
+//     myHeightSource = cache3;
 
-    perlinSource->SetSeed(mySeed);
-    perlinSource->SetFrequency(0.03);
-    perlinSource->SetPersistence(0.2);
-    perlinSource->SetLacunarity(1.50);
-    perlinSource->SetOctaveCount(4);
-    perlinSource->SetNoiseQuality(noise::QUALITY_STD);
+    using namespace noise;
+    using namespace noise::module;
 
-    scaleBiasFilter->SetSourceModule(0, *perlinSource);
-    scaleBiasFilter->SetBias(0.0);
-    scaleBiasFilter->SetScale(0.005);
+    std::shared_ptr<HeightMapModule> baseHeightmapSource(new HeightMapModule(myBiomeMap, myChunkSizeX, myChunkSizeY));
+    std::shared_ptr<Cache> heightmapSource(new Cache);
 
-    addFilter->SetSourceModule(0, *heightmapSource);
-    addFilter->SetSourceModule(1, *scaleBiasFilter);
+    std::shared_ptr<Billow> baseFlatTerrain(new Billow);
+    std::shared_ptr<Turbulence> flatTerrainTurbulence(new Turbulence);
+    std::shared_ptr<ScaleBias> flatTerrain(new ScaleBias);
 
+    std::shared_ptr<Perlin> baseMountainTerrain(new Perlin);
+    std::shared_ptr<Turbulence> mountainTerrainTurbulence(new Turbulence);
+    std::shared_ptr<Cache> mountainTerrainCache(new Cache);
+    std::shared_ptr<Curve> mountainTerrainCurve(new Curve);
+    std::shared_ptr<ScaleBias> mountainTerrain(new ScaleBias);
+
+    std::shared_ptr<Select> terrainSelect(new Select);
+    std::shared_ptr<Add> terrainFinal(new Add);
+
+    myModules.push_back(baseHeightmapSource);
     myModules.push_back(heightmapSource);
-    myModules.push_back(perlinSource);
-    myModules.push_back(scaleBiasFilter);
-    myModules.push_back(addFilter);
 
-    myHeightSource = addFilter;
+    myModules.push_back(baseFlatTerrain);
+    myModules.push_back(flatTerrainTurbulence);
+    myModules.push_back(flatTerrain);
+
+    myModules.push_back(baseMountainTerrain);
+    myModules.push_back(mountainTerrainCurve);
+    myModules.push_back(mountainTerrainTurbulence);
+    myModules.push_back(mountainTerrain);
+
+    myModules.push_back(terrainSelect);
+    myModules.push_back(terrainFinal);
+
+    baseFlatTerrain->SetSeed(mySeed);
+    baseFlatTerrain->SetOctaveCount(6);
+    baseFlatTerrain->SetFrequency(0.02);
+    baseFlatTerrain->SetPersistence(0.015);
+    baseFlatTerrain->SetLacunarity(2.0);
+
+    flatTerrainTurbulence->SetSourceModule(0, *baseFlatTerrain);
+    flatTerrainTurbulence->SetSeed(mySeed);
+    flatTerrainTurbulence->SetFrequency(1.5);
+    flatTerrainTurbulence->SetPower(2);
+    flatTerrainTurbulence->SetRoughness(3);
+
+    flatTerrain->SetSourceModule(0, *flatTerrainTurbulence);
+    flatTerrain->SetBias(0);
+    flatTerrain->SetScale(0.005);
+
+    baseMountainTerrain->SetSeed(mySeed);
+    baseMountainTerrain->SetOctaveCount(4);
+    baseMountainTerrain->SetFrequency(0.01);
+    baseMountainTerrain->SetLacunarity(2.5);
+    baseMountainTerrain->SetPersistence(0.1);
+
+    mountainTerrainCurve->SetSourceModule(0, *baseMountainTerrain);
+    mountainTerrainCurve->AddControlPoint(-1, 0);
+    mountainTerrainCurve->AddControlPoint(0, 0.5);
+    mountainTerrainCurve->AddControlPoint(1, 2);
+    mountainTerrainCurve->AddControlPoint(2, 4);
+
+    mountainTerrainTurbulence->SetSourceModule(0, *mountainTerrainCurve);
+    mountainTerrainTurbulence->SetSeed(mySeed);
+    mountainTerrainTurbulence->SetFrequency(0.5);
+    mountainTerrainTurbulence->SetPower(1);
+    mountainTerrainTurbulence->SetRoughness(2);
+
+    mountainTerrain->SetSourceModule(0, *mountainTerrainTurbulence);
+    mountainTerrain->SetBias(0.0);
+    mountainTerrain->SetScale(0.5);
+
+    terrainSelect->SetSourceModule(0, *mountainTerrain);
+    terrainSelect->SetSourceModule(1, *flatTerrain);
+    terrainSelect->SetControlModule(*heightmapSource);
+    terrainSelect->SetBounds(-0.1, 0.3);
+    terrainSelect->SetEdgeFalloff(0.5);
+
+    terrainFinal->SetSourceModule(0, *terrainSelect);
+    terrainFinal->SetSourceModule(1, *heightmapSource);
+
+    myHeightSource = terrainFinal;
     myHeightMapModule = heightmapSource;
+    myHeightPerlin = flatTerrain;
+
+    fipImage im;
+    im.setSize(FREE_IMAGE_TYPE::FIT_BITMAP, chunkSizeX() * 2, chunkSizeY() * 2, 32);
+    int offy = 169 * chunkSizeY(), offx = 171 * chunkSizeX();
+    for(int y = offy; y < offy + chunkSizeY() * 2; y++)
+      for(int x = offx; x < offx + chunkSizeX() * 2; x++)
+      {
+        double v = (myHeightSource->GetValue(x, y, 0) + 1) / 2;
+//         std::cerr << v << std::endl;
+        if (v < 0) v = 0; else if (v > 1) v = 1;
+        RGBQUAD r = { v * 255, v * 255, v * 255, 255 };
+        im.setPixelColor(x-offx, y-offy, &r);
+      }
+    std::string s = saveDir + dirSep + "heightmap2.bmp";
+    im.save(s.c_str());
   }
 
   void MapGenerator::generateBiomeMap()
@@ -696,6 +808,15 @@ namespace ADWIF
 
       vdpoints.insert(coords);
 
+//       vdpoints.insert(point(x-1,y));
+//       vdpoints.insert(point(x,y-1));
+//       vdpoints.insert(point(x+1,y));
+//       vdpoints.insert(point(x,y+1));
+//       vdpoints.insert(point(x-1,y-1));
+//       vdpoints.insert(point(x+1,y-1));
+//       vdpoints.insert(point(x-1,y+1));
+//       vdpoints.insert(point(x+1,y+1));
+
       auto msg(game()->engine()->log("MapGenerator"));
       msg, boost::format("map cell %ix%ix%i intersects regions: ") % x % y % z;
       for(auto & r : regions)
@@ -751,27 +872,30 @@ namespace ADWIF
     std::vector<double> probabilities;
 
     possible.assign(biome->materials.begin(), biome->materials.end());
+    probabilities.assign(possible.size(), 1.0);
 
-    for (const point & p : neighbours)
+    if (!biome->background) for (const point & p : neighbours)
     {
-      Biome * b = game()->biomes()[myBiomeMap[p.x()][p.y()].name];
-//       std::copy(b->materials.begin(), b->materials.end(), std::back_inserter(possible));
-      for (const std::string m : b->materials)
-//         if (!game()->materials()[m]->liquid)
+      if (p.x() > 0 && p.y() > 0 && p.x() < myWidth && p.y() < myHeight)
       {
-        double dist = boost::polygon::distance_squared(point(x,y), p);
-        probabilities.push_back(dist ? 1/dist : 1);
-        possible.push_back(m);
+        Biome * b = game()->biomes()[myBiomeMap[p.x()][p.y()].name];
+        for (const std::string m : b->materials)
+          if (!game()->materials()[m]->liquid)
+          {
+            double dist = boost::polygon::distance_squared(point(x,y), p);
+            probabilities.push_back(dist ? 1.0 / dist : 1.0);
+            possible.push_back(m);
+          }
       }
     }
-
-    std::discrete_distribution<int> dd(probabilities.begin(), probabilities.end());
-    std::uniform_int_distribution<int> ud(0, biome->materials.size()-1);
-    std::bernoulli_distribution bd(0.001);
 
     game()->engine()->log("MapGenerator"), "possible materials: ", possible.size();
 
     std::function<std::string(int,int,int,int)> getMaterial;
+
+    std::discrete_distribution<int> dd(probabilities.begin(), probabilities.end());
+    std::uniform_int_distribution<int> ud(0, biome->materials.size()-1);
+    std::bernoulli_distribution bd(0.001);
 
     noise::module::Perlin perlinMat;
     noise::module::ScaleBias scaleMat;
@@ -783,21 +907,49 @@ namespace ADWIF
       perlinMat.SetFrequency(0.06);
       perlinMat.SetPersistence(0.4);
       perlinMat.SetLacunarity(1.50);
-      perlinMat.SetOctaveCount(possible.size());
+      perlinMat.SetOctaveCount(1);
       perlinMat.SetNoiseQuality(noise::QUALITY_FAST);
 
-      scaleMat.SetSourceModule(0, perlinMat);
-      scaleMat.SetBias(possible.size());
-      scaleMat.SetScale(possible.size());
+      scaleMat.SetSourceModule(0, *myHeightPerlin);
+      scaleMat.SetBias(2);
+      scaleMat.SetScale(possible.size() * 0.005);
 
       clampMat.SetSourceModule(0, scaleMat);
       clampMat.SetBounds(0, possible.size()-1);
 
       getMaterial = [&](int xx, int yy, int zz, int height) -> std::string
       {
-//         int idx = floor(clampMat.GetValue(xx,yy,zz));
-        int idx = dd(myRandomEngine);
-//         std::cerr << clampType.GetValue(xx,yy,zz) << std::endl;
+//         double closest = -1;
+//         int iclosest = -1;
+//         for (int i = 0; i < neighbours.size(); i++)
+//         {
+//           int nx = neighbours[i].x() * myChunkSizeX + myChunkSizeX / 2.0,
+//               ny = neighbours[i].y() * myChunkSizeY + myChunkSizeY / 2.0;
+//           double dist = boost::polygon::distance_squared(point(xx,yy), point(nx,ny));
+//           if (closest == -1 || dist < closest)
+//           {
+//             closest = dist;
+//             iclosest = i;
+//             if (dist == 0) break;
+//           }
+//         }
+//
+//         if (iclosest == -1)
+//           return possible[0];
+//
+//         const Biome * b = game()->biomes()[myBiomeMap[neighbours[iclosest].x()][neighbours[iclosest].y()].name];
+//         std::uniform_int_distribution<int> udd(0, b->materials.size()-1);
+//         int nx = neighbours[iclosest].x() * myChunkSizeX + myChunkSizeX / 2.0,
+//             ny = neighbours[iclosest].y() * myChunkSizeY + myChunkSizeY / 2.0;
+//         int cx = xx / myChunkSizeX + myChunkSizeX / 2.0, cy = yy / myChunkSizeY + myChunkSizeY / 2.0;
+//         if (boost::polygon::distance_squared(point(xx,yy), point(nx,ny)) <
+//             boost::polygon::distance_squared(point(nx,ny), point(cx,cy)) / 2.0)
+//           return b->materials[udd(myRandomEngine)];
+//         else
+//           return biome->materials[ud(myRandomEngine)];
+        int idx = floor(clampMat.GetValue(xx,yy,zz));
+//         int idx = dd(myRandomEngine);
+// //         std::cerr << clampType.GetValue(xx,yy,zz) << std::endl;
         return possible[idx];
       };
     }
@@ -807,12 +959,12 @@ namespace ADWIF
     int counter = 0;
 
 
-    auto getHeight = [&](unsigned int x, unsigned int y) -> int {
+    auto getHeight = [&](unsigned int xx, unsigned int yy) -> int {
       if (biome->flat)
-        return 0;
+        return myBiomeMap[x][y].height;
 //         return floor(myHeightMapModule->GetValue(x, y, 0) * myChunkSizeZ * (myDepth / 2));
       else
-        return floor(myHeightSource->GetValue(x, y, 0) * myChunkSizeZ * (myDepth / 2));
+        return floor(myHeightSource->GetValue(xx, yy, 0) * myChunkSizeZ * (myDepth / 2));
     };
 
     auto generateCell = [&](int xx, int yy, int zz, int height)
