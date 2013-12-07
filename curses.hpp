@@ -39,6 +39,7 @@ namespace ADWIF
   {
     friend class CursesInput;
   public:
+    virtual const std::string name() const { return "curses"; }
     virtual bool init();
     virtual void shutdown() ;
     virtual int width() const;

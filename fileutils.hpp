@@ -24,14 +24,14 @@
 #include <type_traits>
 #include <vector>
 #include <string>
+#include <boost/filesystem/path.hpp>
 
 namespace ADWIF
 {
-  extern std::string dirSep;
-  extern std::string writeDir;
-  extern std::string dataDir;
-  extern std::string dataFile;
-  extern std::string saveDir;
+  extern boost::filesystem::path writeDir;
+  extern boost::filesystem::path dataDir;
+  extern boost::filesystem::path dataFile;
+  extern boost::filesystem::path saveDir;
 
   template <class T>
   bool read(std::istream& stream, T& value,

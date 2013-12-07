@@ -23,8 +23,29 @@
 
 #include "util.hpp"
 
+#include <boost/algorithm/string.hpp>
+
 namespace ADWIF
 {
+  void TCODRenderer::drawMessage(const std::string & message)
+  {
+    std::string text = wrapText(message, this->width() / 2);
+    std::vector<std::string> msgBuf;
+    boost::split(msgBuf, text, boost::is_any_of("\n"));
+    unsigned int width = 0;
+    for (auto & s : msgBuf)
+      width = (s.size() > width ? s.size() : width);
+    width += 2;
+    int msgHeight = msgBuf.size();
+    int height = 2 + msgHeight;
+
+    startWindow(this->width() / 2 - width / 2,
+                this->height() / 2 - height / 2, width, height);
+    style(Colour::White, Colour::Black, Style::Normal);
+    myConsole->printFrame(0, 0, width, height, true);
+    myConsole->print(1, 1, text.c_str());
+    endWindow();
+  }
 
   std::string TCODInput::prompt(const std::string & text, unsigned int maxLen, const std::string & suffix)
   {
@@ -102,6 +123,7 @@ namespace ADWIF
     setTimeout(0);
     return result;
   }
+
   namespace Style
   {
     extern const int Normal = 0;

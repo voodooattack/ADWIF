@@ -35,7 +35,7 @@ namespace iostreams = boost::iostreams;
 namespace ADWIF
 {
   MapImpl::MapImpl(ADWIF::Map * parent, const std::shared_ptr<class Engine> & engine,
-                   const std::shared_ptr< ADWIF::MapBank > & bank, const std::string & mapPath,
+                   const std::shared_ptr< ADWIF::MapBank > & bank, const boost::filesystem::path & mapPath,
                    bool load, unsigned int chunkSizeX, unsigned int chunkSizeY, unsigned int chunkSizeZ,
                    const ADWIF::MapCell & bgValue):
     myMap(parent), myEngine(engine), myChunks(), myBank(bank), myChunkSize(chunkSizeX, chunkSizeY, chunkSizeZ),
@@ -256,11 +256,12 @@ namespace ADWIF
   void MapImpl::loadChunk(std::shared_ptr<Chunk> & chunk, boost::upgrade_lock<boost::shared_mutex> & guard) const
   {
     boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
-    if (boost::filesystem::exists(myMapPath + dirSep + chunk->fileName) &&
-        boost::filesystem::file_size(myMapPath + dirSep + chunk->fileName))
+    boost::filesystem::path path = myMapPath / chunk->fileName;
+    if (boost::filesystem::exists(path) &&
+        boost::filesystem::file_size(path))
     {
       myEngine.lock()->log("Map"), "loading ", chunk->pos;
-      iostreams::file_source fs(myMapPath + dirSep + chunk->fileName);
+      iostreams::file_source fs(path.native());
       iostreams::filtering_istream is;
       is.push(iostreams::bzip2_decompressor());
       is.push(fs);
@@ -290,7 +291,8 @@ namespace ADWIF
     if (!chunk->grid)
       return;
     myEngine.lock()->log("Map"), "saving ", chunk->pos;
-    iostreams::file_sink fs(myMapPath + dirSep + chunk->fileName);
+    boost::filesystem::path path = myMapPath / chunk->fileName;
+    iostreams::file_sink fs(path.native());
     iostreams::filtering_ostream os;
     os.push(iostreams::bzip2_compressor());
     os.push(fs);
@@ -309,7 +311,7 @@ namespace ADWIF
   std::shared_ptr<MapBank> MapImpl::bank() const { return myBank; }
 
   Map::Map(const std::shared_ptr<class Engine> & engine, const std::shared_ptr<MapBank> & bank,
-           const std::string & mapPath, bool load, unsigned int chunkSizeX,
+           const boost::filesystem::path & mapPath, bool load, unsigned int chunkSizeX,
            unsigned int chunkSizeY, unsigned int chunkSizeZ, const MapCell & bgValue): myImpl(nullptr)
   {
     myImpl = new MapImpl(this, engine, bank, mapPath, load,

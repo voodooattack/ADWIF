@@ -17,48 +17,34 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MAP_H
-#define MAP_H
+#ifndef EDITORSTATE_HPP
+#define EDITORSTATE_HPP
 
-#include <vector>
-#include <cstdint>
-#include <algorithm>
-#include <chrono>
-#include <unordered_map>
+#include "gamestate.hpp"
+#include "editor.hpp"
+
 #include <memory>
 
-#include "fileutils.hpp"
-#include "mapbank.hpp"
-
-#include <boost/functional/hash/extensions.hpp>
-#include <boost/functional/hash/hash.hpp>
-
-#include <boost/thread.hpp>
-#include <boost/asio/io_service.hpp>
+#include <QtGui/QApplication>
 
 namespace ADWIF
 {
-  class Map
+
+  class EditorState: public GameState
   {
   public:
-    Map(const std::shared_ptr<class Engine> & engine, const std::shared_ptr<class MapBank> & bank,
-        const boost::filesystem::path & mapPath, bool load, unsigned int chunkSizeX,
-        unsigned int chunkSizeY, unsigned int chunkSizeZ, const MapCell & bgValue = MapCell());
-    ~Map();
+    EditorState(const std::shared_ptr<class Engine> & engine, int argc, char ** argv);
 
-    const MapCell & get(int x, int y, int z) const;
-    void set(int x, int y, int z, const MapCell & cell);
-
-    const MapCell & background() const;
-
-    std::shared_ptr<class MapBank> bank() const;
-
-    void prune() const;
-    void save() const;
+    virtual void init();
+    virtual void step();
+    virtual void consume(int key) { }
 
   private:
-    class MapImpl * myImpl;
+    QApplication myApp;
+    std::shared_ptr<Editor> myEditor;
+    std::shared_ptr<class Engine> myEngine;
+    std::shared_ptr<class Game> myGame;
   };
 }
 
-#endif // MAP_H
+#endif // EDITORSTATE_HPP

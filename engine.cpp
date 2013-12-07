@@ -17,14 +17,17 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "config.hpp"
 #include "engine.hpp"
 #include "renderer.hpp"
 #include "input.hpp"
 #include "gamestate.hpp"
+#include "fileutils.hpp"
 
 #include <unistd.h>
 #include <iostream>
 #include <thread>
+#include <boost/filesystem/operations.hpp>
 
 namespace ADWIF
 {
@@ -32,6 +35,7 @@ namespace ADWIF
     myRenderer(renderer), myInput(input), myDelay(50), myRunningFlag(true), myScheduler(new boost::cgl::scheduler)
   {
     myScheduler->run();
+    myLog.reset(new StdErrLogProvider);
   }
 
   Engine::~Engine()
@@ -47,6 +51,13 @@ namespace ADWIF
 
   int Engine::start()
   {
+    log("Engine"), "ADWIF revision ", ADWIF_GIT_VERSION, " starting up.";
+    log("Engine"), " renderer: ", myRenderer->name();
+    log("Engine"), " data archive: ", boost::filesystem::path(dataFile).make_preferred();
+    log("Engine"), " data directory: ", boost::filesystem::path(dataDir).make_preferred();
+    log("Engine"), " write directory: ", boost::filesystem::path(writeDir).make_preferred();
+    log("Engine"), " save directory: ", boost::filesystem::path(saveDir).make_preferred();
+
     renderer()->clear();
     bool screenCheckLast = false;
     while (myStates.size())
@@ -115,37 +126,35 @@ namespace ADWIF
       return true;
   }
 
-  void Engine::reportError(bool fatal, const std::string & report)
-  {
-    if (fatal)
-    {
-      myRunningFlag = false;
-      input()->shutdown();
-      renderer()->clear();
-      renderer()->shutdown();
-      myInput.reset();
-      myRenderer.reset();
-      std::cerr << "FATAL: ";
-    }
-    else
-      std::cerr << "ERROR: ";
-    std::cerr << report << std::endl;
-  }
+//   void Engine::reportError(bool fatal, const std::string & report)
+//   {
+//     if (fatal)
+//     {
+//       myRunningFlag = false;
+//       input()->shutdown();
+//       renderer()->clear();
+//       renderer()->shutdown();
+//       myInput.reset();
+//       myRenderer.reset();
+//       std::cerr << "FATAL: ";
+//     }
+//     else
+//       std::cerr << "ERROR: ";
+//     std::cerr << report << std::endl;
+//   }
 
   void Engine::sleep(unsigned int ms)  { std::this_thread::sleep_for(std::chrono::milliseconds(ms)); }
 
   void Engine::delay(unsigned int delay)
   {
     myDelay = delay;
-    //myInput->setTimeout(delay);
   }
 
   unsigned int Engine::delay() const
   {
     return myDelay;
-    //return myInput->getTimeout();
-
   }
 
-  void Log::flush() { if (myEngine) myEngine->logMessage(myMessage.str()); myEngine.reset(); }
+  void Log::flush() { if (myEngine) myEngine->logMessage(myLevel, mySource, myMessage.str()); myEngine.reset(); }
+
 }

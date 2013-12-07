@@ -31,14 +31,26 @@
 
 namespace ADWIF
 {
+  enum LogLevel
+  {
+    Debug,
+    Info,
+    Error,
+    Fatal
+  };
+
   class Log
   {
   public:
-    Log(const std::shared_ptr<const class Engine> & engine, const std::string & source) : myEngine(engine) { myMessage << source << ": "; }
-    Log(const Log & other): myMessage(other.myMessage.str()), myEngine(other.myEngine) { other.myEngine.reset(); }
+    Log(const std::shared_ptr<const class Engine> & engine, const std::string & source, LogLevel level = LogLevel::Info)
+      : myEngine(engine), mySource(source), myLevel(level) { }
+    Log(const Log & other): myMessage(other.myMessage.str()), myEngine(other.myEngine),
+      myLevel(other.myLevel), mySource(other.mySource) { other.myEngine.reset(); }
     Log& operator= (const Log & other) {
       myMessage << other.myMessage.str();
       myEngine = other.myEngine;
+      myLevel = other.myLevel;
+      mySource = other.mySource;
       other.myEngine.reset();
     }
     ~Log() { flush(); }
@@ -47,7 +59,34 @@ namespace ADWIF
     void flush();
   private:
     mutable std::shared_ptr<const class Engine> myEngine;
+    mutable std::string mySource;
     mutable std::ostringstream myMessage;
+    mutable LogLevel myLevel;
+  };
+
+  class LogProvider
+  {
+  public:
+    virtual void logMessage(LogLevel level, const std::string & source, const std::string & message) = 0;
+  };
+
+  class StdErrLogProvider: public LogProvider
+  {
+  public:
+    virtual void logMessage(LogLevel level, const std::string & source, const std::string & message)
+    {
+      boost::recursive_mutex::scoped_lock guard (myLogMutex);
+      switch(level)
+      {
+        case LogLevel::Debug: std::cerr << "[Debug] "; break;
+        case LogLevel::Info: std::cerr << "[Info] "; break;
+        case LogLevel::Error: std::cerr << "[Error] "; break;
+        case LogLevel::Fatal: std::cerr << "[Fatal] "; break;
+      }
+      std::cerr << source << ": " << message << std::endl;
+    }
+  private:
+    boost::recursive_mutex myLogMutex;
   };
 
   class Engine: public std::enable_shared_from_this<Engine>
@@ -70,15 +109,18 @@ namespace ADWIF
     void sleep(unsigned ms);
 
     void addState(std::shared_ptr<class GameState> & state);
-    void reportError(bool fatal, const std::string & report);
-    Log log(const std::string & source) const { return Log(shared_from_this(), source); }
-    void logMessage(const std::string & msg) const {
-      boost::recursive_mutex::scoped_lock guard (myLogMutex);
-      std::cerr << msg + "\n";
+
+    Log log(const std::string & source, LogLevel level = LogLevel::Info) const { return Log(shared_from_this(), source, level); }
+    void logMessage(LogLevel level, const std::string & source, const std::string & msg) const
+    {
+      myLog->logMessage(level, source, msg);
     }
 
     std::shared_ptr<boost::cgl::scheduler> scheduler() const { return myScheduler; }
     boost::asio::io_service & service() const { return myScheduler->io_service(); }
+
+    const std::shared_ptr<LogProvider> & logProvider() const { return myLog; }
+    void logProvider(const std::shared_ptr<LogProvider> & provider) { myLog = provider; }
 
   private:
     bool checkScreenSize();
@@ -91,7 +133,7 @@ namespace ADWIF
     unsigned int myDelay;
     bool myRunningFlag;
     std::shared_ptr<boost::cgl::scheduler> myScheduler;
-    mutable boost::recursive_mutex myLogMutex;
+    mutable std::shared_ptr<LogProvider> myLog;
   };
 }
 

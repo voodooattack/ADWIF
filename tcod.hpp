@@ -36,6 +36,7 @@ namespace ADWIF
   {
     friend class TCODInput;
   public:
+    virtual const std::string name() const { return "libtcod"; }
     virtual bool init()
     {
 //       TCODConsole::setCustomFont("font.png", TCOD_FONT_LAYOUT_ASCII_INROW | TCOD_FONT_TYPE_GREYSCALE, 32, 2048);
@@ -47,7 +48,12 @@ namespace ADWIF
       myConsole = TCODConsole::root;
       return true;
     }
-    virtual void shutdown() { }
+    virtual void shutdown() {
+      if (TCODConsole::root != myConsole)
+        delete myConsole;
+      delete TCODConsole::root;
+      TCODConsole::root = nullptr;
+    }
     virtual int width() const { return TCODConsole::root->getWidth(); }
     virtual int height() const { return TCODConsole::root->getHeight(); }
     virtual bool resized() const { return false; }
@@ -117,6 +123,7 @@ namespace ADWIF
       myConsole->setDefaultForeground(fg);
     }
 
+    virtual void drawMessage(const std::string & message);
     virtual void drawEntity(const class Entity *, int x, int y) { }
 
     virtual bool supportsMultiLayers() const { return true; }

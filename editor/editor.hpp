@@ -17,39 +17,86 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MAPGENSTATE_H
-#define MAPGENSTATE_H
+#ifndef EDITOR_H
+#define EDITOR_H
 
-#include "gamestate.hpp"
-#include "mapgenerator.hpp"
+#include <QtGui/QMainWindow>
+#include <QtGui/QTableWidget>
+#include <QtGui/QLabel>
+#include <QtGui/QProgressBar>
 
-#include <fstream>
 #include <memory>
-#include <random>
+#include "engine.hpp"
+
+namespace Ui
+{
+  class Editor;
+}
 
 namespace ADWIF
 {
-  class Engine;
   class Game;
 
-  class MapGenState: public GameState
+  class EditorLogProvider: public QObject, public LogProvider
   {
+    Q_OBJECT
   public:
-    MapGenState(const std::shared_ptr<class Engine> & engine, std::shared_ptr<class Game> & game);
-    virtual ~MapGenState();
+    EditorLogProvider() { }
+    virtual ~EditorLogProvider() { }
 
-    virtual void init();
-    virtual void step();
-    virtual void resize() { step(); }
-    virtual void consume(int key);
-    virtual void activate();
-    virtual void exit();
+    virtual void logMessage(LogLevel level, const std::string & source, const std::string & message)
+    {
+      emit onMessage(level, source.c_str(), message.c_str());
+    }
+
+  signals:
+    void onMessage(LogLevel level, const QString & source, const QString & message);
+  };
+
+  class ProgressWindow: public QWidget
+  {
+    Q_OBJECT
+
+  public:
+    explicit ProgressWindow(QWidget * parent = 0, Qt::WindowFlags f = 0): QWidget(parent, f)
+    {
+      this->setWindowModality(Qt::WindowModality::WindowModal);
+    }
+
+    virtual ~ProgressWindow() { }
+
+  };
+
+  class Editor: public QMainWindow
+  {
+    Q_OBJECT
+
+  public:
+    Editor(const std::shared_ptr<class Engine> & engine);
+    virtual ~Editor();
+
+  public slots:
+    void reloadData();
+    void createMap();
+    void refreshMap();
+
+    void dataChanged();
+    void updateProgress();
+    void onMessage(LogLevel level, const QString & source, const QString & message);
+
+  signals:
+    void onDataReloaded();
+    void onMapReady();
+    void onMapProgress(double progress);
 
   private:
     std::shared_ptr<Engine> myEngine;
     std::shared_ptr<Game> myGame;
-    int myViewOffX, myViewOffY, myViewOffZ;
+    std::shared_ptr<Ui::Editor> myUi;
+    QLabel * myStatusLabel;
+    QProgressBar * myStatusProgress;
+    QTimer * myProgressTimer;
   };
 }
 
-#endif // MAPGENSTATE_H
+#endif // EDITOR_H

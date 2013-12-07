@@ -1,11 +1,18 @@
 cmake_minimum_required(VERSION 2.8)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMakeModules" ${CMAKE_MODULE_PATH})
+
 include(cotire)
+include(GetGitRevisionDescription)
+
+get_git_head_revision(ADWIF_GIT_BRANCH ADWIF_GIT_REVISION)
 
 project(adwif)
 enable_language(CXX)
 
-set(ADWIF_SOURCES imageutils.cpp mapbank.cpp mapgenerator.cpp mapgenstate.cpp item.cpp map.cpp fileutils.cpp jsonutils.cpp renderer.cpp animationutils.cpp util.cpp scripting.cpp game.cpp player.cpp newgamestate.cpp introanimation.cpp animation.cpp mainmenustate.cpp introstate.cpp engine.cpp main.cpp)
+set(ADWIF_SOURCES imageutils.cpp mapbank.cpp mapgenerator.cpp mapgenstate.cpp item.cpp map.cpp fileutils.cpp
+                  jsonutils.cpp renderer.cpp animationutils.cpp util.cpp scripting.cpp game.cpp player.cpp
+                  newgamestate.cpp introanimation.cpp animation.cpp mainmenustate.cpp introstate.cpp engine.cpp
+                  main.cpp)
 
 set(DEP_DIR ${PROJECT_SOURCE_DIR}/deps)
 set(V8_ROOT ${DEP_DIR}/v8)
@@ -28,12 +35,12 @@ mark_as_advanced(ZIP_UNZIP_COMMAND)
 if(NOT DEFINED V8_CHECKOUT)
   #execute_process(COMMAND ${SUBVERSION_SVN_EXECUTABLE} co --force http://v8.googlecode.com/svn/trunk/ ${V8_ROOT})
   #execute_process(COMMAND make -C ${V8_ROOT} -f ${V8_ROOT}/Makefile i18nsupport=off werror=no dependencies native)
-  set(V8_CHECKOUT TRUE)
+  set(V8_CHECKOUT TRUE CACHE INTERNAL "whether or not Google V8 was checked out")
 endif()
 
 if(NOT DEFINED PHYSFS_CPP_CHECKOUT)
   execute_process(COMMAND ${GIT_EXECUTABLE} clone https://github.com/kahowell/physfs-cpp/ ${PHYSFS_CPP_ROOT})
-  set(PHYSFS_CPP_CHECKOUT TRUE)
+  set(PHYSFS_CPP_CHECKOUT TRUE CACHE INTERNAL "whether or not physfscpp was checked out")
 endif()
 
 add_subdirectory(${DEP_DIR})
@@ -70,7 +77,7 @@ elseif(ADWIF_RENDERER STREQUAL "tcod")
   set(ADWIF_RENDERER_LIBRARIES ${LIBTCOD_LIBRARIES})
 endif()
 
-option(ADWIF_UNICODE "Whether or not to use unicode output" ON)
+option(ADWIF_UNICODE "whether or not to use unicode output" ON)
 
 if(ADWIF_UNICODE)
   find_package(UTF8CPP REQUIRED)
@@ -88,15 +95,57 @@ find_package(Noise REQUIRED)
 #find_package(Eigen3 REQUIRED)
 find_package(Boost 1.54.0 COMPONENTS serialization coroutine context filesystem system iostreams regex program_options thread chrono REQUIRED)
 
+option(ADWIF_BUILD_EDITOR "whether or not to build the game editor" OFF)
+
+if (ADWIF_BUILD_EDITOR)
+  set(EDITOR_DIR "editor")
+  include_directories(${EDITOR_DIR})
+  find_package(Qt COMPONENTS QtCore QtGui QtOpenGL REQUIRED)
+  find_package(OpenGL REQUIRED)
+  include(${QT_USE_FILE})
+  set(EDITOR_INCLUDES ${QT_INCLUDES})
+  set(EDITOR_LIBRARIES ${QT_LIBRARIES} ${QT_QTOPENGL_LIBRARIES} ${OPENGL_LIBRARIES})
+  set(EDITOR_UI ${EDITOR_DIR}/editor.ui)
+  set(EDITOR_SOURCES ${EDITOR_DIR}/editor.cpp)
+  set(EDITOR_RESOURCES ${EDITOR_DIR}/resources.qrc)
+  qt4_wrap_ui(EDITOR_UI_HEADERS ${EDITOR_UI})
+  set(EDITOR_HEADERS ${EDITOR_DIR}/editor.hpp ${EDITOR_UI_HEADERS})
+  qt4_wrap_cpp(EDITOR_MOC ${EDITOR_HEADERS})
+  qt4_add_resources(EDITOR_RC ${EDITOR_RESOURCES})
+  set(ADWIF_SOURCES ${ADWIF_SOURCES} ${EDITOR_SOURCES} ${EDITOR_MOC} ${EDITOR_RC} editorstate.cpp)
+  include(ExternalProject)
+  ExternalProject_Add(QtPropertyBrowserClone
+                      GIT_REPOSITORY https://github.com/commontk/QtPropertyBrowser.git
+                      SOURCE_DIR ${PROJECT_BINARY_DIR}/QtPropertyBrowserSrc
+                      BINARY_DIR ${PROJECT_BINARY_DIR}/QtPropertyBrowser
+                      INSTALL_COMMAND "")
+  include_directories(${PROJECT_BINARY_DIR}/QtPropertyBrowserSrc/src/)
+  link_directories(${PROJECT_BINARY_DIR}/QtPropertyBrowser/bin/)
+endif()
+
+# get_cmake_property(_variableNames VARIABLES)
+# foreach (_variableName ${_variableNames})
+#     message(STATUS "${_variableName}=${${_variableName}}")
+# endforeach()
+
 configure_file ("${PROJECT_SOURCE_DIR}/config.hpp.in" "${PROJECT_BINARY_DIR}/config.hpp")
 
-include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR} ${ADWIF_RENDERER_INCLUDES} ${PHYSFS_INCLUDE_DIR} ${V8_INCLUDE_DIR}
+include_directories(${PROJECT_SOURCE_DIR} ${EDITOR_DIR} ${PROJECT_BINARY_DIR} ${EDITOR_INCLUDES}
+                    ${ADWIF_RENDERER_INCLUDES} ${PHYSFS_INCLUDE_DIR} ${V8_INCLUDE_DIR}
                     ${Boost_INCLUDE_DIRS} ${HALF_INCLUDE_DIRS} ${PHYSFS_CPP_ROOT}/include ${JSONCPP_INCLUDE_DIR} ${OPENVDB_INCLUDE_DIRS}
-                    ${TBB_INCLUDE_DIRS} ${UTF8CPP_INCLUDE_DIR} ${FREEIMAGE_INCLUDE_PATH} ${NOISE_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIR})
+                    ${TBB_INCLUDE_DIRS} ${UTF8CPP_INCLUDE_DIR} ${FREEIMAGE_INCLUDE_PATH} ${NOISE_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIR}
+                    ${QtPropertyBrowser_INCLUDE_DIRS})
 add_executable(adwif ${ADWIF_RENDERER_SOURCES} ${ADWIF_SOURCES})
 add_dependencies(adwif physfs++)
-target_link_libraries(adwif ${ADWIF_RENDERER_LIBRARIES} ${PHYSFS_LIBRARY} ${V8_LIBRARIES} ${Boost_LIBRARIES} ${HALF_LIBRARIES} ${FREEIMAGE_LIBRARIES}
-                      ${CMAKE_THREAD_LIBS_INIT} ${JSONCPP_LIBRARIES} ${OPENVDB_LIBRARIES} ${TBB_LIBRARIES} ${NOISE_LIBRARY} physfs++)
+
+if (ADWIF_BUILD_EDITOR)
+  add_dependencies(adwif QtPropertyBrowserClone)
+  target_link_libraries(adwif QtPropertyBrowser)
+endif()
+
+target_link_libraries(adwif ${EDITOR_LIBRARIES} ${ADWIF_RENDERER_LIBRARIES} ${PHYSFS_LIBRARY} ${V8_LIBRARIES} ${Boost_LIBRARIES} ${HALF_LIBRARIES}
+                      ${FREEIMAGE_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${JSONCPP_LIBRARIES} ${OPENVDB_LIBRARIES} ${TBB_LIBRARIES} ${NOISE_LIBRARY}
+                      physfs++)
 
 #add_custom_command(TARGET adwif POST_BUILD COMMENT
 #                     COMMAND ${CMAKE_COMMAND} -E copy_directory

@@ -59,6 +59,7 @@ namespace ADWIF
   {
   public:
     virtual ~Renderer() { }
+    virtual const std::string name() const = 0;
     virtual bool init() = 0;
     virtual void shutdown() = 0;
     virtual int width() const = 0;
@@ -72,6 +73,7 @@ namespace ADWIF
     virtual void endWindow() = 0;
     virtual void drawChar(int x, int y, int c) = 0;
     virtual void drawText(int x, int y, const std::string & text) = 0;
+    virtual void drawMessage(const std::string & message) = 0;
     virtual void drawEntity(const class Entity *, int x, int y) = 0;
     virtual void drawRegion(int x, int y, int z, int w, int h, int scrx, int scry, const class Game * game, class Map * map);
 

@@ -23,10 +23,9 @@
 
 namespace ADWIF
 {
-  std::string dirSep;
-  std::string writeDir;
-  std::string dataDir;
-  std::string dataFile;
-  std::string saveDir;
+  boost::filesystem::path writeDir;
+  boost::filesystem::path dataDir;
+  boost::filesystem::path dataFile;
+  boost::filesystem::path saveDir;
 }
 

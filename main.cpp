@@ -30,6 +30,10 @@
 #include "map.hpp"
 #include "introstate.hpp"
 
+#ifdef ADWIF_BUILD_EDITOR
+#include "editorstate.hpp"
+#endif
+
 #include "util.hpp"
 
 #ifdef ADWIF_RENDERER_USE_CURSES
@@ -68,7 +72,7 @@ int main(int argc, char ** argv)
 #ifdef ADWIF_UNICODE
     ("unicode", "start in Unicode mode (only use this if your terminal and font support it)")
 #endif
-#ifdef ADWIF_EDITOR
+#ifdef ADWIF_BUILD_EDITOR
     ("editor", "start in game editor mode")
 #endif
     ("help", "show this help message");
@@ -81,18 +85,17 @@ int main(int argc, char ** argv)
     return 1;
   }
 
-  dirSep = PhysFS::getDirSeparator();
-  writeDir = PhysFS::getUserDir() + dirSep + ".adwif";
-  dataDir = PhysFS::getBaseDir() + dirSep + "data";
-  dataFile = PhysFS::getBaseDir() + dirSep + "data.dat";
-  saveDir = writeDir + dirSep + "save";
+  writeDir = boost::filesystem::path(PhysFS::getUserDir()) / ".adwif";
+  dataDir = boost::filesystem::path(PhysFS::getBaseDir()) / "data";
+  dataFile = boost::filesystem::path(PhysFS::getBaseDir()) / "data.dat";
+  saveDir = writeDir / "save";
 
   boost::filesystem::create_directory(writeDir);
   boost::filesystem::create_directory(saveDir);
 
-  PhysFS::setWriteDir(writeDir);
-  PhysFS::mount(dataDir, "/", false);
-  PhysFS::mount(dataFile, "/", true);
+  PhysFS::setWriteDir(writeDir.native());
+  PhysFS::mount(dataDir.native(), "/", false);
+  PhysFS::mount(dataFile.native(), "/", true);
 
   std::shared_ptr<Renderer> renderer;
   std::shared_ptr<Input> input;
@@ -120,7 +123,16 @@ int main(int argc, char ** argv)
 
   engine.reset(new Engine(renderer, input));
 
-  std::shared_ptr<GameState> state(new IntroState(engine));
+  std::shared_ptr<GameState> state;
+
+
+#ifdef ADWIF_BUILD_EDITOR
+  if (options.count("editor")) {
+    state.reset(new EditorState(engine, argc, argv));
+  }
+  else
+#endif
+    state.reset(new IntroState(engine));
 
   engine->addState(state);
 

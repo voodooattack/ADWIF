@@ -77,7 +77,7 @@ namespace ADWIF
 
   public:
     MapImpl(Map * parent, const std::shared_ptr<class Engine> & engine, const std::shared_ptr<MapBank> & bank,
-            const std::string & mapPath, bool load, unsigned int chunkSizeX,
+            const boost::filesystem::path & mapPath, bool load, unsigned int chunkSizeX,
             unsigned int chunkSizeY, unsigned int chunkSizeZ, const MapCell & bgValue = MapCell());
     ~MapImpl();
 
@@ -109,7 +109,7 @@ namespace ADWIF
     Vec3Type myChunkSize;
     unsigned long int myAccessTolerance;
     uint64_t myBackgroundValue;
-    std::string myMapPath;
+    boost::filesystem::path myMapPath;
     clock_type myClock;
     mutable unsigned long int myAccessCounter;
     unsigned long int myMemThresholdMB;

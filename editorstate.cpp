@@ -17,48 +17,32 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MAP_H
-#define MAP_H
-
-#include <vector>
-#include <cstdint>
-#include <algorithm>
-#include <chrono>
-#include <unordered_map>
-#include <memory>
-
-#include "fileutils.hpp"
-#include "mapbank.hpp"
-
-#include <boost/functional/hash/extensions.hpp>
-#include <boost/functional/hash/hash.hpp>
-
-#include <boost/thread.hpp>
-#include <boost/asio/io_service.hpp>
+#include "editorstate.hpp"
+#include "engine.hpp"
+#include "renderer.hpp"
+#include "introstate.hpp"
 
 namespace ADWIF
 {
-  class Map
-  {
-  public:
-    Map(const std::shared_ptr<class Engine> & engine, const std::shared_ptr<class MapBank> & bank,
-        const boost::filesystem::path & mapPath, bool load, unsigned int chunkSizeX,
-        unsigned int chunkSizeY, unsigned int chunkSizeZ, const MapCell & bgValue = MapCell());
-    ~Map();
+  EditorState::EditorState(const std::shared_ptr<Engine> & engine, int argc, char ** argv) :
+  myEngine(engine), myApp(argc, argv), myEditor() { myEditor.reset(new Editor(myEngine)); }
 
-    const MapCell & get(int x, int y, int z) const;
-    void set(int x, int y, int z, const MapCell & cell);
+  void EditorState::init() {
+    myEngine->renderer()->drawMessage("Editor Mode");
+    myEditor->show();
+  }
 
-    const MapCell & background() const;
+  void EditorState::step() {
+    myEngine->renderer()->drawMessage("Editor Mode");
+    myApp.processEvents();
+    myApp.sendPostedEvents();
+    if (!myEditor->isVisible())
+    {
+//       auto state = std::shared_ptr<GameState>(new IntroState(myEngine));
+//       myEngine->addState(state);
+      done(true);
+    }
+  }
 
-    std::shared_ptr<class MapBank> bank() const;
-
-    void prune() const;
-    void save() const;
-
-  private:
-    class MapImpl * myImpl;
-  };
 }
 
-#endif // MAP_H

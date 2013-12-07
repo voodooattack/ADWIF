@@ -53,6 +53,9 @@
 
 namespace ADWIF
 {
+  class Engine;
+  class Game;
+
   typedef boost::polygon::polygon_with_holes_data<double> polygon;
   typedef boost::polygon::polygon_traits<polygon>::point_type point;
 
@@ -82,17 +85,23 @@ namespace ADWIF
   struct Region
   {
     std::string biome;
+    std::string name;
+    std::string desc;
     point centroid;
     polygon poly;
     double area;
+    bool infinite;
 
     template<class Archive>
     void serialize(Archive & ar, const unsigned int version)
     {
       ar & biome;
+      ar & name;
+      ar & desc;
       ar & centroid;
       ar & poly;
       ar & area;
+      ar & infinite;
     }
   };
 
@@ -125,6 +134,11 @@ namespace ADWIF
     int depth() const { return myDepth; }
     void depth( int depth) { myDepth = depth; }
 
+    const std::vector<Region> & regions() const { return myRegions; }
+    std::vector<Region> & regions() { return myRegions; }
+
+    int preprocessingProgress() const { return myMapPreprocessingProgress.load(); }
+
     void init();
     void generateAll();
     void generateAround( int x,  int y, int z = 0,  int radius = 1,  int radiusZ = 1);
@@ -153,8 +167,13 @@ namespace ADWIF
 
     void abort();
 
+    inline int getHeight(int x, int y)
+    {
+      return floor(myHeightSource->GetValue(x, y, 0) * myChunkSizeZ * (myDepth / 2));
+    }
+
   private:
-    void generateBiomeMap();
+    bool generateBiomeMap();
 
     boost::logic::tribool isGenerated(int x, int y, int z)
     {
@@ -196,6 +215,7 @@ namespace ADWIF
     int myLastChunkX, myLastChunkY, myLastChunkZ;
     std::vector<std::shared_ptr<noise::module::Module>> myModules;
     std::shared_ptr<noise::module::Module> myHeightPerlin, myHeightSource, myHeightMapModule;
+    boost::atomic_int myMapPreprocessingProgress;
     bool myInitialisedFlag;
   };
 }

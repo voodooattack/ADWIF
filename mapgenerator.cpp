@@ -137,10 +137,12 @@ namespace ADWIF
     myBiomeMap(), myRegions(), myHeight(0), myWidth(0), myDepth(512),
     mySeed(boost::chrono::system_clock::now().time_since_epoch().count()),
     myGenerationLock(), myGeneratorCount(0), myGeneratorAbortFlag(false),
-    myLastChunkX(-1), myLastChunkY(-1), myLastChunkZ(-1), myModules(), myHeightSource(), myInitialisedFlag(false)
+    myLastChunkX(-1), myLastChunkY(-1), myLastChunkZ(-1), myModules(), myHeightSource(),
+    myMapPreprocessingProgress(0), myInitialisedFlag(false)
   {
     myRandomEngine.seed(mySeed);
     myGeneratorAbortFlag.store(false);
+    myMapPreprocessingProgress.store(0);
   }
 
   MapGenerator::~MapGenerator() { }
@@ -149,50 +151,10 @@ namespace ADWIF
   {
     if (!myInitialisedFlag)
     {
-      generateBiomeMap();
-      myInitialisedFlag = true;
+      myInitialisedFlag = generateBiomeMap();
     }
 
     myModules.clear();
-
-//     std::shared_ptr<HeightMapModule> heightmapSource(new HeightMapModule(myBiomeMap, myChunkSizeX, myChunkSizeY));
-//     std::shared_ptr<noise::module::Perlin> perlinSource(new noise::module::Perlin);
-//     std::shared_ptr<noise::module::ScaleBias> scaleBiasFilter(new noise::module::ScaleBias);
-//     std::shared_ptr<noise::module::Add> addFilter(new noise::module::Add);
-//
-//     std::shared_ptr<noise::module::Cache> cache1(new noise::module::Cache), cache2(new noise::module::Cache),
-//                                           cache3(new noise::module::Cache);
-//
-//     perlinSource->SetSeed(mySeed);
-//     perlinSource->SetFrequency(0.01);
-//     perlinSource->SetPersistence(0.03);
-//     perlinSource->SetLacunarity(2.50);
-//     perlinSource->SetOctaveCount(5);
-//     perlinSource->SetNoiseQuality(noise::QUALITY_BEST);
-//
-//     scaleBiasFilter->SetSourceModule(0, *perlinSource);
-//     scaleBiasFilter->SetBias(0.0);
-//     scaleBiasFilter->SetScale(0.01);
-//
-//     cache2->SetSourceModule(0, *heightmapSource);
-//     cache1->SetSourceModule(0, *scaleBiasFilter);
-//
-//     addFilter->SetSourceModule(0, *cache2);
-//     addFilter->SetSourceModule(1, *cache1);
-//
-//     cache3->SetSourceModule(0, *addFilter);
-//
-//     myModules.push_back(cache1);
-//     myModules.push_back(cache2);
-//     myModules.push_back(cache3);
-//     myModules.push_back(heightmapSource);
-//     myModules.push_back(perlinSource);
-//     myModules.push_back(scaleBiasFilter);
-//     myModules.push_back(addFilter);
-//
-//     myHeightPerlin = cache1;
-//     myHeightMapModule = cache2;
-//     myHeightSource = cache3;
 
     using namespace noise;
     using namespace noise::module;
@@ -205,9 +167,9 @@ namespace ADWIF
     std::shared_ptr<ScaleBias> flatTerrain(new ScaleBias);
 
     std::shared_ptr<Perlin> baseMountainTerrain(new Perlin);
+    std::shared_ptr<Curve> mountainTerrainCurve(new Curve);
     std::shared_ptr<Turbulence> mountainTerrainTurbulence(new Turbulence);
     std::shared_ptr<Cache> mountainTerrainCache(new Cache);
-    std::shared_ptr<Curve> mountainTerrainCurve(new Curve);
     std::shared_ptr<ScaleBias> mountainTerrain(new ScaleBias);
 
     std::shared_ptr<Select> terrainSelect(new Select);
@@ -223,10 +185,13 @@ namespace ADWIF
     myModules.push_back(baseMountainTerrain);
     myModules.push_back(mountainTerrainCurve);
     myModules.push_back(mountainTerrainTurbulence);
+    myModules.push_back(mountainTerrainCache);
     myModules.push_back(mountainTerrain);
 
     myModules.push_back(terrainSelect);
     myModules.push_back(terrainFinal);
+
+    heightmapSource->SetSourceModule(0, *baseHeightmapSource);
 
     baseFlatTerrain->SetSeed(mySeed);
     baseFlatTerrain->SetOctaveCount(6);
@@ -262,7 +227,9 @@ namespace ADWIF
     mountainTerrainTurbulence->SetPower(1);
     mountainTerrainTurbulence->SetRoughness(2);
 
-    mountainTerrain->SetSourceModule(0, *mountainTerrainTurbulence);
+    mountainTerrainCache->SetSourceModule(0, *mountainTerrainTurbulence);
+
+    mountainTerrain->SetSourceModule(0, *mountainTerrainCache);
     mountainTerrain->SetBias(0.0);
     mountainTerrain->SetScale(0.5);
 
@@ -291,19 +258,22 @@ namespace ADWIF
         RGBQUAD r = { v * 255, v * 255, v * 255, 255 };
         im.setPixelColor(x-offx, y-offy, &r);
       }
-    std::string s = saveDir + dirSep + "heightmap2.bmp";
+    std::string s = (saveDir / "heightmap2.bmp").native();
     im.save(s.c_str());
   }
 
-  void MapGenerator::generateBiomeMap()
+  bool MapGenerator::generateBiomeMap()
   {
     for(auto const & b : game()->biomes())
       myColourIndex[b.second->mapColour] = b.second->name;
+
     myHeight = myMapImg.getHeight();
     myWidth = myMapImg.getWidth();
+    myMapPreprocessingProgress.store(0);
     myBiomeMap.resize(boost::extents[myWidth][myHeight]);
     myGenerationMap.resize(boost::extents[myWidth][myHeight][myDepth]);
     myPriorityFlags.resize(boost::extents[myWidth][myHeight][myDepth]);
+
     for(unsigned int y = 0; y < myHeight; y++)
       for(unsigned int x = 0; x < myWidth; x++)
       {
@@ -311,9 +281,9 @@ namespace ADWIF
 
         if (myColourIndex.find(colour) == myColourIndex.end())
         {
-          game()->engine()->reportError(true,
-            boost::str(boost::format("unknown biome colour: %x at pixel %ix%i") % colour % x % y));
-          return;
+          game()->engine()->log("MapGenerator", LogLevel::Fatal),
+            boost::str(boost::format("unknown biome colour %x at pixel %ix%i") % colour % x % y);
+          return false;
         }
 
         RGBQUAD h;
@@ -325,6 +295,8 @@ namespace ADWIF
         myBiomeMap[x][y].y = y;
         myBiomeMap[x][y].height = height;
         myBiomeMap[x][y].flat = game()->biomes()[myColourIndex[colour]]->flat;
+
+        myMapPreprocessingProgress += (1/(myWidth*myHeight)) * 20;
       }
 
       // Clustering algorithm for terrain features
@@ -365,6 +337,8 @@ namespace ADWIF
             if (!visited[n.x()][n.y()] && colour == pcolour)
             {
               visited[n.x()][n.y()] = true;
+
+              myMapPreprocessingProgress += (1/(myWidth*myHeight)) * 30;
 
               bool edge = false;
 
@@ -691,6 +665,8 @@ namespace ADWIF
           boost::mutex::scoped_lock guard(regionMutex);
           myRegions.push_back(boost::move(region));
         }
+
+        myMapPreprocessingProgress += (1 / clusters.size()) * 50;
       };
 
       for (Cluster & c : clusters)
@@ -698,61 +674,63 @@ namespace ADWIF
 
       while(clusterCompletionCount > 0) game()->engine()->service().poll_one();
 
-      for (Region & r : myRegions)
-      {
-        fipImage imageOut = myMapImg;
+      myMapPreprocessingProgress.store(100);
 
-        imageOut.convertToGrayscale();
-        imageOut.convertTo32Bits();
+//       for (Region & r : myRegions)
+//       {
+//         fipImage imageOut = myMapImg;
 //
-//         std::ofstream fsvg(saveDir + dirSep + "map" + dirSep + "svg" + dirSep + boost::lexical_cast<std::string>(i) + ".svg");
-//         boost::geometry::svg_mapper<point> mapper(fsvg, 200, 481);//,  "width=\"200\" height=\"480\"");
-//
-//         boost::geometry::model::polygon<point> po;
-
-        for (const auto & p : r.poly)
-        {
-//           boost::geometry::append(po, p);
-          //std::cerr << p << " ";
-          RGBQUAD co = { 0, 0, 255, 255 };
-          imageOut.setPixelColor(p.x(), p.y(), &co);
-        }
-//
-//         //std::cerr << "\n";
-//
-        std::uniform_int_distribution<int> randomColour(64, 192);
-//
-        for(auto i = r.poly.begin_holes(); i != r.poly.end_holes(); ++i)
-        {
-//           boost::geometry::model::ring<point> ph;
-//
-          int r = randomColour(myRandomEngine),
-              g = randomColour(myRandomEngine),
-              b = randomColour(myRandomEngine);
-//
-          for (const auto & p : *i)
-          {
-//             boost::geometry::append(ph, p);
-            RGBQUAD co = { (BYTE)r, (BYTE)g, (BYTE)b, 255 };
-            imageOut.setPixelColor(p.x(), p.y(), &co);
-          }
-//
-//           po.inners().push_back(ph);
-        }
-
-//         boost::geometry::correct(po);
-
-//         mapper.add(po);
-//         mapper.map(po, "fill-opacity:1.0;fill:" +
-//           colourToHexString(myGame->biomes()[c.biome]->mapColour) +
-//             ";stroke:rgb(0,0,0);stroke-width:1");
+//         imageOut.convertToGrayscale();
+//         imageOut.convertTo32Bits();
 // //
-        std::string fileName = saveDir + dirSep + "png" + dirSep + "out" + boost::lexical_cast<std::string>(i) + ".png";
-        imageOut.flipVertical();
-        imageOut.save(fileName.c_str());
-
-        i++;
-      }
+// //         std::ofstream fsvg(saveDir + dirSep + "map" + dirSep + "svg" + dirSep + boost::lexical_cast<std::string>(i) + ".svg");
+// //         boost::geometry::svg_mapper<point> mapper(fsvg, 200, 481);//,  "width=\"200\" height=\"480\"");
+// //
+// //         boost::geometry::model::polygon<point> po;
+//
+//         for (const auto & p : r.poly)
+//         {
+// //           boost::geometry::append(po, p);
+//           //std::cerr << p << " ";
+//           RGBQUAD co = { 0, 0, 255, 255 };
+//           imageOut.setPixelColor(p.x(), p.y(), &co);
+//         }
+// //
+// //         //std::cerr << "\n";
+// //
+//         std::uniform_int_distribution<int> randomColour(64, 192);
+// //
+//         for(auto i = r.poly.begin_holes(); i != r.poly.end_holes(); ++i)
+//         {
+// //           boost::geometry::model::ring<point> ph;
+// //
+//           int r = randomColour(myRandomEngine),
+//               g = randomColour(myRandomEngine),
+//               b = randomColour(myRandomEngine);
+// //
+//           for (const auto & p : *i)
+//           {
+// //             boost::geometry::append(ph, p);
+//             RGBQUAD co = { (BYTE)r, (BYTE)g, (BYTE)b, 255 };
+//             imageOut.setPixelColor(p.x(), p.y(), &co);
+//           }
+// //
+// //           po.inners().push_back(ph);
+//         }
+//
+// //         boost::geometry::correct(po);
+//
+// //         mapper.add(po);
+// //         mapper.map(po, "fill-opacity:1.0;fill:" +
+// //           colourToHexString(myGame->biomes()[c.biome]->mapColour) +
+// //             ";stroke:rgb(0,0,0);stroke-width:1");
+// // //
+//         std::string fileName = (saveDir / "png" / "out" / (boost::lexical_cast<std::string>(i) + ".png")).native();
+//         imageOut.flipVertical();
+//         imageOut.save(fileName.c_str());
+//
+//         i++;
+//       }
   }
 
   void MapGenerator::generateAll()
@@ -957,15 +935,6 @@ namespace ADWIF
       getMaterial = [&](int xx, int yy, int zz, int height) -> std::string { return possible[0]; };
 
     int counter = 0;
-
-
-    auto getHeight = [&](unsigned int xx, unsigned int yy) -> int {
-      if (biome->flat)
-        return myBiomeMap[x][y].height;
-//         return floor(myHeightMapModule->GetValue(x, y, 0) * myChunkSizeZ * (myDepth / 2));
-      else
-        return floor(myHeightSource->GetValue(xx, yy, 0) * myChunkSizeZ * (myDepth / 2));
-    };
 
     auto generateCell = [&](int xx, int yy, int zz, int height)
     {

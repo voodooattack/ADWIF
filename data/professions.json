@@ -40,13 +40,6 @@
     "description":"",
     "maleOnly": true
   },
-//  {
-//    "name":"Knight",
-//    "dispName": ["Knight", "Knight", "Knights"],
-//    "description":"",
-//    "title":"Ser",
-//    "maleOnly": true
-//  },
   {
     "name":"Raider",
     "dispName": ["Raider", "Raider", "Raiders"],

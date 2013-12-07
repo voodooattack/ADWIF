@@ -90,37 +90,37 @@ namespace ADWIF
 
     if (!PhysFS::exists("races.json"))
     {
-      engine()->reportError(true, "Could not locate 'races.json'");
+      engine()->log("Game", LogLevel::Fatal), "could not locate 'races.json'";
       return;
     }
 
     if (!PhysFS::exists("factions.json"))
     {
-      engine()->reportError(true, "Could not locate 'factions.json'");
+      engine()->log("Game", LogLevel::Fatal), "could not locate 'factions.json'";
       return;
     }
 
     if (!PhysFS::exists("professions.json"))
     {
-      engine()->reportError(true, "Could not locate 'professions.json'");
+      engine()->log("Game", LogLevel::Fatal), "could not locate 'professions.json'";
       return;
     }
 
     if (!PhysFS::exists("skills.json"))
     {
-      engine()->reportError(true, "Could not locate 'skills.json'");
+      engine()->log("Game", LogLevel::Fatal), "could not locate 'skills.json'";
       return;
     }
 
     if (!PhysFS::exists("biomes.json"))
     {
-      engine()->reportError(true, "Could not locate 'biomes.json'");
+      engine()->log("Game", LogLevel::Fatal), "could not locate 'biomes.json'";
       return;
     }
 
     if (!PhysFS::exists("materials.json"))
     {
-      engine()->reportError(true, "Could not locate 'materials.json'");
+      engine()->log("Game", LogLevel::Fatal), "could not locate 'materials.json'";
       return;
     }
 
@@ -130,37 +130,37 @@ namespace ADWIF
 
     if (!fraces)
     {
-      engine()->reportError(true, "Could not open 'races.json'");
+      engine()->log("Game", LogLevel::Fatal), "could not open 'races.json'";
       return;
     }
 
     if (!ffactions)
     {
-      engine()->reportError(true, "Could not open 'factions.json'");
+      engine()->log("Game", LogLevel::Fatal), "could not open 'factions.json'";
       return;
     }
 
     if (!fprofessions)
     {
-      engine()->reportError(true, "Could not open 'professions.json'");
+      engine()->log("Game", LogLevel::Fatal), "could not open 'professions.json'";
       return;
     }
 
     if (!fskills)
     {
-      engine()->reportError(true, "Could not open 'skills.json'");
+      engine()->log("Game", LogLevel::Fatal), "could not open 'skills.json'";
       return;
     }
 
     if (!fbiomes)
     {
-      engine()->reportError(true, "Could not open 'biomes.json'");
+      engine()->log("Game", LogLevel::Fatal), "could not open 'biomes.json'";
       return;
     }
 
     if (!fmaterials)
     {
-      engine()->reportError(true, "Could not open 'materials.json'");
+      engine()->log("Game", LogLevel::Fatal), "could not open 'materials.json'";
       return;
     }
 
@@ -173,8 +173,7 @@ namespace ADWIF
 
       if (!reader.parse(fskills, skills))
       {
-        engine()->reportError(true, "Error parsing 'skills.json':\n" +
-                              reader.getFormattedErrorMessages());
+        engine()->log("Game", LogLevel::Fatal), "error parsing 'skills.json':\n" + reader.getFormattedErrorMessages();
         return;
       }
 
@@ -182,7 +181,7 @@ namespace ADWIF
 
       if (mySkills.empty())
       {
-        engine()->reportError(true, "Error parsing 'skills.json': No skill information found");
+        engine()->log("Game", LogLevel::Fatal), "error parsing 'skills.json': no skill information found";
         return;
       }
 
@@ -190,8 +189,8 @@ namespace ADWIF
 
       if (!reader.parse(fprofessions, professions))
       {
-        engine()->reportError(true, "Error parsing 'professions.json':\n" +
-                              reader.getFormattedErrorMessages());
+        engine()->log("Game", LogLevel::Fatal),
+          "error parsing 'professions.json':\n" + reader.getFormattedErrorMessages();
         return;
       }
 
@@ -199,7 +198,7 @@ namespace ADWIF
 
       if (myProfessions.empty())
       {
-        engine()->reportError(true, "Error parsing 'professions.json': No profession information found");
+        engine()->log("Game", LogLevel::Fatal), "error parsing 'professions.json': no profession information found";
         return;
       }
 
@@ -207,7 +206,7 @@ namespace ADWIF
 
       if (!reader.parse(ffactions, factions))
       {
-        engine()->reportError(true, "Error parsing 'factions.json':\n" + reader.getFormattedErrorMessages());
+        engine()->log("Game", LogLevel::Fatal), "error parsing 'factions.json':\n" + reader.getFormattedErrorMessages();
         return;
       }
 
@@ -215,7 +214,7 @@ namespace ADWIF
 
       if (myFactions.empty())
       {
-        engine()->reportError(true, "Error parsing 'factions.json': No faction information found");
+        engine()->log("Game", LogLevel::Fatal), "error parsing 'factions.json': no faction information found";
         return;
       }
 
@@ -223,7 +222,7 @@ namespace ADWIF
 
       if (!reader.parse(fraces, races))
       {
-        engine()->reportError(true, "Error parsing 'races.json':\n" + reader.getFormattedErrorMessages());
+        engine()->log("Game", LogLevel::Fatal), "error parsing 'races.json':\n" + reader.getFormattedErrorMessages();
         return;
       }
 
@@ -231,7 +230,7 @@ namespace ADWIF
 
       if (myRaces.empty())
       {
-        engine()->reportError(true, "Error parsing 'races.json': No race information found");
+        engine()->log("Game", LogLevel::Fatal), "error parsing 'races.json': no race information found";
         return;
       }
 
@@ -239,8 +238,7 @@ namespace ADWIF
 
       if (!reader.parse(fmaterials, materials))
       {
-        engine()->reportError(true, "Error parsing 'materials.json':\n" +
-        reader.getFormattedErrorMessages());
+        engine()->log("Game", LogLevel::Fatal), "error parsing 'materials.json':\n" + reader.getFormattedErrorMessages();
         return;
       }
 
@@ -248,7 +246,7 @@ namespace ADWIF
 
       if (myMaterials.empty())
       {
-        engine()->reportError(true, "Error parsing 'materials.json': No material information found");
+        engine()->log("Game", LogLevel::Fatal), "error parsing 'materials.json': no material information found";
         return;
       }
 
@@ -256,8 +254,7 @@ namespace ADWIF
 
       if (!reader.parse(fbiomes, biomes))
       {
-        engine()->reportError(true, "Error parsing 'biomes.json':\n" +
-        reader.getFormattedErrorMessages());
+        engine()->log("Game", LogLevel::Fatal), "error parsing 'biomes.json':\n" + reader.getFormattedErrorMessages();
         return;
       }
 
@@ -265,7 +262,7 @@ namespace ADWIF
 
       if (myBiomes.empty())
       {
-        engine()->reportError(true, "Error parsing 'biomes.json': No biome information found");
+        engine()->log("Game", LogLevel::Fatal), "error parsing 'biomes.json': no biome information found";
         return;
       }
 
@@ -273,7 +270,7 @@ namespace ADWIF
     }
     catch (std::runtime_error & e)
     {
-      engine()->reportError(true, e.what());
+      engine()->log("Game", LogLevel::Fatal), "exception: ", e.what();
     }
   }
 
@@ -301,10 +298,10 @@ namespace ADWIF
 
   void Game::createMap()
   {
-    myIndexStream.open(saveDir + dirSep + "index",
+    myIndexStream.open((saveDir / "index").native(),
                        std::ios_base::out | std::ios_base::trunc);
     myIndexStream.close();
-    myIndexStream.open(saveDir + dirSep + "index",
+    myIndexStream.open((saveDir / "index").native(),
                        std::ios_base::binary | std::ios_base::in | std::ios_base::out);
 
     MapCell bg;
@@ -316,7 +313,7 @@ namespace ADWIF
     bg.background = true;
 
     myBank.reset(new MapBank(myIndexStream));
-    myMap.reset(new Map(engine(), myBank, saveDir + dirSep + "map", false, 512, 512, 32, bg));
+    myMap.reset(new Map(engine(), myBank, saveDir / "map", false, 512, 512, 32, bg));
 
     myGenerator.reset(new MapGenerator(shared_from_this()));
 
@@ -338,18 +335,18 @@ namespace ADWIF
 
     myGenerator->depth(128);
 
-    if (boost::filesystem::exists(saveDir + dirSep + "generator"))
-      boost::filesystem::remove(saveDir + dirSep + "generator");
+    if (boost::filesystem::exists(saveDir / "generator"))
+      boost::filesystem::remove(saveDir / "generator");
 
     myGenerator->init();
   }
 
   void Game::loadMap()
   {
-    myIndexStream.open(saveDir + dirSep + "index",
+    myIndexStream.open((saveDir / "index").native(),
                        std::ios_base::out | std::ios_base::app);
     myIndexStream.close();
-    myIndexStream.open(saveDir + dirSep + "index",
+    myIndexStream.open((saveDir / "index").native(),
                        std::ios_base::binary | std::ios_base::in | std::ios_base::out);
 
     MapCell bg;
@@ -359,13 +356,13 @@ namespace ADWIF
     bg.symIdx = 0;
 
     myBank.reset(new MapBank(myIndexStream));
-    myMap.reset(new Map(engine(), myBank, saveDir + dirSep + "map", true, 512, 512, 32, bg));
+    myMap.reset(new Map(engine(), myBank, saveDir / "map", true, 512, 512, 32, bg));
 
     myGenerator.reset(new MapGenerator(shared_from_this()));
 
-    if (boost::filesystem::exists(saveDir + dirSep + "generator"))
+    if (boost::filesystem::exists(saveDir / "generator"))
     {
-      boost::iostreams::file_source fs(saveDir + dirSep + "generator");
+      boost::iostreams::file_source fs((saveDir / "generator").native());
       boost::iostreams::filtering_istream os;
       os.push(boost::iostreams::bzip2_decompressor());
       os.push(fs);
@@ -382,7 +379,7 @@ namespace ADWIF
     myMap->save();
     myBank->prune(true);
 
-    boost::iostreams::file_sink fs(saveDir + dirSep + "generator");
+    boost::iostreams::file_sink fs((saveDir / "generator").native());
     boost::iostreams::filtering_ostream os;
     os.push(boost::iostreams::bzip2_compressor());
     os.push(fs);
@@ -412,8 +409,7 @@ namespace ADWIF
 
     if (!reader.parse(fschema, schema))
     {
-      engine()->reportError(true, "Error parsing schema 'schema/skills.json':\n" +
-      reader.getFormattedErrorMessages());
+      engine()->log("Game", LogLevel::Fatal), "error parsing schema 'schema/skills.json':\n" + reader.getFormattedErrorMessages();
       return;
     }
 
@@ -441,7 +437,7 @@ namespace ADWIF
 
   void Game::loadProfessions(const Json::Value & professions)
   {
-    const std::string errorMessage = "Error parsing 'professions.json': ";
+    const std::string errorMessage = "error parsing 'professions.json': ";
 
     PhysFS::ifstream fschema("/schema/professions.json");
     Json::Reader reader;
@@ -449,8 +445,7 @@ namespace ADWIF
 
     if (!reader.parse(fschema, schema))
     {
-      engine()->reportError(true, "Error parsing schema 'schema/professions.json':\n" +
-      reader.getFormattedErrorMessages());
+      engine()->log("Game", LogLevel::Fatal), "error parsing schema 'schema/professions.json':\n" + reader.getFormattedErrorMessages() ;
       return;
     }
 
@@ -477,7 +472,7 @@ namespace ADWIF
 
   void Game::loadRaces(const Json::Value & races)
   {
-    const std::string errorMessage = "Error parsing 'races.json': ";
+    const std::string errorMessage = "error parsing 'races.json': ";
 
     PhysFS::ifstream fschema("/schema/races.json");
     Json::Reader reader;
@@ -485,8 +480,7 @@ namespace ADWIF
 
     if (!reader.parse(fschema, schema))
     {
-      engine()->reportError(true, "Error parsing schema 'schema/races.json':\n" +
-      reader.getFormattedErrorMessages());
+      engine()->log("Game", LogLevel::Fatal), "error parsing schema 'schema/races.json':\n" + reader.getFormattedErrorMessages();
       return;
     }
 
@@ -513,7 +507,7 @@ namespace ADWIF
 
   void Game::loadFactions(const Json::Value & factions)
   {
-    const std::string errorMessage = "Error parsing 'factions.json': ";
+    const std::string errorMessage = "error parsing 'factions.json': ";
 
     PhysFS::ifstream fschema("/schema/factions.json");
     Json::Reader reader;
@@ -521,8 +515,7 @@ namespace ADWIF
 
     if (!reader.parse(fschema, schema))
     {
-      engine()->reportError(true, "Error parsing schema 'schema/factions.json':\n" +
-      reader.getFormattedErrorMessages());
+      engine()->log("Game", LogLevel::Fatal), "error parsing schema 'schema/factions.json':\n" + reader.getFormattedErrorMessages();
       return;
     }
 
@@ -562,7 +555,7 @@ namespace ADWIF
 
     myMaterials.insert({"Air", air});
 
-    const std::string errorMessage = "Error parsing 'materials.json': ";
+    const std::string errorMessage = "error parsing 'materials.json': ";
 
     PhysFS::ifstream fmaterials("/schema/materials.json");
     Json::Reader reader;
@@ -570,8 +563,8 @@ namespace ADWIF
 
     if (!reader.parse(fmaterials, schema))
     {
-      engine()->reportError(true, "Error parsing schema 'schema/materials.json':\n" +
-      reader.getFormattedErrorMessages());
+      engine()->log("Game", LogLevel::Fatal), "error parsing schema 'schema/materials.json':\n" +
+        reader.getFormattedErrorMessages();
       return;
     }
 
@@ -600,7 +593,7 @@ namespace ADWIF
   void Game::loadBiomes(Json::Value biomes)
   {
 
-    const std::string errorMessage = "Error parsing 'biomes.json': ";
+    const std::string errorMessage = "error parsing 'biomes.json': ";
 
     PhysFS::ifstream fbiomes("/schema/biomes.json");
     Json::Reader reader;
@@ -608,8 +601,7 @@ namespace ADWIF
 
     if (!reader.parse(fbiomes, schema))
     {
-      engine()->reportError(true, "Error parsing schema 'schema/biomes.json':\n" +
-      reader.getFormattedErrorMessages());
+      engine()->log("Game", LogLevel::Fatal), "error parsing schema 'schema/biomes.json':\n" + reader.getFormattedErrorMessages();
       return;
     }
 
