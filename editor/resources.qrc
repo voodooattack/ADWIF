@@ -1,1 +1,6 @@
-<RCC/>
+<RCC>
+  <qresource prefix="icons">
+    <file>resources/sum.png</file>
+    <file>resources/property.png</file>
+  </qresource>
+</RCC>

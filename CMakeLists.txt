@@ -9,10 +9,10 @@ get_git_head_revision(ADWIF_GIT_BRANCH ADWIF_GIT_REVISION)
 project(adwif)
 enable_language(CXX)
 
-set(ADWIF_SOURCES imageutils.cpp mapbank.cpp mapgenerator.cpp mapgenstate.cpp item.cpp map.cpp fileutils.cpp
-                  jsonutils.cpp renderer.cpp animationutils.cpp util.cpp scripting.cpp game.cpp player.cpp
-                  newgamestate.cpp introanimation.cpp animation.cpp mainmenustate.cpp introstate.cpp engine.cpp
-                  main.cpp)
+set(ADWIF_SOURCES noisemodules.cpp noiseutils.cpp imageutils.cpp mapbank.cpp mapgenerator.cpp mapgenstate.cpp item.cpp map.cpp
+                  fileutils.cpp jsonutils.cpp renderer.cpp animationutils.cpp util.cpp scripting.cpp game.cpp
+                  player.cpp newgamestate.cpp introanimation.cpp animation.cpp mainmenustate.cpp introstate.cpp
+                  engine.cpp main.cpp)
 
 set(DEP_DIR ${PROJECT_SOURCE_DIR}/deps)
 set(V8_ROOT ${DEP_DIR}/v8)
@@ -105,11 +105,11 @@ if (ADWIF_BUILD_EDITOR)
   include(${QT_USE_FILE})
   set(EDITOR_INCLUDES ${QT_INCLUDES})
   set(EDITOR_LIBRARIES ${QT_LIBRARIES} ${QT_QTOPENGL_LIBRARIES} ${OPENGL_LIBRARIES})
-  set(EDITOR_UI ${EDITOR_DIR}/editor.ui)
-  set(EDITOR_SOURCES ${EDITOR_DIR}/editor.cpp)
-  set(EDITOR_RESOURCES ${EDITOR_DIR}/resources.qrc)
+  set(EDITOR_UI ${EDITOR_DIR}/editor.ui ${EDITOR_DIR}/heightmapeditor.ui)
+  set(EDITOR_SOURCES ${EDITOR_DIR}/editor.cpp ${EDITOR_DIR}/heightmapeditor.cpp)
   qt4_wrap_ui(EDITOR_UI_HEADERS ${EDITOR_UI})
-  set(EDITOR_HEADERS ${EDITOR_DIR}/editor.hpp ${EDITOR_UI_HEADERS})
+  set(EDITOR_HEADERS ${EDITOR_DIR}/editor.hpp ${EDITOR_DIR}/heightmapeditor.hpp ${EDITOR_UI_HEADERS})
+  set(EDITOR_RESOURCES ${EDITOR_DIR}/resources.qrc)
   qt4_wrap_cpp(EDITOR_MOC ${EDITOR_HEADERS})
   qt4_add_resources(EDITOR_RC ${EDITOR_RESOURCES})
   set(ADWIF_SOURCES ${ADWIF_SOURCES} ${EDITOR_SOURCES} ${EDITOR_MOC} ${EDITOR_RC} editorstate.cpp)

@@ -17,33 +17,31 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef EDITORSTATE_HPP
-#define EDITORSTATE_HPP
+#ifndef HEIGHTMAPEDITOR_H
+#define HEIGHTMAPEDITOR_H
 
-#include "gamestate.hpp"
+#include <qt4/QtGui/QWidget>
 
-#include <memory>
+#include "editor.hpp"
 
-#include <QtGui/QApplication>
+namespace Ui
+{
+  class HeightMapEditor;
+}
 
 namespace ADWIF
 {
-
-  class EditorState: public GameState
+  class HeightMapEditor: public QWidget
   {
+    Q_OBJECT
   public:
-    EditorState(const std::shared_ptr<class Engine> & engine, int argc, char ** argv);
-
-    virtual void init();
-    virtual void step();
-    virtual void consume(int key) { }
+    explicit HeightMapEditor(Editor * parent = 0, Qt::WindowFlags f = 0);
+    virtual ~HeightMapEditor() { }
 
   private:
-    QApplication myApp;
-    std::shared_ptr<class Editor> myEditor;
-    std::shared_ptr<class Engine> myEngine;
-    std::shared_ptr<class Game> myGame;
+    std::shared_ptr<Ui::HeightMapEditor> myUi;
+    Editor * myEditor;
   };
 }
 
-#endif // EDITORSTATE_HPP
+#endif // HEIGHTMAPEDITOR_H

@@ -17,33 +17,4 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef EDITORSTATE_HPP
-#define EDITORSTATE_HPP
-
-#include "gamestate.hpp"
-
-#include <memory>
-
-#include <QtGui/QApplication>
-
-namespace ADWIF
-{
-
-  class EditorState: public GameState
-  {
-  public:
-    EditorState(const std::shared_ptr<class Engine> & engine, int argc, char ** argv);
-
-    virtual void init();
-    virtual void step();
-    virtual void consume(int key) { }
-
-  private:
-    QApplication myApp;
-    std::shared_ptr<class Editor> myEditor;
-    std::shared_ptr<class Engine> myEngine;
-    std::shared_ptr<class Game> myGame;
-  };
-}
-
-#endif // EDITORSTATE_HPP
+#include "noisemodules.hpp"

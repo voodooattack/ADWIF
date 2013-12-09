@@ -155,6 +155,7 @@ namespace ADWIF
       ar & myRandomEngine;
       ar & myGenerationMap;
       ar & myBiomeMap;
+      ar & myHeights;
       ar & myInitialisedFlag;
       ar & myRegions;
       ar & myHeight;
@@ -207,6 +208,7 @@ namespace ADWIF
     boost::multi_array<bool, 3> myPriorityFlags;
     boost::recursive_mutex myGenerationLock;
     boost::multi_array<BiomeCell, 2> myBiomeMap;
+    boost::multi_array<double, 2> myHeights;
     std::vector<Region> myRegions;
     int myHeight, myWidth, myDepth;
     unsigned int mySeed;

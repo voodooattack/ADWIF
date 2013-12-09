@@ -17,33 +17,37 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef EDITORSTATE_HPP
-#define EDITORSTATE_HPP
+#include "heightmapeditor.hpp"
+#include "ui_heightmapeditor.h"
 
-#include "gamestate.hpp"
-
-#include <memory>
-
-#include <QtGui/QApplication>
+#include <QtOpenGL/QGLWidget>
+#include <QStandardItemModel>
 
 namespace ADWIF
 {
-
-  class EditorState: public GameState
+  HeightMapEditor::HeightMapEditor(ADWIF::Editor * parent, Qt::WindowFlags f): QWidget(parent, f)
   {
-  public:
-    EditorState(const std::shared_ptr<class Engine> & engine, int argc, char ** argv);
+    myUi.reset(new Ui::HeightMapEditor);
+    myUi->setupUi(this);
 
-    virtual void init();
-    virtual void step();
-    virtual void consume(int key) { }
+    myUi->cellSelectView->setViewport(new QGLWidget);
+    myUi->cellSelectView->setScene(new QGraphicsScene);
+    myUi->cellSelectView->setRenderHints(QPainter::Antialiasing);
+    myUi->cellSelectView->setInteractive(true);
 
-  private:
-    QApplication myApp;
-    std::shared_ptr<class Editor> myEditor;
-    std::shared_ptr<class Engine> myEngine;
-    std::shared_ptr<class Game> myGame;
-  };
+    myUi->renderView->setViewport(new QGLWidget);
+    myUi->renderView->setScene(new QGraphicsScene);
+    myUi->renderView->setRenderHints(QPainter::Antialiasing);
+
+    QStandardItemModel * model = new QStandardItemModel;
+    QStandardItem * root = new QStandardItem;
+
+    root->setText("Add");
+    root->setIcon(QIcon(":/icons/resources/sum.png"));
+    root->setEditable(false);
+
+    model->invisibleRootItem()->appendRow(root);
+    myUi->treeView->setModel(model);
+  }
 }
 
-#endif // EDITORSTATE_HPP

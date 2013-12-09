@@ -23,16 +23,22 @@
 #include "engine.hpp"
 #include "game.hpp"
 #include "mapgenerator.hpp"
+#include "heightmapeditor.hpp"
 
 #include <QtOpenGL/QGLWidget>
 #include <QtCore/QTimer>
 #include <QtGui/QGraphicsPolygonItem>
+
+#include <qtpropertymanager.h>
+#include <qtvariantproperty.h>
+#include <qttreepropertybrowser.h>
 
 #include <boost/geometry/geometry.hpp>
 #include <boost/geometry/geometries/geometries.hpp>
 #include <boost/geometry/geometries/register/point.hpp>
 #include <boost/geometry/geometries/register/ring.hpp>
 #include <boost/geometry/geometries/adapted/boost_polygon.hpp>
+#include <boost/geometry/io/wkt/write.hpp>
 
 #include <boost/filesystem/operations.hpp>
 
@@ -41,6 +47,61 @@ BOOST_GEOMETRY_REGISTER_RING(QPolygonF)
 
 namespace ADWIF
 {
+  class RegionPolygonItem: public QGraphicsPolygonItem
+  {
+  public:
+    RegionPolygonItem(Editor * editor, QGraphicsItem * parent = 0, QGraphicsScene * scene = 0) :
+      QGraphicsPolygonItem(parent, scene), myEditor(editor)
+      {
+        QStringList biomes;
+        for (const auto & b : myEditor->game()->biomes())
+          biomes << b.second->name.c_str();
+        pname = manager.addProperty(QVariant::String, "Name");
+        pbiome = manager.addProperty(QtVariantPropertyManager::enumTypeId(), "Biome");
+        pbiome->setAttribute("enumNames", biomes);
+      }
+  protected:
+    virtual void focusInEvent(QFocusEvent * event)
+    {
+      QGraphicsPolygonItem::focusInEvent(event);
+      std::string name = myEditor->game()->generator()->regions()[data(0).toInt()].name;
+      std::string biome = myEditor->game()->generator()->regions()[data(0).toInt()].biome;
+      if (name.empty()) name = "Region " + boost::lexical_cast<std::string>(data(0).toInt());
+      std::string disp = name + " (" + biome + ")";
+
+      myEditor->ui()->textCurrentSelection->setText(disp.c_str());
+      myEditor->ui()->propertyBrowser->clear();
+
+      int bidx = 0;
+      int bcount = 0;
+      for (const auto & b : myEditor->game()->biomes())
+      {
+        if (biome == b.second->name)
+          bidx = bcount;
+        bcount++;
+      }
+
+      pname->setValue(QString(name.c_str()));
+      pbiome->setValue(bidx);
+
+      myEditor->ui()->propertyBrowser->setFactoryForManager(&manager, &factory);
+      myEditor->ui()->propertyBrowser->addProperty(pname);
+      myEditor->ui()->propertyBrowser->addProperty(pbiome);
+
+      std::cerr << boost::geometry::wkt(polygon()) << std::endl << std::endl;
+    }
+
+    virtual void focusOutEvent(QFocusEvent * event)
+    {
+      QGraphicsPolygonItem::focusOutEvent(event);
+    }
+
+    Editor * myEditor;
+    QtVariantPropertyManager manager;
+    QtVariantEditorFactory factory;
+    QtVariantProperty * pname, * pbiome;
+  };
+
   Editor::Editor(const std::shared_ptr<Engine> & engine): myEngine(engine), myProgressTimer(nullptr)
   {
     myUi.reset(new Ui::Editor);
@@ -53,6 +114,7 @@ namespace ADWIF
 
     QObject::connect(myUi->action_Create_Map, SIGNAL(triggered()), this, SLOT(createMap()));
     QObject::connect(myUi->action_Reload, SIGNAL(triggered()), this, SLOT(reloadData()));
+    QObject::connect(myUi->action_Terrain_Parameters, SIGNAL(triggered()), this, SLOT(showHeightMapEditor()));
     QObject::connect(logProvider.get(),
                      SIGNAL(onMessage(LogLevel, const QString &, const QString &)),
                      this,
@@ -73,11 +135,13 @@ namespace ADWIF
     myStatusProgress->hide();
 
     myUi->graphicsView->setViewport(new QGLWidget);
-    myUi->graphicsView->setRenderHints(QPainter::Antialiasing);
     myUi->graphicsView->setScene(new QGraphicsScene);
+    myUi->graphicsView->setRenderHints(QPainter::Antialiasing);
     myUi->graphicsView->setInteractive(true);
 
     myGame.reset(new Game(myEngine));
+
+    reloadData();
   }
 
   Editor::~Editor()
@@ -128,7 +192,7 @@ namespace ADWIF
     if (!myGame->generator()) return;
     int progress = myGame->generator()->preprocessingProgress();
     myStatusProgress->setValue(progress);
-    if (progress == 100)
+    if (progress >= 100)
     {
       myStatusLabel->setText("Ready");
       myStatusProgress->hide();
@@ -136,6 +200,7 @@ namespace ADWIF
       myUi->action_Create_Map->setEnabled(false);
       myUi->action_Load_Map->setEnabled(false);
       myUi->action_Unload_Map->setEnabled(true);
+      myUi->action_Terrain_Parameters->setEnabled(true);
       emit onMapReady();
     }
   }
@@ -145,9 +210,10 @@ namespace ADWIF
     myUi->graphicsView->scene()->setSceneRect(0, 0, myGame->generator()->width(), myGame->generator()->height());
     for (unsigned int i = 0; i < myGame->generator()->regions().size(); i++)
     {
-      QPolygonF qring;
+      QPolygonF qring, sqring;
       auto ring = boost::geometry::exterior_ring(myGame->generator()->regions()[i].poly);
       boost::geometry::convert(ring, qring);
+      boost::geometry::simplify(qring, sqring, 1);
       QPen pen;
       pen.setColor(QColor(0,0,0));
       pen.setStyle(Qt::PenStyle::DashLine);
@@ -156,11 +222,15 @@ namespace ADWIF
       std::string colour = myGame->biomes()[myGame->generator()->regions()[i].biome]->jsonValue["mapColour"].asString();
       pen.setColor(QColor(colour.c_str()));
       brush.setColor(QColor(colour.c_str()));
-      QGraphicsPolygonItem * pi = myUi->graphicsView->scene()->addPolygon(qring, pen, brush);
+      QGraphicsPolygonItem * pi = new RegionPolygonItem(this);
+      pi->setPen(pen);
+      pi->setBrush(brush);
+      pi->setPolygon(sqring);
       pi->setZValue(1/myGame->generator()->regions()[i].area);
       pi->setData(0, i);
       pi->setFlag(QGraphicsItem::GraphicsItemFlag::ItemIsFocusable, true);
       pi->setFlag(QGraphicsItem::GraphicsItemFlag::ItemIsSelectable, true);
+      myUi->graphicsView->scene()->addItem(pi);
     }
   }
 
@@ -196,6 +266,20 @@ namespace ADWIF
       myUi->tableLog->scrollToBottom();
       myUi->tableLog->resizeColumnToContents(0);
       myUi->tableLog->resizeColumnToContents(1);
+    }
+  }
+
+  void Editor::showHeightMapEditor()
+  {
+    HeightMapEditor hmeditor(this);
+    hmeditor.setAttribute(Qt::WA_ShowModal);
+    hmeditor.setWindowFlags(Qt::WindowFlags(Qt::WindowType::Dialog));
+    hmeditor.setWindowModality(Qt::WindowModality::ApplicationModal);
+    hmeditor.show();
+    while (hmeditor.isVisible())
+    {
+      QApplication::processEvents();
+      QApplication::sendPostedEvents();
     }
   }
 }

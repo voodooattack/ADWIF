@@ -48,6 +48,8 @@
 #include <noise/noise.h>
 #endif
 
+#include "noisemodules.hpp"
+
 template<class T>
 std::ostream & operator<< (std::ostream & os, const boost::polygon::point_data<T> & p)
 {
@@ -57,75 +59,6 @@ std::ostream & operator<< (std::ostream & os, const boost::polygon::point_data<T
 
 namespace ADWIF
 {
-  class HeightMapModule: public noise::module::Module
-  {
-  public:
-    inline static double cubicInterpolate (const double p[4], double x) {
-      return p[1] + 0.5 * x*(p[2] - p[0] + x*(2.0*p[0] - 5.0*p[1] +
-        4.0*p[2] - p[3] + x*(3.0*(p[1] - p[2]) + p[3] - p[0])));
-    }
-
-    inline static double bicubicInterpolate (const double p[4][4], double x, double y) {
-      double arr[4];
-      arr[0] = cubicInterpolate(p[0], y);
-      arr[1] = cubicInterpolate(p[1], y);
-      arr[2] = cubicInterpolate(p[2], y);
-      arr[3] = cubicInterpolate(p[3], y);
-      return cubicInterpolate(arr, x);
-    }
-
-    HeightMapModule(const boost::multi_array<BiomeCell, 2> & biomeMap,
-                    int chunkSizeX, int chunkSizeY): Module(0), myBiomeMap(biomeMap),
-                    myChunkSizeX(chunkSizeX), myChunkSizeY(chunkSizeY) { }
-
-    virtual int GetSourceModuleCount() const { return 0; }
-
-    virtual double GetValue(double x, double y, double z) const {
-      int chunkX = x / myChunkSizeX, chunkY = y / myChunkSizeY;
-      int xmin = myBiomeMap.index_bases()[0], xmax = myBiomeMap.shape()[0];
-      int ymin = myBiomeMap.index_bases()[1], ymax = myBiomeMap.shape()[1];
-
-      if (chunkX < xmin || chunkY < ymin || chunkX >= xmax || chunkY >= ymax)
-        return 0;
-
-//       if (myBiomeMap[chunkX][chunkY].flat)
-//         return myBiomeMap[chunkX][chunkY].height;
-
-      double m[4][4];
-
-//       std::memset(m, 0, 4 * 4 * sizeof(double));
-
-      for (int j = 0; j < 4; j++)
-        for (int i = 0; i < 4; i++)
-          m[i][j] = myBiomeMap[chunkX][chunkY].height;
-
-      int startx = 0, endx = 3;
-      int starty = 0, endy = 3;
-
-      while (chunkX + startx < xmin) startx++;
-      while (chunkX + startx > xmax) startx--;
-      while (chunkY + starty < ymin) starty++;
-      while (chunkY + starty > ymax) starty--;
-
-      while (chunkX + endx < xmin) endx++;
-      while (chunkX + endx > xmax) endx--;
-      while (chunkY + endy < ymin) endy++;
-      while (chunkY + endy > ymax) endy--;
-
-      //TODO: Shift the interpolation grid outside flat cells
-
-      for (int j = starty; j <= endy; j++)
-        for (int i = startx; i <= endx; i++)
-          m[i][j] = myBiomeMap[chunkX+i-1][chunkY+j-1].height;
-
-      double vx = fmod(x, myChunkSizeX) / myChunkSizeX, vy = fmod(y, myChunkSizeY) / myChunkSizeY;
-      return bicubicInterpolate(m, 0.25 + vx, 0.25 + vy);
-    }
-
-    int myChunkSizeX, myChunkSizeY;
-    const boost::multi_array<BiomeCell, 2> & myBiomeMap;
-  };
-
   typedef boost::polygon::segment_data<double> segment;
   typedef boost::polygon::voronoi_diagram<double> voronoi_diagram;
 
@@ -159,7 +92,7 @@ namespace ADWIF
     using namespace noise;
     using namespace noise::module;
 
-    std::shared_ptr<HeightMapModule> baseHeightmapSource(new HeightMapModule(myBiomeMap, myChunkSizeX, myChunkSizeY));
+    std::shared_ptr<HeightMapModule> baseHeightmapSource(new HeightMapModule(myHeights, myChunkSizeX, myChunkSizeY));
     std::shared_ptr<Cache> heightmapSource(new Cache);
 
     std::shared_ptr<Billow> baseFlatTerrain(new Billow);
@@ -271,6 +204,7 @@ namespace ADWIF
     myWidth = myMapImg.getWidth();
     myMapPreprocessingProgress.store(0);
     myBiomeMap.resize(boost::extents[myWidth][myHeight]);
+    myHeights.resize(boost::extents[myWidth][myHeight]);
     myGenerationMap.resize(boost::extents[myWidth][myHeight][myDepth]);
     myPriorityFlags.resize(boost::extents[myWidth][myHeight][myDepth]);
 
@@ -295,8 +229,9 @@ namespace ADWIF
         myBiomeMap[x][y].y = y;
         myBiomeMap[x][y].height = height;
         myBiomeMap[x][y].flat = game()->biomes()[myColourIndex[colour]]->flat;
+        myHeights[x][y] = height;
 
-        myMapPreprocessingProgress += (1/(myWidth*myHeight)) * 20;
+        myMapPreprocessingProgress += 1.0 / (double)(myWidth*myHeight) * 20.0;
       }
 
       // Clustering algorithm for terrain features
@@ -318,6 +253,8 @@ namespace ADWIF
       {
         for (unsigned int x = 0; x < myWidth; x++)
         {
+          myMapPreprocessingProgress += 1.0 / (double)(myWidth*myHeight) * 30.0;
+
           if (visited[x][y]) continue;
 
           uint32_t colour = getPixelColour(x, y, myMapImg);
@@ -337,8 +274,6 @@ namespace ADWIF
             if (!visited[n.x()][n.y()] && colour == pcolour)
             {
               visited[n.x()][n.y()] = true;
-
-              myMapPreprocessingProgress += (1/(myWidth*myHeight)) * 30;
 
               bool edge = false;
 
@@ -666,7 +601,7 @@ namespace ADWIF
           myRegions.push_back(boost::move(region));
         }
 
-        myMapPreprocessingProgress += (1 / clusters.size()) * 50;
+        myMapPreprocessingProgress += 1.0 / (double)clusters.size() * 50.0;
       };
 
       for (Cluster & c : clusters)

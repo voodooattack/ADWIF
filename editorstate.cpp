@@ -18,6 +18,7 @@
  */
 
 #include "editorstate.hpp"
+#include "editor.hpp"
 #include "engine.hpp"
 #include "renderer.hpp"
 #include "introstate.hpp"

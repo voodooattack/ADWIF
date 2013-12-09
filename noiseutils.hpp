@@ -17,33 +17,32 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef EDITORSTATE_HPP
-#define EDITORSTATE_HPP
+#ifndef NOISEUTILS_H
+#define NOISEUTILS_H
 
-#include "gamestate.hpp"
+#include <json/value.h>
 
 #include <memory>
+#include <vector>
+#include <map>
 
-#include <QtGui/QApplication>
+#include "noisemodules.hpp"
+
+namespace noise
+{
+  namespace module
+  {
+    class Module;
+  }
+}
 
 namespace ADWIF
 {
-
-  class EditorState: public GameState
-  {
-  public:
-    EditorState(const std::shared_ptr<class Engine> & engine, int argc, char ** argv);
-
-    virtual void init();
-    virtual void step();
-    virtual void consume(int key) { }
-
-  private:
-    QApplication myApp;
-    std::shared_ptr<class Editor> myEditor;
-    std::shared_ptr<class Engine> myEngine;
-    std::shared_ptr<class Game> myGame;
-  };
+  std::shared_ptr<noise::module::Module>
+  buildNoiseGraph(const Json::Value & value,
+                  std::vector<std::shared_ptr<noise::module::Module>> & modules,
+                  std::map<std::string, std::shared_ptr<noise::module::Module>> & defs,
+                  const std::shared_ptr<HeightMapModule> & heightMap, int seed);
 }
 
-#endif // EDITORSTATE_HPP
+#endif // NOISEUTILS_H

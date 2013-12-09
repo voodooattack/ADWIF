@@ -75,6 +75,12 @@ namespace ADWIF
     Editor(const std::shared_ptr<class Engine> & engine);
     virtual ~Editor();
 
+    const std::shared_ptr<Game> game() const { return myGame; }
+    std::shared_ptr<Game> game() { return myGame; }
+
+    const std::shared_ptr<Ui::Editor> ui() const { return myUi; }
+    std::shared_ptr<Ui::Editor> ui() { return myUi; }
+
   public slots:
     void reloadData();
     void createMap();
@@ -83,6 +89,7 @@ namespace ADWIF
     void dataChanged();
     void updateProgress();
     void onMessage(LogLevel level, const QString & source, const QString & message);
+    void showHeightMapEditor();
 
   signals:
     void onDataReloaded();
