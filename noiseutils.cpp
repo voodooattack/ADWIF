@@ -102,7 +102,11 @@ namespace ADWIF
       std::shared_ptr<noise::module::Select> sel(new noise::module::Select);
       std::shared_ptr<noise::module::Module> m1 = buildNoiseGraph(value["sources"][0], modules, defs, heightMap, seed);
       std::shared_ptr<noise::module::Module> m2 = buildNoiseGraph(value["sources"][1], modules, defs, heightMap, seed);
-      std::shared_ptr<noise::module::Module> ctl = buildNoiseGraph(value["controller"], modules, defs, heightMap, seed);
+      std::shared_ptr<noise::module::Module> ctl;
+      if (value["controller"].isObject())
+        ctl = buildNoiseGraph(value["controller"], modules, defs, heightMap, seed);
+      else
+        ctl = buildNoiseGraph(value["sources"][3], modules, defs, heightMap, seed);
       sel->SetSourceModule(0, *m1);
       sel->SetSourceModule(1, *m2);
       sel->SetControlModule(*ctl);
@@ -117,7 +121,11 @@ namespace ADWIF
       std::shared_ptr<noise::module::Blend> blend(new noise::module::Blend);
       std::shared_ptr<noise::module::Module> m1 = buildNoiseGraph(value["sources"][0], modules, defs, heightMap, seed);
       std::shared_ptr<noise::module::Module> m2 = buildNoiseGraph(value["sources"][1], modules, defs, heightMap, seed);
-      std::shared_ptr<noise::module::Module> ctl = buildNoiseGraph(value["controller"], modules, defs, heightMap, seed);
+      std::shared_ptr<noise::module::Module> ctl;
+      if (value["controller"].isObject())
+        ctl = buildNoiseGraph(value["controller"], modules, defs, heightMap, seed);
+      else
+        ctl = buildNoiseGraph(value["sources"][3], modules, defs, heightMap, seed);
       blend->SetSourceModule(0, *m1);
       blend->SetSourceModule(1, *m2);
       blend->SetControlModule(*ctl);
@@ -167,6 +175,8 @@ namespace ADWIF
       std::shared_ptr<noise::module::Exponent> exp(new noise::module::Exponent);
       std::shared_ptr<noise::module::Module> src = buildNoiseGraph(value["sources"][0], modules, defs, heightMap, seed);
       exp->SetSourceModule(0, *src);
+      if (value["exponent"].isDouble())
+        exp->SetExponent(value["exponent"].asDouble());
       m = exp;
     }
     else if (module == "abs")

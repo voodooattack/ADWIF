@@ -6,136 +6,119 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>927</width>
-    <height>629</height>
+    <width>705</width>
+    <height>642</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Heightmap Graph Editor</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout_2">
-   <property name="sizeConstraint">
-    <enum>QLayout::SetFixedSize</enum>
-   </property>
-   <item row="0" column="0">
-    <layout class="QGridLayout" name="gridLayout_4">
-     <item row="1" column="1">
-      <layout class="QGridLayout" name="gridLayout_5">
-       <item row="0" column="1">
-        <widget class="QPushButton" name="buttonRender">
-         <property name="text">
-          <string>&amp;Render</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0">
-        <widget class="QPushButton" name="buttonReset">
-         <property name="text">
-          <string>&amp;Reset</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item row="0" column="0" rowspan="2">
-      <widget class="QGraphicsView" name="cellSelectView">
-       <property name="minimumSize">
-        <size>
-         <width>320</width>
-         <height>560</height>
-        </size>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QSplitter" name="splitterMain">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="opaqueResize">
+      <bool>false</bool>
+     </property>
+     <widget class="QSplitter" name="splitter">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <widget class="ADWIF::NoiseGraphBuilder" name="graphBuilder">
+       <property name="headerHidden">
+        <bool>true</bool>
        </property>
       </widget>
-     </item>
-     <item row="0" column="2" rowspan="2">
-      <widget class="QGraphicsView" name="renderView">
-       <property name="minimumSize">
-        <size>
-         <width>320</width>
-         <height>560</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="0" colspan="3">
-      <widget class="QFrame" name="frame">
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>30</height>
-        </size>
-       </property>
-       <property name="frameShape">
-        <enum>QFrame::StyledPanel</enum>
-       </property>
-       <property name="frameShadow">
-        <enum>QFrame::Raised</enum>
-       </property>
-       <layout class="QGridLayout" name="gridLayout_3">
-        <item row="0" column="4">
-         <widget class="QPushButton" name="buttonSave">
-          <property name="text">
-           <string>&amp;Save Graph</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="2">
-         <spacer name="horizontalSpacer">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item row="0" column="5">
-         <widget class="QPushButton" name="buttonCancel">
-          <property name="text">
-           <string>&amp;Cancel</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="0">
-         <widget class="QPushButton" name="buttonLoad">
-          <property name="text">
-           <string>&amp;Load Heightmap</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </widget>
-     </item>
-     <item row="0" column="1">
-      <widget class="QSplitter" name="splitter">
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-       <widget class="QTreeView" name="treeView">
-        <property name="minimumSize">
-         <size>
-          <width>255</width>
-          <height>0</height>
-         </size>
-        </property>
-        <property name="headerHidden">
-         <bool>true</bool>
+      <widget class="QtTreePropertyBrowser" name="propertyBrowser" native="true"/>
+     </widget>
+     <widget class="QGraphicsView" name="renderView"/>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="frame">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>50</height>
+      </size>
+     </property>
+     <property name="baseSize">
+      <size>
+       <width>0</width>
+       <height>50</height>
+      </size>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_3">
+      <item row="0" column="1">
+       <widget class="QPushButton" name="buttonRender">
+        <property name="text">
+         <string>&amp;Render</string>
         </property>
        </widget>
-       <widget class="QtTreePropertyBrowser" name="propertyBrowser" native="true">
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>150</height>
-         </size>
+      </item>
+      <item row="0" column="6">
+       <widget class="QPushButton" name="buttonCancel">
+        <property name="text">
+         <string>&amp;Cancel</string>
         </property>
        </widget>
-      </widget>
-     </item>
-    </layout>
+      </item>
+      <item row="0" column="0">
+       <widget class="QPushButton" name="buttonLoad">
+        <property name="text">
+         <string>&amp;Load Heightmap</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="5">
+       <widget class="QPushButton" name="buttonSave">
+        <property name="text">
+         <string>&amp;Save Graph</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="3">
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item row="0" column="2">
+       <widget class="QPushButton" name="buttonReset">
+        <property name="text">
+         <string>&amp;Reset</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
    </item>
   </layout>
  </widget>
@@ -145,6 +128,11 @@
    <extends>QWidget</extends>
    <header location="global">qttreepropertybrowser.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ADWIF::NoiseGraphBuilder</class>
+   <extends>QTreeView</extends>
+   <header>noisegraphbuilder.hpp</header>
   </customwidget>
  </customwidgets>
  <resources>

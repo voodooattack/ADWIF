@@ -27,27 +27,16 @@ namespace ADWIF
 {
   HeightMapEditor::HeightMapEditor(ADWIF::Editor * parent, Qt::WindowFlags f): QWidget(parent, f)
   {
-    myUi.reset(new Ui::HeightMapEditor);
+    myUi = QSharedPointer<Ui::HeightMapEditor>(new Ui::HeightMapEditor);
     myUi->setupUi(this);
-
-    myUi->cellSelectView->setViewport(new QGLWidget);
-    myUi->cellSelectView->setScene(new QGraphicsScene);
-    myUi->cellSelectView->setRenderHints(QPainter::Antialiasing);
-    myUi->cellSelectView->setInteractive(true);
 
     myUi->renderView->setViewport(new QGLWidget);
     myUi->renderView->setScene(new QGraphicsScene);
     myUi->renderView->setRenderHints(QPainter::Antialiasing);
 
-    QStandardItemModel * model = new QStandardItemModel;
-    QStandardItem * root = new QStandardItem;
+    myUi->graphBuilder->setPropertyBrowser(myUi->propertyBrowser);
 
-    root->setText("Add");
-    root->setIcon(QIcon(":/icons/resources/sum.png"));
-    root->setEditable(false);
-
-    model->invisibleRootItem()->appendRow(root);
-    myUi->treeView->setModel(model);
+    layout()->setSizeConstraint(QLayout::SetDefaultConstraint);
   }
 }
 

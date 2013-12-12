@@ -17,33 +17,30 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "editorstate.hpp"
-#include "editor.hpp"
-#include "engine.hpp"
-#include "renderer.hpp"
-#include "introstate.hpp"
+#include "propertybrowserbox.hpp"
+
+#include <QHBoxLayout>
 
 namespace ADWIF
 {
-  EditorState::EditorState(const std::shared_ptr<Engine> & engine, int argc, char ** argv) :
-  myEngine(engine), myApp(argc, argv), myEditor() { myEditor.reset(new Editor(myEngine)); myEngine->delay(0); }
-
-  void EditorState::init() {
-    myEngine->renderer()->drawMessage("Editor Mode");
-    myEditor->show();
+  PropertyBrowseBox::PropertyBrowseBox(QWidget * parent, Qt::WindowFlags f): QWidget(parent, f)
+  {
+    QHBoxLayout * layout = new QHBoxLayout(this);
+    layout->setMargin(0);
+    layout->setSpacing(0);
+    myLineEdit = new QLineEdit(this);
+    myLineEdit->setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred));
+    myButton = new QToolButton(this);
+    myButton->setSizePolicy(QSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred));
+    myButton->setText(QLatin1String("..."));
+    layout->addWidget(myLineEdit);
+    layout->addWidget(myButton);
+    setFocusProxy(myLineEdit);
+    setFocusPolicy(Qt::StrongFocus);
+    setAttribute(Qt::WA_InputMethodEnabled);
+    connect(myLineEdit, SIGNAL(textEdited(const QString &)),
+            this, SIGNAL(textChanged(const QString &)));
+    connect(myButton, SIGNAL(clicked()),
+            this, SIGNAL(buttonClicked()));
   }
-
-  void EditorState::step() {
-    myEngine->renderer()->drawMessage("Editor Mode");
-    myApp.processEvents();
-    myApp.sendPostedEvents();
-    if (!myEditor->isVisible())
-    {
-//       auto state = std::shared_ptr<GameState>(new IntroState(myEngine));
-//       myEngine->addState(state);
-      done(true);
-    }
-  }
-
 }
-

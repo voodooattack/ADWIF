@@ -27,6 +27,8 @@
 #include <boost/iostreams/filter/bzip2.hpp>
 #include <boost/iostreams/copy.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/thread.hpp>
+#include <boost/thread/detail/thread.hpp>
 
 #include <openvdb/io/Stream.h>
 
@@ -63,6 +65,7 @@ namespace ADWIF
   MapImpl::~MapImpl()
   {
     myPruneThreadQuitFlag.store(true);
+    myPruneThreadCond.notify_all();
     myPruneThread.join();
   }
 
@@ -110,8 +113,12 @@ namespace ADWIF
   {
     while (!myPruneThreadQuitFlag)
     {
-      boost::this_thread::sleep_for(myPruningInterval);
-      prune(false);
+      boost::unique_lock<boost::mutex> lock(myPruneThreadMutex);
+      myPruneThreadCond.wait_for(lock, myPruningInterval);
+      if (!myPruneThreadQuitFlag)
+        prune(false);
+      else
+        break;
     }
   }
 

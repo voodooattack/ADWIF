@@ -1,6 +1,20 @@
 <RCC>
-  <qresource prefix="icons">
-    <file>resources/sum.png</file>
+  <qresource prefix="/icons">
+    <file>resources/node.png</file>
+    <file>resources/node-select.png</file>
+    <file>resources/document-tree.png</file>
+    <file>resources/document-hf-insert.png</file>
+    <file>resources/document-hf-delete.png</file>
+    <file>resources/document-insert.png</file>
+    <file>resources/arrow-stop.png</file>
+    <file>resources/asterisk.png</file>
+    <file>resources/calculator--arrow.png</file>
+    <file>resources/calculator--minus.png</file>
+    <file>resources/calculator--plus.png</file>
+    <file>resources/edit-number.png</file>
+    <file>resources/edit-superscript.png</file>
     <file>resources/property.png</file>
+    <file>resources/sum.png</file>
+    <file>resources/plus.png</file>
   </qresource>
 </RCC>

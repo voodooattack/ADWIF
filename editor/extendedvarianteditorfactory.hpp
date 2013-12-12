@@ -17,33 +17,36 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "editorstate.hpp"
-#include "editor.hpp"
-#include "engine.hpp"
-#include "renderer.hpp"
-#include "introstate.hpp"
+#ifndef EXTENDEDVARIANTEDITORFACTORY_H
+#define EXTENDEDVARIANTEDITORFACTORY_H
+
+#include <QtVariantEditorFactory>
 
 namespace ADWIF
 {
-  EditorState::EditorState(const std::shared_ptr<Engine> & engine, int argc, char ** argv) :
-  myEngine(engine), myApp(argc, argv), myEditor() { myEditor.reset(new Editor(myEngine)); myEngine->delay(0); }
-
-  void EditorState::init() {
-    myEngine->renderer()->drawMessage("Editor Mode");
-    myEditor->show();
-  }
-
-  void EditorState::step() {
-    myEngine->renderer()->drawMessage("Editor Mode");
-    myApp.processEvents();
-    myApp.sendPostedEvents();
-    if (!myEditor->isVisible())
-    {
-//       auto state = std::shared_ptr<GameState>(new IntroState(myEngine));
-//       myEngine->addState(state);
-      done(true);
-    }
-  }
-
+  class ExtendedVariantEditorFactory : public QtVariantEditorFactory
+  {
+    Q_OBJECT
+  public:
+    ExtendedVariantEditorFactory(QObject * parent = 0): QtVariantEditorFactory(parent) { }
+    virtual ~ExtendedVariantEditorFactory();
+  protected:
+    virtual void connectPropertyManager(QtVariantPropertyManager * manager);
+    virtual QWidget * createEditor(QtVariantPropertyManager * manager, QtProperty * property,
+                                   QWidget * parent);
+    virtual void disconnectPropertyManager(QtVariantPropertyManager * manager);
+  private slots:
+    void onPropertyChanged(QtProperty * property, const QVariant & value);
+    void onPropertyAttributeChanged(QtProperty * property, const QString & attribute, const QVariant & value);
+    void onSetValue(const QString & value);
+    void onEditorDestroyed(QObject * object);
+    void onCurveEditorDestroyed(QObject * object);
+    void onCurveChanged(const QPolygonF & curve);
+    void onShowCurveEditor();
+  private:
+    QMap<QtProperty *, QList<QWidget*> > myPropToEditorMap;
+    QMap<QWidget *, QtProperty *> myEditorToPropMap;
+  };
 }
 
+#endif // EXTENDEDVARIANTEDITORFACTORY_H

@@ -29,7 +29,8 @@
 #include <boost/chrono.hpp>
 #include <boost/functional/hash/extensions.hpp>
 #include <boost/functional/hash/hash.hpp>
-
+#include <boost/thread.hpp>
+#include <boost/thread/condition_variable.hpp>
 #include "map.hpp"
 
 namespace ovdb = openvdb::v1_1;
@@ -119,6 +120,8 @@ namespace ADWIF
     mutable boost::recursive_mutex myLock;
     mutable boost::atomic_bool myPruningInProgressFlag;
     boost::thread myPruneThread;
+    boost::condition_variable myPruneThreadCond;
+    boost::mutex myPruneThreadMutex;
     boost::atomic_bool myPruneThreadQuitFlag;
 //     boost::asio::basic_waitable_timer<clock_type> myPruneTimer;
 

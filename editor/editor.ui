@@ -190,7 +190,7 @@
   <widget class="QDockWidget" name="dockLog">
    <property name="minimumSize">
     <size>
-     <width>0</width>
+     <width>82</width>
      <height>120</height>
     </size>
    </property>
@@ -330,7 +330,7 @@
   </action>
   <action name="action_Terrain_Parameters">
    <property name="enabled">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
    <property name="text">
     <string>&amp;Edit Parameters..</string>

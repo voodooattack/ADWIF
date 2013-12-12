@@ -17,33 +17,42 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "editorstate.hpp"
-#include "editor.hpp"
-#include "engine.hpp"
-#include "renderer.hpp"
-#include "introstate.hpp"
+#ifndef PROPERTYBROWSERBOX_H
+#define PROPERTYBROWSERBOX_H
+
+#include <QToolButton>
+#include <QLineEdit>
+#include <QFocusEvent>
 
 namespace ADWIF
 {
-  EditorState::EditorState(const std::shared_ptr<Engine> & engine, int argc, char ** argv) :
-  myEngine(engine), myApp(argc, argv), myEditor() { myEditor.reset(new Editor(myEngine)); myEngine->delay(0); }
-
-  void EditorState::init() {
-    myEngine->renderer()->drawMessage("Editor Mode");
-    myEditor->show();
-  }
-
-  void EditorState::step() {
-    myEngine->renderer()->drawMessage("Editor Mode");
-    myApp.processEvents();
-    myApp.sendPostedEvents();
-    if (!myEditor->isVisible())
+  class PropertyBrowseBox: public QWidget
+  {
+    Q_OBJECT
+  public:
+    explicit PropertyBrowseBox(QWidget * parent = 0, Qt::WindowFlags f = 0);
+    QString text() const { return myLineEdit->text(); }
+    void setText(const QString & text) { myLineEdit->setText(text); }
+    bool editable() const { return !myLineEdit->isReadOnly(); }
+    void setEditable(bool value) { myLineEdit->setReadOnly(!value); }
+  signals:
+    void textChanged(const QString & text);
+    void buttonClicked();
+  protected:
+    void focusInEvent(QFocusEvent * e)
     {
-//       auto state = std::shared_ptr<GameState>(new IntroState(myEngine));
-//       myEngine->addState(state);
-      done(true);
+      myLineEdit->event(e);
+      if (e->reason() == Qt::TabFocusReason ||
+        e->reason() == Qt::BacktabFocusReason) { myLineEdit->selectAll(); }
+        QWidget::focusInEvent(e);
     }
-  }
-
+    void focusOutEvent(QFocusEvent * e) { myLineEdit->event(e); QWidget::focusOutEvent(e); }
+    void keyPressEvent(QKeyEvent * e) { myLineEdit->event(e); }
+    void keyReleaseEvent(QKeyEvent * e) { myLineEdit->event(e); }
+  private:
+    QLineEdit * myLineEdit;
+    QToolButton * myButton;
+  };
 }
 
+#endif // PROPERTYBROWSERBOX_H

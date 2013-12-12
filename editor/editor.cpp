@@ -29,9 +29,9 @@
 #include <QtCore/QTimer>
 #include <QtGui/QGraphicsPolygonItem>
 
-#include <qtpropertymanager.h>
-#include <qtvariantproperty.h>
-#include <qttreepropertybrowser.h>
+#include <QtVariantPropertyManager>
+#include <QtVariantProperty>
+#include <QtTreePropertyBrowser>
 
 #include <boost/geometry/geometry.hpp>
 #include <boost/geometry/geometries/geometries.hpp>
@@ -104,7 +104,7 @@ namespace ADWIF
 
   Editor::Editor(const std::shared_ptr<Engine> & engine): myEngine(engine), myProgressTimer(nullptr)
   {
-    myUi.reset(new Ui::Editor);
+    myUi = QSharedPointer<Ui::Editor>(new Ui::Editor);
     myUi->setupUi(this);
 
     std::shared_ptr<EditorLogProvider> logProvider(new EditorLogProvider);

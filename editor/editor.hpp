@@ -78,8 +78,8 @@ namespace ADWIF
     const std::shared_ptr<Game> game() const { return myGame; }
     std::shared_ptr<Game> game() { return myGame; }
 
-    const std::shared_ptr<Ui::Editor> ui() const { return myUi; }
-    std::shared_ptr<Ui::Editor> ui() { return myUi; }
+    const QSharedPointer<Ui::Editor> ui() const { return myUi; }
+    QSharedPointer<Ui::Editor> ui() { return myUi; }
 
   public slots:
     void reloadData();
@@ -99,7 +99,7 @@ namespace ADWIF
   private:
     std::shared_ptr<Engine> myEngine;
     std::shared_ptr<Game> myGame;
-    std::shared_ptr<Ui::Editor> myUi;
+    QSharedPointer<Ui::Editor> myUi;
     QLabel * myStatusLabel;
     QProgressBar * myStatusProgress;
     QTimer * myProgressTimer;

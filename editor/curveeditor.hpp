@@ -17,33 +17,49 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "editorstate.hpp"
-#include "editor.hpp"
-#include "engine.hpp"
-#include "renderer.hpp"
-#include "introstate.hpp"
+#ifndef CURVEEDITOR_H
+#define CURVEEDITOR_H
+
+#include <QWidget>
 
 namespace ADWIF
 {
-  EditorState::EditorState(const std::shared_ptr<Engine> & engine, int argc, char ** argv) :
-  myEngine(engine), myApp(argc, argv), myEditor() { myEditor.reset(new Editor(myEngine)); myEngine->delay(0); }
+  class CurveEditor: public QWidget
+  {
+    Q_OBJECT
+  public:
+    explicit CurveEditor(QWidget * parent = 0, Qt::WindowFlags f = 0);
+    virtual ~CurveEditor();
 
-  void EditorState::init() {
-    myEngine->renderer()->drawMessage("Editor Mode");
-    myEditor->show();
-  }
+    QPolygonF curve() const { return myPoints; }
+    void setCurve(const QPolygonF & curve) { myPoints = curve; updateCurve(); }
 
-  void EditorState::step() {
-    myEngine->renderer()->drawMessage("Editor Mode");
-    myApp.processEvents();
-    myApp.sendPostedEvents();
-    if (!myEditor->isVisible())
-    {
-//       auto state = std::shared_ptr<GameState>(new IntroState(myEngine));
-//       myEngine->addState(state);
-      done(true);
+  signals:
+    void curveChanged(const QPolygonF & curve);
+  protected:
+    virtual void mouseMoveEvent(QMouseEvent *);
+    virtual void mousePressEvent(QMouseEvent *);
+    virtual void mouseReleaseEvent(QMouseEvent *);
+    virtual void wheelEvent(QWheelEvent *);
+    virtual void focusOutEvent(QFocusEvent *);
+    virtual void resizeEvent(QResizeEvent *);
+    virtual void paintEvent(QPaintEvent *);
+
+    void updateCurve();
+  private:
+    bool myHighlightFlag;
+    double myZoomLevel;
+    QPolygonF myPoints;
+    QPolygonF myPolyline;
+    QPointF myHighlight;
+    QTransform myTransform;
+    QRect myViewport;
+
+    inline static double cubicInterpolate (const double p[4], double x) {
+      return p[1] + 0.5 * x*(p[2] - p[0] + x*(2.0*p[0] - 5.0*p[1] +
+      4.0*p[2] - p[3] + x*(3.0*(p[1] - p[2]) + p[3] - p[0])));
     }
-  }
-
+  };
 }
 
+#endif // CURVEEDITOR_H

@@ -17,31 +17,54 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef HEIGHTMAPEDITOR_H
-#define HEIGHTMAPEDITOR_H
 
-#include <QtGui/QWidget>
+#ifndef EXTENDEDVARIANTMANAGER_H
+#define EXTENDEDVARIANTMANAGER_H
 
-#include "editor.hpp"
+#include <QtVariantProperty>
+#include <QtVariantPropertyManager>
 
-namespace Ui
-{
-  class HeightMapEditor;
-}
+#include <QVector2D>
+#include <QVector>
+
+typedef QPolygonF Curve2D;
+
+Q_DECLARE_METATYPE(Curve2D);
 
 namespace ADWIF
 {
-  class HeightMapEditor: public QWidget
+  class ExtendedVariantManager : public QtVariantPropertyManager
   {
     Q_OBJECT
   public:
-    explicit HeightMapEditor(Editor * parent = 0, Qt::WindowFlags f = 0);
-    virtual ~HeightMapEditor() { }
+    ExtendedVariantManager(QObject * parent = 0): QtVariantPropertyManager(parent) { }
 
+    virtual QVariant value(const QtProperty * property) const;
+    virtual int valueType(int propertyType) const;
+    virtual bool isPropertyTypeSupported(int propertyType) const;
+
+    virtual QStringList attributes(int propertyType) const;
+    virtual int attributeType(int propertyType, const QString & attribute) const;
+    virtual QVariant attributeValue(const QtProperty * property, const QString & attribute);
+
+    static int curve2dTypeId();
+
+  public slots:
+    virtual void setValue(QtProperty * property, const QVariant & val);
+    virtual void setAttribute(QtProperty * property,
+                              const QString & attribute, const QVariant & value);
+  protected:
+    virtual QString valueText(const QtProperty * property) const;
+    virtual void initializeProperty(QtProperty * property);
+    virtual void uninitializeProperty(QtProperty * property);
   private:
-    QSharedPointer<Ui::HeightMapEditor> myUi;
-    Editor * myEditor;
+    struct CurveData2D
+    {
+      Curve2D curve;
+      uint maxSize;
+    };
+    QMap<const QtProperty *, CurveData2D> myCurveData;
   };
 }
 
-#endif // HEIGHTMAPEDITOR_H
+#endif // EXTENDEDVARIANTMANAGER_H
