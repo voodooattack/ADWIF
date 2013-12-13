@@ -100,17 +100,21 @@ option(ADWIF_BUILD_EDITOR "whether or not to build the game editor" OFF)
 if (ADWIF_BUILD_EDITOR)
   set(EDITOR_DIR "editor")
   include_directories(${EDITOR_DIR})
-  find_package(Qt COMPONENTS QtCore QtGui QtOpenGL REQUIRED)
+  find_package(Qt 4.8 COMPONENTS QtCore QtGui QtOpenGL REQUIRED)
   find_package(OpenGL REQUIRED)
   include(${QT_USE_FILE})
   set(EDITOR_INCLUDES ${QT_INCLUDES})
   set(EDITOR_LIBRARIES ${QT_LIBRARIES} ${QT_QTOPENGL_LIBRARIES} ${OPENGL_LIBRARIES})
-  set(EDITOR_UI ${EDITOR_DIR}/editor.ui ${EDITOR_DIR}/heightmapeditor.ui)
-  set(EDITOR_SOURCES ${EDITOR_DIR}/editor.cpp ${EDITOR_DIR}/heightmapeditor.cpp)
+  set(EDITOR_UI editor/editor.ui editor/heightmapeditor.ui)
+  set(EDITOR_SOURCES editor/editor.cpp editor/heightmapeditor.cpp editor/noisegraphbuilder.cpp
+                     editor/extendedvariantmanager.cpp editor/extendedvarianteditorfactory.cpp
+                     editor/propertybrowserbox.cpp editor/curveeditor.cpp)
+  set(EDITOR_HEADERS editor/editor.hpp editor/heightmapeditor.hpp editor/noisegraphbuilder.hpp
+                     editor/extendedvariantmanager.hpp editor/extendedvarianteditorfactory.hpp
+                     editor/propertybrowserbox.hpp editor/curveeditor.hpp)
   qt4_wrap_ui(EDITOR_UI_HEADERS ${EDITOR_UI})
-  set(EDITOR_HEADERS ${EDITOR_DIR}/editor.hpp ${EDITOR_DIR}/heightmapeditor.hpp ${EDITOR_UI_HEADERS})
-  set(EDITOR_RESOURCES ${EDITOR_DIR}/resources.qrc)
-  qt4_wrap_cpp(EDITOR_MOC ${EDITOR_HEADERS})
+  set(EDITOR_RESOURCES editor/resources.qrc)
+  qt4_wrap_cpp(EDITOR_MOC ${EDITOR_HEADERS} ${EDITOR_UI_HEADERS})
   qt4_add_resources(EDITOR_RC ${EDITOR_RESOURCES})
   set(ADWIF_SOURCES ${ADWIF_SOURCES} ${EDITOR_SOURCES} ${EDITOR_MOC} ${EDITOR_RC} editorstate.cpp)
   include(ExternalProject)
@@ -130,7 +134,7 @@ endif()
 
 configure_file ("${PROJECT_SOURCE_DIR}/config.hpp.in" "${PROJECT_BINARY_DIR}/config.hpp")
 
-include_directories(${PROJECT_SOURCE_DIR} ${EDITOR_DIR} ${PROJECT_BINARY_DIR} ${EDITOR_INCLUDES}
+include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR} ${EDITOR_INCLUDES}
                     ${ADWIF_RENDERER_INCLUDES} ${PHYSFS_INCLUDE_DIR} ${V8_INCLUDE_DIR}
                     ${Boost_INCLUDE_DIRS} ${HALF_INCLUDE_DIRS} ${PHYSFS_CPP_ROOT}/include ${JSONCPP_INCLUDE_DIR} ${OPENVDB_INCLUDE_DIRS}
                     ${TBB_INCLUDE_DIRS} ${UTF8CPP_INCLUDE_DIR} ${FREEIMAGE_INCLUDE_PATH} ${NOISE_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIR}

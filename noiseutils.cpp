@@ -258,7 +258,7 @@ namespace ADWIF
         rot->SetAngles(value["rotation"][0].asDouble(), value["rotation"][1].asDouble(), value["rotation"][2].asDouble());
       m = rot;
     }
-    else if (module == "const")
+    else if (module == "const" || module == "constant")
     {
       std::shared_ptr<noise::module::Const> con(new noise::module::Const);
       con->SetConstValue(value["value"].asDouble());
@@ -387,6 +387,8 @@ namespace ADWIF
     else if (module == "turbulence")
     {
       std::shared_ptr<noise::module::Turbulence> turbulence(new noise::module::Turbulence);
+      std::shared_ptr<noise::module::Module> src = buildNoiseGraph(value["sources"][0], modules, defs, heightMap, seed);
+      turbulence->SetSourceModule(0, *src);
       if (value["frequency"].isDouble())
         turbulence->SetFrequency(value["frequency"].asDouble());
       if (value["power"].isDouble())

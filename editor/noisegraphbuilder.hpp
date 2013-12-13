@@ -62,7 +62,7 @@ namespace ADWIF
     NoiseModuleItem(const QString & text): QStandardItem(text) { setupPropertyManager(); }
     NoiseModuleItem(const QIcon & icon, const QString & text): QStandardItem(icon, text) { setupPropertyManager(); }
 
-    virtual ~NoiseModuleItem() { }
+    virtual ~NoiseModuleItem() { for(auto i : myProperties) delete i; }
 
     void setupPropertyManager()
     {
@@ -99,6 +99,18 @@ namespace ADWIF
       browser->setFactoryForManager(myManager.data(), myFactory.data());
     }
 
+    Json::Value toJson() const
+    {
+      Json::Value value = Json::Value::null;
+      if (myTemplate.toJson) value = myTemplate.toJson(*myManager);
+      value["module"] = myTemplate.jsonName;
+      if (rowCount())
+        value["sources"] = Json::Value::null;
+      for (int i = 0; i < rowCount(); i++)
+        value["sources"][i] = dynamic_cast<NoiseModuleItem*>(child(i))->toJson();
+      return value;
+    }
+
   public slots:
     void valueChanged(QtProperty *, const QVariant &) { }
   private:
@@ -115,7 +127,10 @@ namespace ADWIF
     explicit NoiseGraphBuilder(QWidget * parent = 0);
 
     void setPropertyBrowser(QtTreePropertyBrowser * propertyBrowser) { myPropertyBrowser = propertyBrowser; }
+
     bool isComplete() const;
+    Json::Value toJson() const;
+
   private:
     bool isComplete(const QStandardItem * item) const;
 

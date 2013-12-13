@@ -32,6 +32,7 @@ namespace ADWIF
     QPoint postl = dynamic_cast<QWidget*>(parent->parent())->mapToGlobal(parent->geometry().bottomLeft());
     QRect pos(postl, QSize(parent->geometry().width(), 80));
     setGeometry(pos);
+    setAttribute(Qt::WA_DeleteOnClose);
     setWindowFlags(Qt::WindowFlags(Qt::WindowType::FramelessWindowHint | Qt::WindowType::Window));
     setFocusPolicy(Qt::FocusPolicy::WheelFocus);
     setFocus();
@@ -67,10 +68,6 @@ namespace ADWIF
     }
     myHighlightFlag = false;
   }
-
-  template<typename T> struct PointLess {
-    bool operator()(const T & a, const T & b) const { return a.x() < b.x();}
-  };
 
   void CurveEditor::mousePressEvent(QMouseEvent * e)
   {
@@ -127,7 +124,6 @@ namespace ADWIF
     painter.setViewport(geometry());
     painter.setWindow(myViewport);
     painter.setRenderHint(QPainter::RenderHint::Antialiasing);
-//     painter.translate(geometry().width() / 2, geometry().height());
     pen.setCapStyle(Qt::PenCapStyle::RoundCap);
     pen.setJoinStyle(Qt::PenJoinStyle::RoundJoin);
     pen.setStyle(Qt::PenStyle::DotLine);
@@ -164,6 +160,11 @@ namespace ADWIF
       painter.drawEllipse(myHighlight, 3, 3);
     }
   }
+
+  template<typename T> struct PointLess {
+    bool operator()(const T & a, const T & b) const { return a.x() < b.x();}
+  };
+
   void CurveEditor::updateCurve()
   {
     qSort(myPoints.begin(), myPoints.end(), PointLess<QPointF>());

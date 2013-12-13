@@ -22,8 +22,6 @@
 #include "propertybrowserbox.hpp"
 #include "curveeditor.hpp"
 
-#include <QApplication>
-
 namespace ADWIF
 {
   ExtendedVariantEditorFactory::~ExtendedVariantEditorFactory()
@@ -64,6 +62,10 @@ namespace ADWIF
       QObject::connect(editor, SIGNAL(buttonClicked()), this, SLOT(onShowCurveEditor()));
       return editor;
     }
+    else if (manager->propertyType(property) == QVariant::Vector3D)
+    {
+      return nullptr;
+    }
     else
       return QtVariantEditorFactory::createEditor(manager, property, parent);
   }
@@ -95,7 +97,7 @@ namespace ADWIF
     QPolygonF curve;
     QtProperty * prop = myEditorToPropMap[parent];
     for (int i = 0; i < prop->subProperties().count(); i++)
-      curve << qVariantValue<QPointF>(this->propertyManager(prop)->value(prop->subProperties()[i]));
+      curve << this->propertyManager(prop)->value(prop->subProperties()[i]).value<QPointF>();
     editor->setCurve(curve);
     QObject::connect(editor, SIGNAL(destroyed(QObject *)),
                      this, SLOT(onCurveEditorDestroyed(QObject *)));
@@ -115,9 +117,7 @@ namespace ADWIF
 
     QList<QtProperty*> props = myEditorToPropMap[parent]->subProperties();
     for (int i = 0; i < props.size(); i ++)
-    {
       myEditorToPropMap[parent]->removeSubProperty(props[i]);
-    }
 
     QString text;
     for (int i = 0; i < curve.size(); i++)
@@ -128,8 +128,26 @@ namespace ADWIF
       myEditorToPropMap[parent]->addSubProperty(subProperty);
       text += QLatin1String("(") + QString::number(curve[i].x()) + QLatin1String(", ") + QString::number(curve[i].y()) + QLatin1String(")");
       text += QLatin1String(" ");
+      mySubpropertyToPropertyMap[subProperty] = myEditorToPropMap[parent];
+      QObject::connect(this->propertyManager(myEditorToPropMap[parent]), SIGNAL(propertyChanged(QtProperty*)),
+                       this, SLOT(onCurveSubPropertyChanged(QtProperty*)));
     }
     parent->setText(text);
+    this->propertyManager(myEditorToPropMap[parent])->setValue(myEditorToPropMap[parent], QVariant::fromValue(curve));
+  }
+
+  void ExtendedVariantEditorFactory::onCurveSubPropertyChanged(QtProperty *property)
+  {
+    QtVariantPropertyManager * manager = dynamic_cast<QtVariantPropertyManager *>(QObject::sender());
+    if (QtVariantProperty * parent = manager->variantProperty(mySubpropertyToPropertyMap[property]))
+      if (QtVariantProperty * vprop = manager->variantProperty(property))
+      {
+        Curve2D val = parent->value().value<Curve2D>();
+        int index = vprop->propertyName().toInt();
+        val[index] = vprop->value().value<QPointF>();
+        QVariant var = QVariant::fromValue(val);
+        parent->setValue(var);
+      }
   }
 }
 

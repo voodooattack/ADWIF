@@ -21,13 +21,14 @@
 #include "ui_heightmapeditor.h"
 
 #include <QtOpenGL/QGLWidget>
+#include <QTextEdit>
 #include <QStandardItemModel>
 
 namespace ADWIF
 {
   HeightMapEditor::HeightMapEditor(ADWIF::Editor * parent, Qt::WindowFlags f): QWidget(parent, f)
   {
-    myUi = QSharedPointer<Ui::HeightMapEditor>(new Ui::HeightMapEditor);
+    myUi = myUi.create();
     myUi->setupUi(this);
 
     myUi->renderView->setViewport(new QGLWidget);
@@ -37,6 +38,14 @@ namespace ADWIF
     myUi->graphBuilder->setPropertyBrowser(myUi->propertyBrowser);
 
     layout()->setSizeConstraint(QLayout::SetDefaultConstraint);
+
+    QObject::connect(myUi->buttonRender, SIGNAL(clicked()), this, SLOT(onRenderButtonClicked()));
+  }
+
+  void HeightMapEditor::onRenderButtonClicked()
+  {
+    std::string graphJson = myUi->graphBuilder->toJson().toStyledString();
+    
   }
 }
 

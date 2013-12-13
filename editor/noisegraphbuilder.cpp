@@ -20,11 +20,19 @@
 #include "noisegraphbuilder.hpp"
 
 #include <vector>
+#include <iostream>
 
 #include <QMenu>
 
 namespace ADWIF
 {
+  QtVariantProperty * property(QtVariantPropertyManager & manager, const QString & name)
+  {
+    for(QtProperty * p : manager.properties())
+      if (p->propertyName() == name) return manager.variantProperty(p);
+    return nullptr;
+  }
+
   const std::vector<ModuleTemplate> moduleTemplates =
   {
     { "Add", "Add", 2, ":/icons/resources/plus.png" },
@@ -35,13 +43,91 @@ namespace ADWIF
     { },
     { "Abs", "Abs", 1, ":/icons/resources/calculator--arrow.png" },
     { "Invert", "Invert", 1, "" },
+    { "Cache", "Cache", 1, "" },
     { "Clamp", "Clamp", 1, "",
       [](QtVariantPropertyManager & manager) -> QList<QtVariantProperty*>
       {
         QList<QtVariantProperty*> properties;
         properties << manager.addProperty(QVariant::Double, "Min")
                    << manager.addProperty(QVariant::Double, "Max");
+        properties[0]->setPropertyId("min");
+        properties[1]->setPropertyId("max");
         return properties;
+      },
+      [](QtVariantPropertyManager & manager) -> Json::Value
+      {
+        Json::Value val = Json::Value::null;
+        val["min"] = property(manager, "Min")->value().value<double>();
+        val["max"] = property(manager, "Max")->value().value<double>();
+        return val;
+      }
+    },
+    { },
+    { "Scale/Bias", "ScaleBias", 1, "",
+      [](QtVariantPropertyManager & manager) -> QList<QtVariantProperty*>
+      {
+        QList<QtVariantProperty*> properties;
+        properties << manager.addProperty(QVariant::Double, "Scale")
+                   << manager.addProperty(QVariant::Double, "Bias");
+        return properties;
+      },
+      [](QtVariantPropertyManager & manager) -> Json::Value
+      {
+        Json::Value val = Json::Value::null;
+        val["scale"] = property(manager, "Scale")->value().value<double>();
+        val["bias"] = property(manager, "Bias")->value().value<double>();
+        return val;
+      }
+    },
+    { "Scale Point", "ScalePoint", 1, "",
+      [](QtVariantPropertyManager & manager) -> QList<QtVariantProperty*>
+      {
+        QList<QtVariantProperty*> properties;
+        properties << manager.addProperty(QVariant::Vector3D, "Scale");
+        return properties;
+      },
+      [](QtVariantPropertyManager & manager) -> Json::Value
+      {
+        Json::Value val = Json::Value::null;
+        QVector3D vec = property(manager, "Scale")->value().value<QVector3D>();
+        val["scale"][0] = vec.x();
+        val["scale"][1] = vec.y();
+        val["scale"][2] = vec.z();
+        return val;
+      }
+    },
+    { "Translate", "Translate", 1, "",
+      [](QtVariantPropertyManager & manager) -> QList<QtVariantProperty*>
+      {
+        QList<QtVariantProperty*> properties;
+        properties << manager.addProperty(QVariant::Vector3D, "Translation");
+        return properties;
+      },
+      [](QtVariantPropertyManager & manager) -> Json::Value
+      {
+        Json::Value val = Json::Value::null;
+        QVector3D vec = property(manager, "Translation")->value().value<QVector3D>();
+        val["translation"][0] = vec.x();
+        val["translation"][1] = vec.y();
+        val["translation"][2] = vec.z();
+        return val;
+      }
+    },
+    { "Rotate", "Rotate", 1, "",
+      [](QtVariantPropertyManager & manager) -> QList<QtVariantProperty*>
+      {
+        QList<QtVariantProperty*> properties;
+        properties << manager.addProperty(QVariant::Vector3D, "Rotation");
+        return properties;
+      },
+      [](QtVariantPropertyManager & manager) -> Json::Value
+      {
+        Json::Value val = Json::Value::null;
+        QVector3D vec = property(manager, "Rotation")->value().value<QVector3D>();
+        val["rotation"][0] = vec.x();
+        val["rotation"][1] = vec.y();
+        val["rotation"][2] = vec.z();
+        return val;
       }
     },
     { },
@@ -53,19 +139,239 @@ namespace ADWIF
                    << manager.addProperty(QVariant::Double, "Lower Bound")
                    << manager.addProperty(QVariant::Double, "Upper Bound");
         return properties;
+      },
+      [](QtVariantPropertyManager & manager) -> Json::Value
+      {
+        Json::Value val = Json::Value::null;
+        val["falloff"] = property(manager, "Falloff")->value().value<double>();
+        val["bounds"][0] = property(manager, "Lower Bound")->value().value<double>();
+        val["bounds"][1] = property(manager, "Upper Bound")->value().value<double>();
+        return val;
       }
     },
     { "Blend", "Blend", 3, ":/icons/resources/node.png" },
     { "Displace", "Displace", 4, "" },
-    { "Curve", "Curve", 1, ":/icons/resources/calculator--arrow.png",
+    { "Curve", "Curve", 1, "",
       [](QtVariantPropertyManager & manager) -> QList<QtVariantProperty*>
       {
         QList<QtVariantProperty*> properties;
         properties << manager.addProperty(ExtendedVariantManager::curve2dTypeId(), "Curve");
         return properties;
+      },
+      [](QtVariantPropertyManager & manager) -> Json::Value
+      {
+        Json::Value val = Json::Value::null;
+        val["curve"] = Json::Value::null;
+        Curve2D curve = property(manager, "Curve")->value().value<Curve2D>();
+        for (const auto & p : curve)
+        {
+          Json::Value v = Json::Value::null;
+          v[0] = p.x();
+          v[1] = p.y();
+          val["curve"].append(v);
+        }
+        return val;
       }
-    }
-//     { "Terrace", "Terrace", 1, ":/icons/resources/calculator--arrow.png" },
+    },
+    { "Terrace", "Terrace", 1, "", // TODO: Terrace curve for editor
+      [](QtVariantPropertyManager & manager) -> QList<QtVariantProperty*>
+      {
+        QList<QtVariantProperty*> properties;
+        properties << manager.addProperty(ExtendedVariantManager::curve2dTypeId(), "Curve");
+        return properties;
+      },
+      [](QtVariantPropertyManager & manager) -> Json::Value
+      {
+        Json::Value val = Json::Value::null;
+        val["curve"] = Json::Value::null;
+        Curve2D curve = property(manager, "Curve")->value().value<Curve2D>();
+        for (const auto & p : curve)
+        {
+          val["curve"].append(p.x());
+        }
+        return val;
+      }
+    },
+    { "Turbulence", "Turbulence", 1, "",
+      [](QtVariantPropertyManager & manager) -> QList<QtVariantProperty*>
+      {
+        QList<QtVariantProperty*> properties;
+        properties << manager.addProperty(QVariant::Double, "Frequency")
+                   << manager.addProperty(QVariant::Double, "Power")
+                   << manager.addProperty(QVariant::Double, "Roughness")
+                   << manager.addProperty(QVariant::Int, "Seed");
+        return properties;
+      },
+      [](QtVariantPropertyManager & manager) -> Json::Value
+      {
+        Json::Value val = Json::Value::null;
+        val["frequency"] = property(manager, "Frequency")->value().value<double>();
+        val["power"] = property(manager, "Power")->value().value<double>();
+        val["roughness"] = property(manager, "Roughness")->value().value<double>();
+        val["seed"] = property(manager, "Seed")->value().value<int>();
+        return val;
+      }
+    },
+    { },
+    { "Constant", "Constant", 0, "",
+      [](QtVariantPropertyManager & manager) -> QList<QtVariantProperty*>
+      {
+        QList<QtVariantProperty*> properties;
+        properties << manager.addProperty(QVariant::Double, "Value");
+        return properties;
+      },
+      [](QtVariantPropertyManager & manager) -> Json::Value
+      {
+        Json::Value val = Json::Value::null;
+        val["value"] = property(manager, "Value")->value().value<double>();
+        return val;
+      }
+    },
+    { "Checkerboard", "Checkerboard", 0, "" },
+    { "Billow", "Billow", 0, "",
+      [](QtVariantPropertyManager & manager) -> QList<QtVariantProperty*>
+      {
+        QList<QtVariantProperty*> properties;
+        properties << manager.addProperty(QVariant::Double, "Frequency")
+                   << manager.addProperty(QVariant::Double, "Lacunarity")
+                   << manager.addProperty(QVariant::Double, "Persistence")
+                   << manager.addProperty(QVariant::Int, "Seed")
+                   << manager.addProperty(QVariant::UInt, "Octaves");
+        QtVariantProperty * quality = manager.addProperty(manager.enumTypeId(), "Quality");
+        QStringList qualityNames;
+        qualityNames << "Fast" << "Standard" << "Best";
+        quality->setAttribute("enumNames", qualityNames);
+        properties << quality;
+        return properties;
+      },
+      [](QtVariantPropertyManager & manager) -> Json::Value
+      {
+        Json::Value val = Json::Value::null;
+        val["frequency"] = property(manager, "Frequency")->value().value<double>();
+        val["lacunarity"] = property(manager, "Lacunarity")->value().value<double>();
+        val["persistence"] = property(manager, "Persistence")->value().value<double>();
+        val["seed"] = property(manager, "Seed")->value().value<int>();
+        val["octaves"] = property(manager, "Octaves")->value().value<uint>();
+        switch(property(manager, "Quality")->value().value<int>())
+        {
+          case 0: val["quality"] = "fast"; break;
+          case 1: val["quality"] = "standard"; break;
+          case 2: val["quality"] = "best"; break;
+        }
+        return val;
+      }
+    },
+    { "Perlin Noise", "Perlin", 0, "",
+      [](QtVariantPropertyManager & manager) -> QList<QtVariantProperty*>
+      {
+        QList<QtVariantProperty*> properties;
+        properties << manager.addProperty(QVariant::Double, "Frequency")
+                   << manager.addProperty(QVariant::Double, "Lacunarity")
+                   << manager.addProperty(QVariant::Double, "Persistence")
+                   << manager.addProperty(QVariant::Int, "Seed")
+                   << manager.addProperty(QVariant::UInt, "Octaves");
+        QtVariantProperty * quality = manager.addProperty(manager.enumTypeId(), "Quality");
+        QStringList qualityNames;
+        qualityNames << "fast" << "standard" << "best";
+        quality->setAttribute("enumNames", qualityNames);
+        properties << quality;
+        return properties;
+      },
+      [](QtVariantPropertyManager & manager) -> Json::Value
+      {
+        Json::Value val = Json::Value::null;
+        val["frequency"] = property(manager, "Frequency")->value().value<double>();
+        val["lacunarity"] = property(manager, "Lacunarity")->value().value<double>();
+        val["persistence"] = property(manager, "Persistence")->value().value<double>();
+        val["seed"] = property(manager, "Seed")->value().value<int>();
+        val["octaves"] = property(manager, "Octaves")->value().value<uint>();
+        switch(property(manager, "Quality")->value().value<int>())
+        {
+          case 0: val["quality"] = "fast"; break;
+          case 1: val["quality"] = "standard"; break;
+          case 2: val["quality"] = "best"; break;
+        }
+        return val;
+      }
+    },
+    { "Ridged Noise", "RidgedMulti", 0, "",
+      [](QtVariantPropertyManager & manager) -> QList<QtVariantProperty*>
+      {
+        QList<QtVariantProperty*> properties;
+        properties << manager.addProperty(QVariant::Double, "Frequency")
+                   << manager.addProperty(QVariant::Double, "Lacunarity")
+                   << manager.addProperty(QVariant::Int, "Seed")
+                   << manager.addProperty(QVariant::UInt, "Octaves");
+        QtVariantProperty * quality = manager.addProperty(manager.enumTypeId(), "Quality");
+        QStringList qualityNames;
+        qualityNames << "fast" << "standard" << "best";
+        quality->setAttribute("enumNames", qualityNames);
+        properties << quality;
+        return properties;
+      },
+      [](QtVariantPropertyManager & manager) -> Json::Value
+      {
+        Json::Value val = Json::Value::null;
+        val["frequency"] = property(manager, "Frequency")->value().value<double>();
+        val["lacunarity"] = property(manager, "Lacunarity")->value().value<double>();
+        val["seed"] = property(manager, "Seed")->value().value<int>();
+        val["octaves"] = property(manager, "Octaves")->value().value<uint>();
+        switch(property(manager, "Quality")->value().value<int>())
+        {
+          case 0: val["quality"] = "fast"; break;
+          case 1: val["quality"] = "standard"; break;
+          case 2: val["quality"] = "best"; break;
+        }
+        return val;
+      }
+    },
+    { "Voronoi Diagram", "Voronoi", 0, "",
+      [](QtVariantPropertyManager & manager) -> QList<QtVariantProperty*>
+      {
+        QList<QtVariantProperty*> properties;
+        properties << manager.addProperty(QVariant::Double, "Frequency")
+                   << manager.addProperty(QVariant::Double, "Displacement")
+                   << manager.addProperty(QVariant::Int, "Seed");
+        return properties;
+      },
+      [](QtVariantPropertyManager & manager) -> Json::Value
+      {
+        Json::Value val = Json::Value::null;
+        val["frequency"] = property(manager, "Frequency")->value().value<double>();
+        val["displacement"] = property(manager, "Displacement")->value().value<double>();
+        val["seed"] = property(manager, "Seed")->value().value<int>();
+        return val;
+      }
+    },
+    { "Cylinders", "Cylinders", 0, "",
+      [](QtVariantPropertyManager & manager) -> QList<QtVariantProperty*>
+      {
+        QList<QtVariantProperty*> properties;
+        properties << manager.addProperty(QVariant::Double, "Frequency");
+        return properties;
+      },
+      [](QtVariantPropertyManager & manager) -> Json::Value
+      {
+        Json::Value val = Json::Value::null;
+        val["frequency"] = property(manager, "Frequency")->value().value<double>();
+        return val;
+      }
+    },
+    { "Spheres", "Spheres", 0, "",
+      [](QtVariantPropertyManager & manager) -> QList<QtVariantProperty*>
+      {
+        QList<QtVariantProperty*> properties;
+        properties << manager.addProperty(QVariant::Double, "Frequency");
+        return properties;
+      },
+      [](QtVariantPropertyManager & manager) -> Json::Value
+      {
+        Json::Value val = Json::Value::null;
+        val["frequency"] = property(manager, "Frequency")->value().value<double>();
+        return val;
+      }
+    },
+    { "Heightmap Source", "Heightmap", 0, "" }
   };
 
   NoiseGraphBuilder::NoiseGraphBuilder(QWidget * parent): QTreeView(parent)
@@ -115,6 +421,7 @@ namespace ADWIF
 
     myMenu->addMenu(myInsertMenu.data());
     myDeleteAction = myMenu->addAction(QIcon(":/icons/resources/document-hf-delete.png"), "&Delete");
+    QObject::connect(myDeleteAction, SIGNAL(triggered()), this, SLOT(onActionTriggered()));
 
     expandAll();
   }
@@ -150,7 +457,15 @@ namespace ADWIF
 
     if (action == myDeleteAction)
     {
-      myModel->removeRow(selectedIndexes()[0].row());
+      NoiseModuleItem * item = dynamic_cast<NoiseModuleItem*>(myModel->itemFromIndex(selectedIndexes()[0]));
+      item->setModuleTemplate(ModuleTemplate());
+      item->setText("Empty");
+      item->setIcon(QIcon(":/icons/resources/document-insert.png"));
+      item->setEditable(false);
+      item->removeRows(0, item->rowCount());
+      item->setBackground(myEmptyTemplate->background());
+      item->setData(QVariant::fromValue((void*)0));
+      item->parent()->setBackground(Qt::red);
     }
     else
     {
@@ -162,10 +477,10 @@ namespace ADWIF
       item->setData(QVariant::fromValue((void*)templ));
       item->setModuleTemplate(*templ);
       if (!item->parent()->data().value<void*>())
-        item->parent()->setBackground(Qt::green);
+        item->parent()->setBackground(myEmptyTemplate->background());
       else
       {
-        item->parent()->setBackground(Qt::green);
+        item->parent()->setBackground(myEmptyTemplate->background());
         for (int i = 0; i < item->parent()->rowCount(); i++)
         {
           if (item->parent()->child(i)->isEditable() == false)
@@ -180,7 +495,9 @@ namespace ADWIF
       if (item->rowCount())
         item->setBackground(Qt::red);
       else
-        item->setBackground(Qt::green);
+        item->setBackground(myEmptyTemplate->background());
+      myPropertyBrowser->clear();
+      item->addToPropertyBrowser(myPropertyBrowser);
       expand(selectedIndexes()[0]);
     }
   }
@@ -208,5 +525,15 @@ namespace ADWIF
       if (!item->child(i)->data().value<void*>() || !isComplete(item->child(i)))
         return false;
     return true;
+  }
+
+  Json::Value NoiseGraphBuilder::toJson() const
+  {
+    if (!isComplete())
+      return Json::Value();
+    if (auto item = dynamic_cast<NoiseModuleItem*>(myRoot->child(0)))
+      return item->toJson();
+    else
+      return Json::Value();
   }
 }

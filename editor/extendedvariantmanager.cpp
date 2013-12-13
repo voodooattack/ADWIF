@@ -21,10 +21,18 @@
 
 namespace ADWIF
 {
+  ExtendedVariantManager::ExtendedVariantManager(QObject * parent) : QtVariantPropertyManager(parent)
+  {
+    QObject::connect(this, SIGNAL(propertyChanged(QtProperty*)), this, SLOT(onPropertyChanged(QtProperty*)));
+    QObject::connect(this, SIGNAL(propertyDestroyed(QtProperty*)), this, SLOT(onPropertyDestroyed(QtProperty*)));
+  }
+
   QVariant ExtendedVariantManager::value(const QtProperty * property) const
   {
     if (myCurveData.contains(property))
       return QVariant::fromValue(myCurveData[property].curve);
+    else if (myV3dData.contains(property))
+      return QVariant(myV3dData[property]);
     else
       return QtVariantPropertyManager::value(property);
   }
@@ -33,6 +41,8 @@ namespace ADWIF
   {
     if (propertyType == curve2dTypeId())
       return curve2dTypeId();
+    else if (propertyType == QVariant::Vector3D)
+      return QVariant::Vector3D;
     else
       return QtVariantPropertyManager::valueType(propertyType);
   }
@@ -40,6 +50,8 @@ namespace ADWIF
   bool ExtendedVariantManager::isPropertyTypeSupported(int propertyType) const
   {
     if (propertyType == curve2dTypeId())
+      return true;
+    else if (propertyType == QVariant::Vector3D)
       return true;
     else
       return QtVariantPropertyManager::isPropertyTypeSupported(propertyType);
@@ -52,8 +64,10 @@ namespace ADWIF
       QStringList attr;
       attr << QLatin1String("maxSize");
       return attr;
-    }
-    return QtVariantPropertyManager::attributes(propertyType);
+    } else if (propertyType == QVariant::Vector3D)
+      return QStringList();
+    else
+      return QtVariantPropertyManager::attributes(propertyType);
   }
 
   int ExtendedVariantManager::attributeType(int propertyType, const QString & attribute) const
@@ -65,6 +79,8 @@ namespace ADWIF
       else
         return 0;
     }
+    else if (propertyType == QVariant::Vector3D)
+      return 0;
     else
       return QtVariantPropertyManager::attributeType(propertyType, attribute);
   }
@@ -78,7 +94,10 @@ namespace ADWIF
       else
         return QVariant();
     }
-    return QtVariantPropertyManager::attributeValue(property, attribute);
+    else if (myV3dData.contains(property))
+      return QVariant();
+    else
+      return QtVariantPropertyManager::attributeValue(property, attribute);
   }
 
   void ExtendedVariantManager::setValue(QtProperty * property, const QVariant & val)
@@ -87,12 +106,21 @@ namespace ADWIF
     {
       if (val.type() != curve2dTypeId() && !val.canConvert((QVariant::Type)curve2dTypeId()))
         return;
-      Curve2D v = qVariantValue<Curve2D>(val);
+      Curve2D v = val.value<Curve2D>();
       CurveData2D d = myCurveData[property];
       if (d.curve == v)
         return;
       d.curve = v;
       myCurveData[property] = d;
+      emit propertyChanged(property);
+      emit valueChanged(property, val);
+      return;
+    }
+    else if (myV3dData.contains(property))
+    {
+      if (val.type() != QVariant::Vector3D && !val.canConvert(QVariant::Vector3D))
+        return;
+      myV3dData[property] = val.value<QVector3D>();
       emit propertyChanged(property);
       emit valueChanged(property, val);
       return;
@@ -109,7 +137,7 @@ namespace ADWIF
       {
         if (value.type() != QVariant::UInt && !value.canConvert(QVariant::UInt))
           return;
-        uint v = qVariantValue<uint>(value);
+        uint v = value.value<uint>();
         CurveData2D d = myCurveData[property];
         if (d.maxSize == v)
           return;
@@ -117,6 +145,10 @@ namespace ADWIF
         myCurveData[property] = d;
         emit attributeChanged(property, attribute, value);
       }
+    }
+    else if (myV3dData.contains(property))
+    {
+      return;
     }
     else
       QtVariantPropertyManager::setAttribute(property, attribute, value);
@@ -129,15 +161,19 @@ namespace ADWIF
       QString s;
       for (int i = 0; i < myCurveData[property].curve.size(); i++)
       {
-        s += QString("[") +
+        s += QString("(") +
              QString::number(myCurveData[property].curve[i].x()) +
-             QString(",") +
+             QString(", ") +
              QString::number(myCurveData[property].curve[i].y()) +
-             QString("]");
+             QString(")");
         s += QString(" ");
       }
       return s;
     }
+    else if (myV3dData.contains(property))
+      return QLatin1String("(") + QString::number(myV3dData[property].x()) + QLatin1String(", ") +
+        QString::number(myV3dData[property].y()) + QLatin1String(", ") +
+        QString::number(myV3dData[property].z()) + QLatin1String(")");
     else
       return QtVariantPropertyManager::valueText(property);
   }
@@ -146,19 +182,63 @@ namespace ADWIF
   {
     if (propertyType(property) == curve2dTypeId())
       myCurveData[property] = CurveData2D();
-    QtVariantPropertyManager::initializeProperty(property);
+    else if (propertyType(property) == QVariant::Vector3D)
+    {
+      myV3dData[property] = QVector3D();
+      QtProperty * px = addProperty(QVariant::Double, "X");
+      QtProperty * py = addProperty(QVariant::Double, "Y");
+      QtProperty * pz = addProperty(QVariant::Double, "Z");
+      property->addSubProperty(px);
+      property->addSubProperty(py);
+      property->addSubProperty(pz);
+      mySubpropertyToPropertyMapVec3D[px] = property;
+      mySubpropertyToPropertyMapVec3D[py] = property;
+      mySubpropertyToPropertyMapVec3D[pz] = property;
+    }
+    else
+      QtVariantPropertyManager::initializeProperty(property);
   }
 
   void ExtendedVariantManager::uninitializeProperty(QtProperty * property)
   {
     if (propertyType(property) == curve2dTypeId())
       myCurveData.remove(property);
-    QtVariantPropertyManager::uninitializeProperty(property);
+    else if (propertyType(property) == QVariant::Vector3D)
+      myV3dData.remove(property);
+    else
+      QtVariantPropertyManager::uninitializeProperty(property);
   }
 
   int ExtendedVariantManager::curve2dTypeId()
   {
     return qMetaTypeId<Curve2D>();
+  }
+
+  void ExtendedVariantManager::onPropertyChanged(QtProperty * property)
+  {
+    if (mySubpropertyToPropertyMapVec3D.contains(property))
+    {
+      QtVariantProperty * parent = variantProperty(mySubpropertyToPropertyMapVec3D[property]);
+      QtVariantProperty * vprop = variantProperty(property);
+      QVector3D pval = parent->value().value<QVector3D>();
+      if (property->propertyName() == "X")
+        pval.setX((vprop->value().value<double>()));
+      else if (property->propertyName() == "Y")
+        pval.setY(vprop->value().value<double>());
+      else if (property->propertyName() == "Z")
+        pval.setZ(vprop->value().value<double>());
+      parent->setValue(QVariant::fromValue(pval));
+    }
+  }
+
+  void ExtendedVariantManager::onPropertyDestroyed(QtProperty * property)
+  {
+    QtVariantProperty * vprop = variantProperty(property);
+    if (vprop && vprop->propertyType() == QVariant::Vector3D)
+    {
+      for (auto i : vprop->subProperties())
+        delete i;
+    }
   }
 }
 

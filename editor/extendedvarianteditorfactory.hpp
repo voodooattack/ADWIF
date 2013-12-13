@@ -43,9 +43,11 @@ namespace ADWIF
     void onCurveEditorDestroyed(QObject * object);
     void onCurveChanged(const QPolygonF & curve);
     void onShowCurveEditor();
+    void onCurveSubPropertyChanged(QtProperty * property);
   private:
     QMap<QtProperty *, QList<QWidget*> > myPropToEditorMap;
     QMap<QWidget *, QtProperty *> myEditorToPropMap;
+    QMap<QtProperty *, QtProperty *> mySubpropertyToPropertyMap;
   };
 }
 

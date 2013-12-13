@@ -38,6 +38,8 @@ namespace ADWIF
     explicit HeightMapEditor(Editor * parent = 0, Qt::WindowFlags f = 0);
     virtual ~HeightMapEditor() { }
 
+  public slots:
+    void onRenderButtonClicked();
   private:
     QSharedPointer<Ui::HeightMapEditor> myUi;
     Editor * myEditor;

@@ -24,6 +24,7 @@
 #include <QtVariantProperty>
 #include <QtVariantPropertyManager>
 
+#include <QVector3D>
 #include <QVector2D>
 #include <QVector>
 
@@ -37,7 +38,7 @@ namespace ADWIF
   {
     Q_OBJECT
   public:
-    ExtendedVariantManager(QObject * parent = 0): QtVariantPropertyManager(parent) { }
+    ExtendedVariantManager(QObject * parent = 0);
 
     virtual QVariant value(const QtProperty * property) const;
     virtual int valueType(int propertyType) const;
@@ -53,6 +54,8 @@ namespace ADWIF
     virtual void setValue(QtProperty * property, const QVariant & val);
     virtual void setAttribute(QtProperty * property,
                               const QString & attribute, const QVariant & value);
+    virtual void onPropertyChanged(QtProperty * property);
+    virtual void onPropertyDestroyed(QtProperty * property);
   protected:
     virtual QString valueText(const QtProperty * property) const;
     virtual void initializeProperty(QtProperty * property);
@@ -64,6 +67,8 @@ namespace ADWIF
       uint maxSize;
     };
     QMap<const QtProperty *, CurveData2D> myCurveData;
+    QMap<const QtProperty *, QVector3D> myV3dData;
+    QMap<QtProperty *, QtProperty *> mySubpropertyToPropertyMapVec3D;
   };
 }
 

@@ -104,7 +104,7 @@ namespace ADWIF
 
   Editor::Editor(const std::shared_ptr<Engine> & engine): myEngine(engine), myProgressTimer(nullptr)
   {
-    myUi = QSharedPointer<Ui::Editor>(new Ui::Editor);
+    myUi = myUi.create();
     myUi->setupUi(this);
 
     std::shared_ptr<EditorLogProvider> logProvider(new EditorLogProvider);
