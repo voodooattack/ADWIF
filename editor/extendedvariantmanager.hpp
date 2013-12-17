@@ -21,8 +21,8 @@
 #ifndef EXTENDEDVARIANTMANAGER_H
 #define EXTENDEDVARIANTMANAGER_H
 
-#include <QtVariantProperty>
-#include <QtVariantPropertyManager>
+#include <qtpropertymanager.h>
+#include <qtvariantproperty.h>
 
 #include <QVector3D>
 #include <QVector2D>

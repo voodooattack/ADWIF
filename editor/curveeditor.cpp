@@ -71,7 +71,7 @@ namespace ADWIF
     QWidget::mouseMoveEvent(e);
     if (e->buttons() == Qt::LeftButton && myHighlightFlag)
     {
-      myPoints[myHighlight] = myTransform.inverted().scale(myZoomLevel, myZoomLevel).map(e->posF());
+      myPoints[myHighlight] = myTransform.inverted().scale(myZoomLevel, myZoomLevel).map(e->pos());
       updateCurve();
       update();
     }
@@ -108,7 +108,7 @@ namespace ADWIF
     QWidget::mouseReleaseEvent(e);
     if (!myHighlightFlag)
     {
-      myPoints << myTransform.inverted().scale(myZoomLevel, myZoomLevel).map(e->posF());
+      myPoints << myTransform.inverted().scale(myZoomLevel, myZoomLevel).map(e->pos());
       updateCurve();
       emit curveChanged(myPoints);
     }

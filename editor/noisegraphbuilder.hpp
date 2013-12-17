@@ -23,15 +23,15 @@
 #include <QList>
 #include <QMimeData>
 
-#include <QtGui/QWidget>
-#include <QtGui/QTreeView>
+#include <QWidget>
+#include <QTreeView>
 #include <QStandardItemModel>
 #include <QIdentityProxyModel>
 #include <QMenu>
 
-#include <QtVariantPropertyManager>
-#include <QtVariantProperty>
-#include <QtTreePropertyBrowser>
+#include <qtpropertymanager.h>
+#include <qtvariantproperty.h>
+#include <qttreepropertybrowser.h>
 
 #include <json/value.h>
 
@@ -73,11 +73,13 @@ namespace ADWIF
     NoiseModuleItem(const NoiseModuleItem & other): QStandardItem(other), myTemplate(other.myTemplate) {
       setupPropertyManager();
       setModuleTemplate(other.myTemplate);
+      for (int i = 0; i < myProperties.count(); i++)
+        myProperties[i]->setValue(other.myProperties[i]->value());
     }
     NoiseModuleItem(const QString & text): QStandardItem(text) { setupPropertyManager(); }
     NoiseModuleItem(const QIcon & icon, const QString & text): QStandardItem(icon, text) { setupPropertyManager(); }
 
-    virtual ~NoiseModuleItem() { for(auto i : myProperties) delete i; }
+    virtual ~NoiseModuleItem() { }
 
     void setupPropertyManager();
 
@@ -121,57 +123,26 @@ namespace ADWIF
   {
     Q_OBJECT
   public:
-//     virtual Qt::DropActions supportedDragActions() const {
-//       return Qt::DropAction::CopyAction;
-//     }
+    virtual Qt::DropActions supportedDragActions() const {
+      return Qt::DropAction::CopyAction | Qt::DropAction::MoveAction;
+    }
 
     explicit NoiseGraphItemModel(QObject * parent = 0): QIdentityProxyModel(parent)
     {
     }
 
-    virtual bool insertColumns(int column, int count, const QModelIndex& parent)
+    Qt::ItemFlags flags(const QModelIndex &index) const
     {
-      std::cerr << "alalalala\n";
-      return QIdentityProxyModel::insertColumns(column, count, parent);
-    }
+      Qt::ItemFlags defaultFlags = QIdentityProxyModel::flags(index);
 
-    virtual bool insertRows(int row, int count, const QModelIndex& parent)
-    {
-      std::cerr << "trolololo\n";
-      return QIdentityProxyModel::insertRows(row, count, parent);
-    }
-
-    bool dropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent)
-    {
-      if (row == -1 && column == -1)
-      {
-        QModelIndex target = mapToSource(parent);
-        if (itemData(target)[NoiseModuleItem::IsEmptyRole].value<bool>())
-        {
-          removeRow(parent.row(), parent.parent());
-          bool result = QIdentityProxyModel::dropMimeData(data, action, row, column, parent.parent());
-          return result;
-        }
+      if (index.isValid())
+        if (!itemData(index)[NoiseModuleItem::IsEmptyRole].value<bool>())
+          return Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled | defaultFlags;
         else
-          return false;
-      } else
-        return false;
+          return defaultFlags & ~Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled;
+      else
+        return defaultFlags & ~Qt::ItemIsDragEnabled & ~Qt::ItemIsDropEnabled;
     }
-//
-//     Qt::ItemFlags flags(const QModelIndex &index) const
-//     {
-//       Qt::ItemFlags defaultFlags = QStandardItemModel::flags(index);
-//
-//       if (index.isValid())
-//         if (itemFromIndex(index)->isEditable() && itemFromIndex(index)->data().value<bool>())
-//           return Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled | defaultFlags;
-//         else
-//           return defaultFlags & ~Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled;
-//       else
-//       {
-//         return defaultFlags & ~Qt::ItemIsDragEnabled & ~Qt::ItemIsDropEnabled;
-//       }
-//     }
 
   private:
 
@@ -191,8 +162,31 @@ namespace ADWIF
   private:
     bool isComplete(const QStandardItem * item) const;
 
-    void dropEvent(QDropEvent * e);
+    QStandardItem * recursiveClone(QStandardItem * src)
+    {
+      QStandardItem * clone = src->clone();
+      for (int i = 0; i < src->rowCount(); i++)
+      {
+        QList<QStandardItem*> row;
+        for (int j = 0; j < src->columnCount(); j++)
+          row.push_back(recursiveClone(src->child(i, j)));
+        clone->insertRow(i, row);
+      }
+      return clone;
+    }
 
+    bool isDescendantOf(const QModelIndex & index, const QModelIndex & parent)
+    {
+      if (!parent.isValid())
+        return false;
+      else if (index.parent() == parent)
+        return true;
+      else
+        return isDescendantOf(index, index.parent());
+    }
+
+  protected:
+    void dropEvent(QDropEvent * e);
   public slots:
     void onShowContextMenu(const QPoint & pt);
     void onActionTriggered();

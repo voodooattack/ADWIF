@@ -20,7 +20,8 @@
 #ifndef EXTENDEDVARIANTEDITORFACTORY_H
 #define EXTENDEDVARIANTEDITORFACTORY_H
 
-#include <QtVariantEditorFactory>
+#include <qteditorfactory.h>
+#include <qtvariantproperty.h>
 
 namespace ADWIF
 {

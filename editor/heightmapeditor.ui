@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>705</width>
-    <height>642</height>
+    <width>698</width>
+    <height>413</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,21 +16,24 @@
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QSplitter" name="splitterMain">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
      <property name="opaqueResize">
       <bool>false</bool>
      </property>
-     <widget class="QSplitter" name="splitter">
+     <widget class="QSplitter" name="splitterSub">
+      <property name="minimumSize">
+       <size>
+        <width>256</width>
+        <height>0</height>
+       </size>
+      </property>
       <property name="orientation">
        <enum>Qt::Vertical</enum>
+      </property>
+      <property name="opaqueResize">
+       <bool>false</bool>
       </property>
       <widget class="ADWIF::NoiseGraphBuilder" name="graphBuilder">
        <property name="headerHidden">
@@ -113,7 +116,7 @@
       <item row="0" column="2">
        <widget class="QPushButton" name="buttonShowSrc">
         <property name="text">
-          <string>&amp;Source</string>
+         <string>&amp;Source</string>
         </property>
        </widget>
       </item>

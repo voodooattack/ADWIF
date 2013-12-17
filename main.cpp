@@ -101,12 +101,21 @@ int main(int argc, char ** argv)
   std::shared_ptr<Input> input;
   std::shared_ptr<Engine> engine;
 
+#ifdef ADWIF_BUILD_EDITOR
+  if (options.count("editor")) {
+    renderer.reset(new NullRenderer);
+    input.reset(new NullInput);
+  } else {
+#endif
 #ifdef ADWIF_RENDERER_USE_CURSES
-  renderer.reset(new CursesRenderer());
-  input.reset(new CursesInput(renderer));
+    renderer.reset(new CursesRenderer());
+    input.reset(new CursesInput(renderer));
 #elif defined(ADWIF_RENDERER_USE_TCOD)
-  renderer.reset(new TCODRenderer());
-  input.reset(new TCODInput(renderer));
+    renderer.reset(new TCODRenderer());
+    input.reset(new TCODInput(renderer));
+#endif
+#ifdef ADWIF_BUILD_EDITOR
+  }
 #endif
 
   if (!renderer->init())

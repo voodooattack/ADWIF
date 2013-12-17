@@ -20,7 +20,7 @@
 #ifndef HEIGHTMAPEDITOR_H
 #define HEIGHTMAPEDITOR_H
 
-#include <QtGui/QWidget>
+#include <QWidget>
 
 #include "editor.hpp"
 

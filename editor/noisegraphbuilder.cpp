@@ -20,11 +20,9 @@
 #include "noisegraphbuilder.hpp"
 
 #include <vector>
-#include <iostream>
 
 #include <QMenu>
 #include <QDropEvent>
-#include <csignal>
 
 #include "noiseutils.hpp"
 
@@ -59,8 +57,6 @@ namespace ADWIF
         property(manager, "Min")->setAttribute("singleStep", 0.01);
         property(manager, "Max")->setAttribute("decimals", 4);
         property(manager, "Max")->setAttribute("singleStep", 0.01);
-        properties[0]->setPropertyId("min");
-        properties[1]->setPropertyId("max");
         return properties;
       },
       [](QtVariantPropertyManager & manager) -> Json::Value
@@ -635,9 +631,8 @@ namespace ADWIF
     viewport()->setAcceptDrops(true);
     setDropIndicatorShown(true);
     setDragDropMode(DragDropMode::DragDrop);
-    setDefaultDropAction(Qt::DropAction::CopyAction);
+    setDefaultDropAction(Qt::DropAction::MoveAction);
     setDragDropOverwriteMode(true);
-    myProxyModel->setSupportedDragActions(Qt::DropAction::CopyAction);
 
     myEmptyTemplate = QSharedPointer<NoiseModuleItem>(
       new NoiseModuleItem(QIcon(":/icons/resources/document-insert.png"), "Empty"));
@@ -674,8 +669,10 @@ namespace ADWIF
     QModelIndex isrc = myProxyModel->mapToSource(currentIndex());
     QModelIndex idst = myProxyModel->mapToSource(indexAt(e->pos()));
 
-    QStandardItem * src = dynamic_cast<NoiseModuleItem*>(myModel->itemFromIndex(isrc));
-    QStandardItem * dst = dynamic_cast<NoiseModuleItem*>(myModel->itemFromIndex(idst));
+    QStandardItem * src = myModel->itemFromIndex(isrc);
+    QStandardItem * dst = myModel->itemFromIndex(idst);
+    QStandardItem * psrc = myModel->itemFromIndex(isrc.parent());
+    QStandardItem * pdst = myModel->itemFromIndex(idst.parent());
 
     if (!src || !dst)
     {
@@ -689,29 +686,35 @@ namespace ADWIF
       return;
     }
 
-    int srcRow = isrc.row(), srcCol = isrc.column(); QModelIndex srcParent = isrc.parent();
-    int dstRow = idst.row(), dstCol = idst.column(); QModelIndex dstParent = idst.parent();
-
-//     src = myModel->takeItem(isrc.row(), isrc.column());
-//     dst = myModel->takeItem(idst.row(), idst.column());
-
-//     myModel->insertRow(isrc.row(), isrc.parent());
-//     myModel->insertRow(idst.row(), idst.parent());
-
-    e->ignore();
+    if (isDescendantOf(isrc, idst) || isDescendantOf(idst, isrc))
+    {
+      e->ignore();
+      return;
+    }
 
     clearSelection();
 
-    src = src->clone();
-    dst = dst->clone();
+    if (e->proposedAction() == Qt::DropAction::MoveAction)
+    {
+      src = psrc->takeChild(isrc.row());
+      dst = pdst->takeChild(idst.row());
 
-    myModel->setItem(idst.row(), idst.column(), src);
-    myModel->setItem(isrc.row(), isrc.column(), dst);
+      psrc->setChild(isrc.row(), dst);
+      pdst->setChild(idst.row(), src);
 
-    this->reset();
+      e->acceptProposedAction();
+    }
+    else if (e->proposedAction() == Qt::DropAction::CopyAction)
+    {
+      src = recursiveClone(src);
+      pdst->setChild(idst.row(), src);
+
+      e->acceptProposedAction();
+    }
+    else
+      e->ignore();
+
     myProxyModel->revert();
-    myModel->revert();
-
 
     return;
   }

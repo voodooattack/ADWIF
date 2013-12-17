@@ -20,10 +20,10 @@
 #ifndef EDITOR_H
 #define EDITOR_H
 
-#include <QtGui/QMainWindow>
-#include <QtGui/QTableWidget>
-#include <QtGui/QLabel>
-#include <QtGui/QProgressBar>
+#include <QMainWindow>
+#include <QTableWidget>
+#include <QLabel>
+#include <QProgressBar>
 
 #include <memory>
 #include "engine.hpp"

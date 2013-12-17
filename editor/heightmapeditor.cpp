@@ -22,8 +22,8 @@
 
 #include "noiseutils.hpp"
 #include <physfs.hpp>
-#include <qt4/QtGui/QTextEdit>
-#include <qt4/QtGui/QBoxLayout>
+#include <QTextEdit>
+#include <QBoxLayout>
 
 #include <QtOpenGL/QGLWidget>
 #include <QTextEdit>
@@ -36,17 +36,17 @@ namespace ADWIF
     myUi = myUi.create();
     myUi->setupUi(this);
 
-    myUi->renderView->setViewport(new QGLWidget);
-    myUi->renderView->setScene(new QGraphicsScene);
-    myUi->renderView->setRenderHints(QPainter::HighQualityAntialiasing);
-    myUi->renderView->setScene(new QGraphicsScene(myUi->renderView));
-
     myUi->graphBuilder->setPropertyBrowser(myUi->propertyBrowser);
 
     layout()->setSizeConstraint(QLayout::SetDefaultConstraint);
 
     QObject::connect(myUi->buttonRender, SIGNAL(clicked()), this, SLOT(onRenderButtonClicked()));
     QObject::connect(myUi->buttonShowSrc, SIGNAL(clicked()), this, SLOT(onShowSrcButtonClicked()));
+
+//     myUi->renderView->setViewport(new QGLWidget(myUi->renderView));
+    myUi->renderView->setScene(new QGraphicsScene(myUi->renderView));
+    myUi->renderView->setRenderHints(QPainter::Antialiasing);
+    myUi->renderView->scene()->clear();
   }
 
   void HeightMapEditor::onRenderButtonClicked()

@@ -24,7 +24,7 @@
 
 #include <memory>
 
-#include <QtGui/QApplication>
+#include <QApplication>
 
 namespace ADWIF
 {
@@ -39,10 +39,9 @@ namespace ADWIF
     virtual void consume(int key) { }
 
   private:
-    static QApplication * myApp;
+    QApplication myApp;
     std::shared_ptr<class Editor> myEditor;
     std::shared_ptr<class Engine> myEngine;
-    std::shared_ptr<class Game> myGame;
   };
 }
 

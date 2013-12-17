@@ -79,6 +79,31 @@ namespace ADWIF
 
     virtual bool supportsMultiLayers() const = 0;
   };
+
+  class NullRenderer: public Renderer
+  {
+  public:
+    virtual ~NullRenderer() { }
+    virtual const std::string name() const { return "NullRenderer"; }
+    virtual bool init() { return true; }
+    virtual void shutdown() { }
+    virtual int width() const { return 80; }
+    virtual int height() const { return 24; }
+    virtual bool resized() const { return false; }
+    virtual void clear() { }
+    virtual void refresh() { }
+    virtual void style(Colour fg, Colour bg, int styleMask) { }
+    virtual void style(int x, int y, int len, Colour fg, Colour bg, int styleMask) { }
+    virtual void startWindow(int x, int y, int w, int h) { }
+    virtual void endWindow() { }
+    virtual void drawChar(int x, int y, int c) { }
+    virtual void drawText(int x, int y, const std::string & text) { }
+    virtual void drawMessage(const std::string & message) { }
+    virtual void drawEntity(const class Entity *, int x, int y) { }
+    virtual void drawRegion(int x, int y, int z, int w, int h, int scrx, int scry, const class Game * game, class Map * map) { }
+
+    virtual bool supportsMultiLayers() const { }
+  };
 }
 
 #endif

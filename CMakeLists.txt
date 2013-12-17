@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.8)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMakeModules" ${CMAKE_MODULE_PATH})
 
 include(cotire)
@@ -100,11 +100,10 @@ option(ADWIF_BUILD_EDITOR "whether or not to build the game editor" OFF)
 if (ADWIF_BUILD_EDITOR)
   set(EDITOR_DIR "editor")
   include_directories(${EDITOR_DIR})
-  find_package(Qt 4.8 COMPONENTS QtCore QtGui QtOpenGL REQUIRED)
+  set(CMAKE_AUTOMOC ON)
+  find_package(Qt5Widgets REQUIRED)
+  find_package(Qt5OpenGL REQUIRED)
   find_package(OpenGL REQUIRED)
-  include(${QT_USE_FILE})
-  set(EDITOR_INCLUDES ${QT_INCLUDES})
-  set(EDITOR_LIBRARIES ${QT_LIBRARIES} ${QT_QTOPENGL_LIBRARIES} ${OPENGL_LIBRARIES})
   set(EDITOR_UI editor/editor.ui editor/heightmapeditor.ui)
   set(EDITOR_SOURCES editor/editor.cpp editor/heightmapeditor.cpp editor/noisegraphbuilder.cpp
                      editor/extendedvariantmanager.cpp editor/extendedvarianteditorfactory.cpp
@@ -112,19 +111,11 @@ if (ADWIF_BUILD_EDITOR)
   set(EDITOR_HEADERS editor/editor.hpp editor/heightmapeditor.hpp editor/noisegraphbuilder.hpp
                      editor/extendedvariantmanager.hpp editor/extendedvarianteditorfactory.hpp
                      editor/propertybrowserbox.hpp editor/curveeditor.hpp)
-  qt4_wrap_ui(EDITOR_UI_HEADERS ${EDITOR_UI})
   set(EDITOR_RESOURCES editor/resources.qrc)
-  qt4_wrap_cpp(EDITOR_MOC ${EDITOR_HEADERS} ${EDITOR_UI_HEADERS})
-  qt4_add_resources(EDITOR_RC ${EDITOR_RESOURCES})
-  set(ADWIF_SOURCES ${ADWIF_SOURCES} ${EDITOR_SOURCES} ${EDITOR_MOC} ${EDITOR_RC} editorstate.cpp)
-  include(ExternalProject)
-  ExternalProject_Add(QtPropertyBrowserClone
-                      GIT_REPOSITORY https://github.com/commontk/QtPropertyBrowser.git
-                      SOURCE_DIR ${PROJECT_BINARY_DIR}/QtPropertyBrowserSrc
-                      BINARY_DIR ${PROJECT_BINARY_DIR}/QtPropertyBrowser
-                      INSTALL_COMMAND "")
-  include_directories(${PROJECT_BINARY_DIR}/QtPropertyBrowserSrc/src/)
-  link_directories(${PROJECT_BINARY_DIR}/QtPropertyBrowser/bin/)
+  qt5_wrap_ui(EDITOR_UI_SRC ${EDITOR_UI})
+  qt5_add_resources(EDITOR_RC ${EDITOR_RESOURCES})
+  set(ADWIF_SOURCES ${EDITOR_UI_SRC} ${ADWIF_SOURCES} ${EDITOR_SOURCES} ${EDITOR_RC} editorstate.cpp)
+  include_directories(${DEP_DIR}/QtPropertyBrowser)
 endif()
 
 # get_cmake_property(_variableNames VARIABLES)
@@ -137,14 +128,14 @@ configure_file ("${PROJECT_SOURCE_DIR}/config.hpp.in" "${PROJECT_BINARY_DIR}/con
 include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR} ${EDITOR_INCLUDES}
                     ${ADWIF_RENDERER_INCLUDES} ${PHYSFS_INCLUDE_DIR} ${V8_INCLUDE_DIR}
                     ${Boost_INCLUDE_DIRS} ${HALF_INCLUDE_DIRS} ${PHYSFS_CPP_ROOT}/include ${JSONCPP_INCLUDE_DIR} ${OPENVDB_INCLUDE_DIRS}
-                    ${TBB_INCLUDE_DIRS} ${UTF8CPP_INCLUDE_DIR} ${FREEIMAGE_INCLUDE_PATH} ${NOISE_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIR}
-                    ${QtPropertyBrowser_INCLUDE_DIRS})
+                    ${TBB_INCLUDE_DIRS} ${UTF8CPP_INCLUDE_DIR} ${FREEIMAGE_INCLUDE_PATH} ${NOISE_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIR})
 add_executable(adwif ${ADWIF_RENDERER_SOURCES} ${ADWIF_SOURCES})
 add_dependencies(adwif physfs++)
 
 if (ADWIF_BUILD_EDITOR)
-  add_dependencies(adwif QtPropertyBrowserClone)
+  add_dependencies(adwif QtPropertyBrowser)
   target_link_libraries(adwif QtPropertyBrowser)
+  qt5_use_modules(adwif Core Widgets OpenGL)
 endif()
 
 target_link_libraries(adwif ${EDITOR_LIBRARIES} ${ADWIF_RENDERER_LIBRARIES} ${PHYSFS_LIBRARY} ${V8_LIBRARIES} ${Boost_LIBRARIES} ${HALF_LIBRARIES}

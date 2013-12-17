@@ -37,6 +37,19 @@ namespace ADWIF
     virtual bool promptYn(const std::string & text, bool caseSensetive) = 0;
   };
 
+  class NullInput : public Input
+  {
+  public:
+    virtual ~NullInput() { }
+    virtual bool init() { return true; }
+    virtual void shutdown() { }
+    virtual int key() { return 0; }
+    virtual int getTimeout() const { return 0; }
+    virtual void setTimeout(int timeout) { }
+    virtual std::string prompt(const std::string & text, unsigned int maxLen, const std::string & suffix = std::string()) { return ""; }
+    virtual bool promptYn(const std::string & text, bool caseSensetive) { return true; }
+  };
+
   namespace Key
   {
     extern const int Escape;

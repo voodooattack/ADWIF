@@ -25,13 +25,13 @@
 #include "mapgenerator.hpp"
 #include "heightmapeditor.hpp"
 
-#include <QtOpenGL/QGLWidget>
-#include <QtCore/QTimer>
-#include <QtGui/QGraphicsPolygonItem>
+#include <QGLWidget>
+#include <QTimer>
+#include <QGraphicsPolygonItem>
 
-#include <QtVariantPropertyManager>
-#include <QtVariantProperty>
-#include <QtTreePropertyBrowser>
+#include <qtpropertymanager.h>
+#include <qtvariantproperty.h>
+#include <qttreepropertybrowser.h>
 
 #include <boost/geometry/geometry.hpp>
 #include <boost/geometry/geometries/geometries.hpp>
@@ -50,8 +50,8 @@ namespace ADWIF
   class RegionPolygonItem: public QGraphicsPolygonItem
   {
   public:
-    RegionPolygonItem(Editor * editor, QGraphicsItem * parent = 0, QGraphicsScene * scene = 0) :
-      QGraphicsPolygonItem(parent, scene), myEditor(editor)
+    RegionPolygonItem(Editor * editor, QGraphicsItem * parent = 0) :
+      QGraphicsPolygonItem(parent), myEditor(editor)
       {
         QStringList biomes;
         for (const auto & b : myEditor->game()->biomes())

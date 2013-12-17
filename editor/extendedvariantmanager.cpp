@@ -233,12 +233,6 @@ namespace ADWIF
 
   void ExtendedVariantManager::onPropertyDestroyed(QtProperty * property)
   {
-    QtVariantProperty * vprop = variantProperty(property);
-    if (vprop && vprop->propertyType() == QVariant::Vector3D)
-    {
-      for (auto i : vprop->subProperties())
-        delete i;
-    }
   }
 }
 

@@ -25,32 +25,21 @@
 
 namespace ADWIF
 {
-  QApplication * EditorState::myApp;
-  
-  EditorState::EditorState(const std::shared_ptr<Engine> & engine, int & argc, char ** argv): myEngine(engine), myEditor() 
+  EditorState::EditorState(const std::shared_ptr<Engine> & engine, int & argc, char ** argv): myApp(argc, argv), myEngine(engine), myEditor()
   {
-    if (!myApp) 
-      myApp = new QApplication(argc, argv);    
-    myEditor.reset(new Editor(myEngine)); 
+    myEditor.reset(new Editor(myEngine));
     myEngine->delay(0);
   }
 
   void EditorState::init() {
-    myEngine->renderer()->drawMessage("Editor Mode");
     myEditor->show();
   }
 
   void EditorState::step() {
-    myEngine->renderer()->drawMessage("Editor Mode");
-    myApp->processEvents();
-    myApp->sendPostedEvents();
+    myApp.processEvents();
+    myApp.sendPostedEvents();
     if (!myEditor->isVisible())
-    {
-//       auto state = std::shared_ptr<GameState>(new IntroState(myEngine));
-//       myEngine->addState(state);
       done(true);
-    }
   }
-
 }
 
