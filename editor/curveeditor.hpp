@@ -37,6 +37,7 @@ namespace ADWIF
   signals:
     void curveChanged(const QPolygonF & curve);
   protected:
+    virtual void keyPressEvent (QKeyEvent *);
     virtual void mouseMoveEvent(QMouseEvent *);
     virtual void mousePressEvent(QMouseEvent *);
     virtual void mouseReleaseEvent(QMouseEvent *);
@@ -51,7 +52,7 @@ namespace ADWIF
     double myZoomLevel;
     QPolygonF myPoints;
     QPolygonF myPolyline;
-    QPointF myHighlight;
+    int myHighlight;
     QTransform myTransform;
     QRect myViewport;
 

@@ -72,10 +72,10 @@ namespace ADWIF
         int startx = 0, endx = 3;
       int starty = 0, endy = 3;
 
-      while (cellX + startx < xmin) startx++;
-      while (cellX + startx > xmax) startx--;
-      while (cellY + starty < ymin) starty++;
-      while (cellY + starty > ymax) starty--;
+      while (cellX + startx < xmin+1) startx++;
+      while (cellX + startx > xmax-1) startx--;
+      while (cellY + starty < ymin+1) starty++;
+      while (cellY + starty > ymax-1) starty--;
 
       while (cellX + endx < xmin) endx++;
       while (cellX + endx > xmax) endx--;

@@ -24,6 +24,7 @@
 #include <QPainter>
 #include <QSizeGrip>
 #include <QLayout>
+#include <qmath.h>
 
 namespace ADWIF
 {
@@ -38,8 +39,6 @@ namespace ADWIF
     setFocus();
     setStyleSheet(QLatin1String(".QWidget {border-style: inset;border-width: 2px; }"));
     setMouseTracking(true);
-    myTransform.scale(geometry().width(), geometry().height());
-    myTransform.translate(0.5, 0.5);
     QVBoxLayout * layout = new QVBoxLayout(this);
     QSizeGrip * sizeGrip = new QSizeGrip(this);
     layout->setContentsMargins(QMargins(0, 0, 0, 0));
@@ -47,26 +46,56 @@ namespace ADWIF
     layout->addWidget(sizeGrip, 0, Qt::AlignBottom | Qt::AlignRight);
     setLayout(layout);
     myViewport = geometry();
+    myTransform.scale(geometry().width() / 2, geometry().height() / 2);
+    myTransform.translate(1.0, 1.0);
   }
 
   CurveEditor::~CurveEditor()
   {
   }
 
+  void CurveEditor::keyPressEvent(QKeyEvent * e)
+  {
+    if (e->key() == Qt::Key_Delete && myHighlightFlag)
+    {
+      myPoints.remove(myHighlight);
+      myHighlightFlag = false;
+      updateCurve();
+      repaint();
+      emit curveChanged(myPoints);
+    }
+  }
+
   void CurveEditor::mouseMoveEvent(QMouseEvent * e)
   {
     QWidget::mouseMoveEvent(e);
-    for (auto const & p : myPoints)
+    if (e->buttons() == Qt::LeftButton && myHighlightFlag)
     {
-      if (qAbs(myTransform.map(p).x() - e->x()) < 4 && qAbs(myTransform.map(p).y() - e->y()) < 4)
+      myPoints[myHighlight] = myTransform.inverted().scale(myZoomLevel, myZoomLevel).map(e->posF());
+      updateCurve();
+      update();
+    }
+    else if (e->buttons() == 0)
+    {
+      for (int i = 0; i < myPoints.size(); i++)
       {
-        myHighlight = p;
-        myHighlightFlag = true;
-        repaint();
-        return;
+        double diffX = myTransform.map(myPoints[i]).x() - e->x();
+        double diffY = myTransform.map(myPoints[i]).y() - e->y();
+        double dist = qSqrt(diffX * diffX + diffY * diffY);
+        if (dist < 4)
+        {
+          myHighlight = i;
+          myHighlightFlag = true;
+          repaint();
+          return;
+        }
+      }
+      if (myHighlightFlag)
+      {
+        myHighlightFlag = false;
+        update();
       }
     }
-    myHighlightFlag = false;
   }
 
   void CurveEditor::mousePressEvent(QMouseEvent * e)
@@ -79,7 +108,12 @@ namespace ADWIF
     QWidget::mouseReleaseEvent(e);
     if (!myHighlightFlag)
     {
-      myPoints << (e->posF() * myTransform.inverted().scale(myZoomLevel, myZoomLevel));
+      myPoints << myTransform.inverted().scale(myZoomLevel, myZoomLevel).map(e->posF());
+      updateCurve();
+      emit curveChanged(myPoints);
+    }
+    else if (e->button() == Qt::LeftButton)
+    {
       updateCurve();
       emit curveChanged(myPoints);
     }
@@ -96,9 +130,9 @@ namespace ADWIF
   {
     QWidget::wheelEvent(e);
 //     if (e->delta() > 0)
-//       myZoomLevel += 0.01;
+//       myZoomLevel += 0.1;
 //     else
-//       myZoomLevel -= 0.01;
+//       myZoomLevel -= 0.1;
 //     myViewport = QTransform::fromScale(myZoomLevel, myZoomLevel).mapRect(geometry());
 //     updateCurve();
 //     repaint();
@@ -108,8 +142,8 @@ namespace ADWIF
   {
     QWidget::resizeEvent(e);
     myTransform.reset();
-    myTransform.scale(e->size().width(), e->size().height());
-    myTransform.translate(0.5, 0.5);
+    myTransform.scale(e->size().width() / 2, e->size().height() / 2);
+    myTransform.translate(1.0, 1.0);
     myViewport = QTransform::fromScale(myZoomLevel, myZoomLevel).mapRect(geometry());
     updateCurve();
     update();
@@ -156,8 +190,10 @@ namespace ADWIF
     {
       brush.setColor(Qt::transparent);
       pen.setColor(Qt::blue);
-      pen.setWidth(1);
-      painter.drawEllipse(myHighlight, 3, 3);
+      pen.setWidth(2);
+      painter.setBrush(brush);
+      painter.setPen(pen);
+      painter.drawEllipse(myTransform.map(myPoints[myHighlight]), 4, 4);
     }
   }
 

@@ -20,6 +20,9 @@
 #include "propertybrowserbox.hpp"
 
 #include <QHBoxLayout>
+#include <QFocusEvent>
+#include <QToolButton>
+#include <QLineEdit>
 
 namespace ADWIF
 {
@@ -43,4 +46,18 @@ namespace ADWIF
     connect(myButton, SIGNAL(clicked()),
             this, SIGNAL(buttonClicked()));
   }
+  QString PropertyBrowseBox::text() const { return myLineEdit->text(); }
+  void PropertyBrowseBox::setText(const QString & text) { myLineEdit->setText(text); }
+  bool PropertyBrowseBox::editable() const { return !myLineEdit->isReadOnly(); }
+  void PropertyBrowseBox::setEditable(bool value) { myLineEdit->setReadOnly(!value); }
+  void PropertyBrowseBox::focusInEvent(QFocusEvent * e)
+  {
+    myLineEdit->event(e);
+    if (e->reason() == Qt::TabFocusReason ||
+        e->reason() == Qt::BacktabFocusReason) { myLineEdit->selectAll(); }
+    QWidget::focusInEvent(e);
+  }
+  void PropertyBrowseBox::focusOutEvent(QFocusEvent * e) { myLineEdit->event(e); QWidget::focusOutEvent(e); }
+  void PropertyBrowseBox::keyPressEvent(QKeyEvent * e) { myLineEdit->event(e); }
+  void PropertyBrowseBox::keyReleaseEvent(QKeyEvent * e) { myLineEdit->event(e); }
 }

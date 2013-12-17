@@ -111,9 +111,9 @@
        </spacer>
       </item>
       <item row="0" column="2">
-       <widget class="QPushButton" name="buttonReset">
+       <widget class="QPushButton" name="buttonShowSrc">
         <property name="text">
-         <string>&amp;Reset</string>
+          <string>&amp;Source</string>
         </property>
        </widget>
       </item>

@@ -21,10 +21,12 @@
 #define NOISEGRAPHBUILDER_H
 
 #include <QList>
+#include <QMimeData>
 
 #include <QtGui/QWidget>
 #include <QtGui/QTreeView>
 #include <QStandardItemModel>
+#include <QIdentityProxyModel>
 #include <QMenu>
 
 #include <QtVariantPropertyManager>
@@ -36,26 +38,39 @@
 #include "extendedvarianteditorfactory.hpp"
 #include "extendedvariantmanager.hpp"
 
+#include <iostream>
+
 namespace ADWIF
 {
   struct ModuleTemplate
   {
     QString name;
-    std::string jsonName;
+    QString jsonName;
     int sources;
-    std::string icon;
-    std::function<QList<QtVariantProperty*>(QtVariantPropertyManager&)> addToManager;
-    std::function<Json::Value(QtVariantPropertyManager&)> toJson;
+    QString icon;
+    QList<QtVariantProperty*> (*addToManager) (QtVariantPropertyManager&);
+    Json::Value (*toJson) (QtVariantPropertyManager&);
+    void (*fromJson) (QtVariantPropertyManager&, const Json::Value &);
   };
+}
+
+Q_DECLARE_METATYPE(ADWIF::ModuleTemplate)
+
+namespace ADWIF
+{
+  extern const std::vector<ModuleTemplate> moduleTemplates;
 
   class NoiseModuleItem: public QObject, public QStandardItem
   {
     Q_OBJECT
   public:
+    static const Qt::ItemDataRole IsEmptyRole = (Qt::ItemDataRole)((int)Qt::UserRole + 1);
+    static const Qt::ItemDataRole ModuleTemplateRole = (Qt::ItemDataRole)((int)Qt::UserRole + 2);
+
     using QStandardItem::parent;
 
-    NoiseModuleItem() { setupPropertyManager(); }
-    NoiseModuleItem(const NoiseModuleItem & other): QStandardItem(other) {
+    NoiseModuleItem(): QStandardItem() { setupPropertyManager(); }
+    NoiseModuleItem(const NoiseModuleItem & other): QStandardItem(other), myTemplate(other.myTemplate) {
       setupPropertyManager();
       setModuleTemplate(other.myTemplate);
     }
@@ -64,15 +79,7 @@ namespace ADWIF
 
     virtual ~NoiseModuleItem() { for(auto i : myProperties) delete i; }
 
-    void setupPropertyManager()
-    {
-      myProperties.clear();
-      myManager = QSharedPointer<ExtendedVariantManager>(new ExtendedVariantManager);
-      myFactory = QSharedPointer<ExtendedVariantEditorFactory>(new ExtendedVariantEditorFactory);
-      myFactory->addPropertyManager(myManager.data());
-      QObject::connect(myManager.data(), SIGNAL(valueChanged(QtProperty *, const QVariant &)),
-                       this, SLOT(valueChanged(QtProperty *, const QVariant &)));
-    }
+    void setupPropertyManager();
 
     virtual QStandardItem * clone() const
     {
@@ -80,36 +87,26 @@ namespace ADWIF
       return newItem;
     }
 
-    const ModuleTemplate & moduleTemplate() const { return myTemplate; }
-    void setModuleTemplate(const ModuleTemplate & templ) {
-      myTemplate = templ;
-      myProperties.clear();
-      myManager->clear();
-      if (templ.addToManager)
-        myProperties = templ.addToManager(*myManager);
+    NoiseModuleItem & operator=(const NoiseModuleItem& other)
+    {
+      QStandardItem::operator=(other);
+      setupPropertyManager();
+      myTemplate = other.myTemplate;
+      setModuleTemplate(other.myTemplate);
+      return *this;
     }
+
+    const ModuleTemplate & moduleTemplate() const { return myTemplate; }
+    void setModuleTemplate(const ModuleTemplate & templ);
 
     const QString & name() const { return myTemplate.name; }
     void setName(const QString & name) { myTemplate.name = name; }
 
-    void addToPropertyBrowser(QtTreePropertyBrowser * browser)
-    {
-      for(int i = 0; i < myProperties.size(); i++)
-        browser->addProperty(myProperties[i]);
-      browser->setFactoryForManager(myManager.data(), myFactory.data());
-    }
+    void addToPropertyBrowser(QtTreePropertyBrowser * browser);
 
-    Json::Value toJson() const
-    {
-      Json::Value value = Json::Value::null;
-      if (myTemplate.toJson) value = myTemplate.toJson(*myManager);
-      value["module"] = myTemplate.jsonName;
-      if (rowCount())
-        value["sources"] = Json::Value::null;
-      for (int i = 0; i < rowCount(); i++)
-        value["sources"][i] = dynamic_cast<NoiseModuleItem*>(child(i))->toJson();
-      return value;
-    }
+    Json::Value toJson() const;
+
+    void fromJson(const Json::Value & value);
 
   public slots:
     void valueChanged(QtProperty *, const QVariant &) { }
@@ -118,6 +115,66 @@ namespace ADWIF
     QSharedPointer<QtVariantPropertyManager> myManager;
     QSharedPointer<QtVariantEditorFactory> myFactory;
     QList<QtVariantProperty *> myProperties;
+  };
+
+  class NoiseGraphItemModel: public QIdentityProxyModel
+  {
+    Q_OBJECT
+  public:
+//     virtual Qt::DropActions supportedDragActions() const {
+//       return Qt::DropAction::CopyAction;
+//     }
+
+    explicit NoiseGraphItemModel(QObject * parent = 0): QIdentityProxyModel(parent)
+    {
+    }
+
+    virtual bool insertColumns(int column, int count, const QModelIndex& parent)
+    {
+      std::cerr << "alalalala\n";
+      return QIdentityProxyModel::insertColumns(column, count, parent);
+    }
+
+    virtual bool insertRows(int row, int count, const QModelIndex& parent)
+    {
+      std::cerr << "trolololo\n";
+      return QIdentityProxyModel::insertRows(row, count, parent);
+    }
+
+    bool dropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent)
+    {
+      if (row == -1 && column == -1)
+      {
+        QModelIndex target = mapToSource(parent);
+        if (itemData(target)[NoiseModuleItem::IsEmptyRole].value<bool>())
+        {
+          removeRow(parent.row(), parent.parent());
+          bool result = QIdentityProxyModel::dropMimeData(data, action, row, column, parent.parent());
+          return result;
+        }
+        else
+          return false;
+      } else
+        return false;
+    }
+//
+//     Qt::ItemFlags flags(const QModelIndex &index) const
+//     {
+//       Qt::ItemFlags defaultFlags = QStandardItemModel::flags(index);
+//
+//       if (index.isValid())
+//         if (itemFromIndex(index)->isEditable() && itemFromIndex(index)->data().value<bool>())
+//           return Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled | defaultFlags;
+//         else
+//           return defaultFlags & ~Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled;
+//       else
+//       {
+//         return defaultFlags & ~Qt::ItemIsDragEnabled & ~Qt::ItemIsDropEnabled;
+//       }
+//     }
+
+  private:
+
   };
 
   class NoiseGraphBuilder: public QTreeView
@@ -134,14 +191,17 @@ namespace ADWIF
   private:
     bool isComplete(const QStandardItem * item) const;
 
+    void dropEvent(QDropEvent * e);
+
   public slots:
     void onShowContextMenu(const QPoint & pt);
     void onActionTriggered();
     void selectionChanged(const QItemSelection & selected, const QItemSelection & deselected);
   private:
     QtTreePropertyBrowser * myPropertyBrowser;
+    QSharedPointer<QStandardItem> myEmptyTemplate;
     QSharedPointer<QStandardItemModel> myModel;
-    QSharedPointer<QStandardItem> myRoot, myEmptyTemplate;
+    QSharedPointer<QAbstractProxyModel> myProxyModel;
     QSharedPointer<QMenu> myMenu;
     QSharedPointer<QMenu> myInsertMenu;
     QAction * myDeleteAction;

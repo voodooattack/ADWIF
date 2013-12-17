@@ -40,9 +40,9 @@ namespace ADWIF
   {
     std::shared_ptr<noise::module::Module> m;
 
-    if (!value["module"].isString())
+    if (value["module"].empty())
     {
-      if (value["ref"].isString() && defs.find(value["ref"].asString()) != defs.end())
+      if (!value["ref"].empty() && defs.find(value["ref"].asString()) != defs.end())
         return defs[value["ref"].asString()];
       else
         throw ParsingException("undefined module missing reference or reference not found:\n" +
@@ -103,14 +103,14 @@ namespace ADWIF
       std::shared_ptr<noise::module::Module> m1 = buildNoiseGraph(value["sources"][0], modules, defs, heightMap, seed);
       std::shared_ptr<noise::module::Module> m2 = buildNoiseGraph(value["sources"][1], modules, defs, heightMap, seed);
       std::shared_ptr<noise::module::Module> ctl;
-      if (value["controller"].isObject())
+      if (!value["controller"].empty())
         ctl = buildNoiseGraph(value["controller"], modules, defs, heightMap, seed);
       else
-        ctl = buildNoiseGraph(value["sources"][3], modules, defs, heightMap, seed);
+        ctl = buildNoiseGraph(value["sources"][2], modules, defs, heightMap, seed);
       sel->SetSourceModule(0, *m1);
       sel->SetSourceModule(1, *m2);
       sel->SetControlModule(*ctl);
-      if (value["falloff"].isDouble())
+      if (!value["falloff"].empty())
         sel->SetEdgeFalloff(value["falloff"].asDouble());
       if (value["bounds"].isArray())
         sel->SetBounds(value["bounds"][0].asDouble(), value["bounds"][1].asDouble());
@@ -122,10 +122,10 @@ namespace ADWIF
       std::shared_ptr<noise::module::Module> m1 = buildNoiseGraph(value["sources"][0], modules, defs, heightMap, seed);
       std::shared_ptr<noise::module::Module> m2 = buildNoiseGraph(value["sources"][1], modules, defs, heightMap, seed);
       std::shared_ptr<noise::module::Module> ctl;
-      if (value["controller"].isObject())
+      if (!value["controller"].empty())
         ctl = buildNoiseGraph(value["controller"], modules, defs, heightMap, seed);
       else
-        ctl = buildNoiseGraph(value["sources"][3], modules, defs, heightMap, seed);
+        ctl = buildNoiseGraph(value["sources"][2], modules, defs, heightMap, seed);
       blend->SetSourceModule(0, *m1);
       blend->SetSourceModule(1, *m2);
       blend->SetControlModule(*ctl);
@@ -175,7 +175,7 @@ namespace ADWIF
       std::shared_ptr<noise::module::Exponent> exp(new noise::module::Exponent);
       std::shared_ptr<noise::module::Module> src = buildNoiseGraph(value["sources"][0], modules, defs, heightMap, seed);
       exp->SetSourceModule(0, *src);
-      if (value["exponent"].isDouble())
+      if (!value["exponent"].empty())
         exp->SetExponent(value["exponent"].asDouble());
       m = exp;
     }
@@ -205,9 +205,9 @@ namespace ADWIF
       std::shared_ptr<noise::module::ScaleBias> scale(new noise::module::ScaleBias);
       std::shared_ptr<noise::module::Module> src = buildNoiseGraph(value["sources"][0], modules, defs, heightMap, seed);
       scale->SetSourceModule(0, *src);
-      if (value["scale"].isDouble())
+      if (!value["scale"].empty())
         scale->SetScale(value["scale"].asDouble());
-      if (value["bias"].isDouble())
+      if (!value["bias"].empty())
         scale->SetScale(value["bias"].asDouble());
       m = scale;
     }
@@ -216,14 +216,14 @@ namespace ADWIF
       std::shared_ptr<noise::module::ScalePoint> scale(new noise::module::ScalePoint);
       std::shared_ptr<noise::module::Module> src = buildNoiseGraph(value["sources"][0], modules, defs, heightMap, seed);
       scale->SetSourceModule(0, *src);
-      if (value["scale"].isDouble())
+      if (!value["scale"].empty())
       {
         scale->SetScale(value["scale"].asDouble());
-        if (value["scalex"].isDouble())
+        if (!value["scalex"].empty())
           scale->SetXScale(value["scalex"].asDouble());
-        if (value["scaley"].isDouble())
+        if (!value["scaley"].empty())
           scale->SetYScale(value["scaley"].asDouble());
-        if (value["scalez"].isDouble())
+        if (!value["scalez"].empty())
           scale->SetZScale(value["scalez"].asDouble());
       }
       else if (value["scale"].isArray())
@@ -235,14 +235,14 @@ namespace ADWIF
       std::shared_ptr<noise::module::TranslatePoint> trans(new noise::module::TranslatePoint);
       std::shared_ptr<noise::module::Module> src = buildNoiseGraph(value["sources"][0], modules, defs, heightMap, seed);
       trans->SetSourceModule(0, *src);
-      if (value["translation"].isDouble())
+      if (!value["translation"].empty())
       {
         trans->SetTranslation(value["translation"].asDouble());
-        if (value["x"].isDouble())
+        if (!value["x"].empty())
           trans->SetXTranslation(value["x"].asDouble());
-        if (value["y"].isDouble())
+        if (!value["y"].empty())
           trans->SetYTranslation(value["y"].asDouble());
-        if (value["z"].isDouble())
+        if (!value["z"].empty())
           trans->SetZTranslation(value["z"].asDouble());
       }
       else if (value["translation"].isArray())
@@ -272,13 +272,13 @@ namespace ADWIF
     else if (module == "billow")
     {
       std::shared_ptr<noise::module::Billow> billow(new noise::module::Billow);
-      if (value["frequency"].isDouble())
+      if (!value["frequency"].empty())
         billow->SetFrequency(value["frequency"].asDouble());
-      if (value["lacunarity"].isDouble())
+      if (!value["lacunarity"].empty())
         billow->SetLacunarity(value["lacunarity"].asDouble());
-      if (value["octaves"].isInt())
+      if (!value["octaves"].empty())
         billow->SetOctaveCount(value["octaves"].asInt());
-      if (value["persistence"].isDouble())
+      if (!value["persistence"].empty())
         billow->SetPersistence(value["persistence"].asDouble());
       if (value["quality"].isString())
       {
@@ -294,7 +294,7 @@ namespace ADWIF
           throw ParsingException("unsupported quality specifier:\n" + value.toStyledString());
       }
       int s = seed;
-      if (value["seed"].isInt())
+      if (!value["seed"].empty())
         s ^= value["seed"].asInt();
       billow->SetSeed(seed);
       m = billow;
@@ -302,13 +302,13 @@ namespace ADWIF
     else if (module == "perlin")
     {
       std::shared_ptr<noise::module::Perlin> perlin(new noise::module::Perlin);
-      if (value["frequency"].isDouble())
+      if (!value["frequency"].empty())
         perlin->SetFrequency(value["frequency"].asDouble());
-      if (value["lacunarity"].isDouble())
+      if (!value["lacunarity"].empty())
         perlin->SetLacunarity(value["lacunarity"].asDouble());
-      if (value["octaves"].isInt())
+      if (!value["octaves"].empty())
         perlin->SetOctaveCount(value["octaves"].asInt());
-      if (value["persistence"].isDouble())
+      if (!value["persistence"].empty())
         perlin->SetPersistence(value["persistence"].asDouble());
       if (value["quality"].isString())
       {
@@ -324,7 +324,7 @@ namespace ADWIF
           throw ParsingException("unsupported quality specifier:\n" + value.toStyledString());
       }
       int s = seed;
-      if (value["seed"].isInt())
+      if (!value["seed"].empty())
         s ^= value["seed"].asInt();
       perlin->SetSeed(seed);
       m = perlin;
@@ -332,11 +332,11 @@ namespace ADWIF
     else if (module == "ridged" || module == "ridgedmulti")
     {
       std::shared_ptr<noise::module::RidgedMulti> ridged(new noise::module::RidgedMulti);
-      if (value["frequency"].isDouble())
+      if (!value["frequency"].empty())
         ridged->SetFrequency(value["frequency"].asDouble());
-      if (value["lacunarity"].isDouble())
+      if (!value["lacunarity"].empty())
         ridged->SetLacunarity(value["lacunarity"].asDouble());
-      if (value["octaves"].isInt())
+      if (!value["octaves"].empty())
         ridged->SetOctaveCount(value["octaves"].asInt());
       if (value["quality"].isString())
       {
@@ -352,7 +352,7 @@ namespace ADWIF
           throw ParsingException("unsupported quality specifier:\n" + value.toStyledString());
       }
       int s = seed;
-      if (value["seed"].isInt())
+      if (!value["seed"].empty())
         s ^= value["seed"].asInt();
       ridged->SetSeed(seed);
       m = ridged;
@@ -360,12 +360,12 @@ namespace ADWIF
     else if (module == "voronoi")
     {
       std::shared_ptr<noise::module::Voronoi> voronoi(new noise::module::Voronoi);
-      if (value["frequency"].isDouble())
+      if (!value["frequency"].empty())
         voronoi->SetFrequency(value["frequency"].asDouble());
-      if (value["displacement"].isDouble())
+      if (!value["displacement"].empty())
         voronoi->SetDisplacement(value["displacement"].asDouble());
       int s = seed;
-      if (value["seed"].isInt())
+      if (!value["seed"].empty())
         s ^= value["seed"].asInt();
       voronoi->SetSeed(seed);
       m = voronoi;
@@ -373,14 +373,14 @@ namespace ADWIF
     else if (module == "cylinders")
     {
       std::shared_ptr<noise::module::Cylinders> cylinders(new noise::module::Cylinders);
-      if (value["frequency"].isDouble())
+      if (!value["frequency"].empty())
         cylinders->SetFrequency(value["frequency"].asDouble());
       m = cylinders;
     }
     else if (module == "spheres")
     {
       std::shared_ptr<noise::module::Spheres> spheres(new noise::module::Spheres);
-      if (value["frequency"].isDouble())
+      if (!value["frequency"].empty())
         spheres->SetFrequency(value["frequency"].asDouble());
       m = spheres;
     }
@@ -389,14 +389,14 @@ namespace ADWIF
       std::shared_ptr<noise::module::Turbulence> turbulence(new noise::module::Turbulence);
       std::shared_ptr<noise::module::Module> src = buildNoiseGraph(value["sources"][0], modules, defs, heightMap, seed);
       turbulence->SetSourceModule(0, *src);
-      if (value["frequency"].isDouble())
+      if (!value["frequency"].empty())
         turbulence->SetFrequency(value["frequency"].asDouble());
-      if (value["power"].isDouble())
+      if (!value["power"].empty())
         turbulence->SetPower(value["power"].asDouble());
-      if (value["roughness"].isDouble())
+      if (!value["roughness"].empty())
         turbulence->SetRoughness(value["roughness"].asDouble());
       int s = seed;
-      if (value["seed"].isInt())
+      if (!value["seed"].empty())
         s ^= value["seed"].asInt();
       turbulence->SetSeed(seed);
       m = turbulence;

@@ -23,6 +23,10 @@
 #include <iostream>
 
 #include <QMenu>
+#include <QDropEvent>
+#include <csignal>
+
+#include "noiseutils.hpp"
 
 namespace ADWIF
 {
@@ -35,6 +39,7 @@ namespace ADWIF
 
   const std::vector<ModuleTemplate> moduleTemplates =
   {
+    { },
     { "Add", "Add", 2, ":/icons/resources/plus.png" },
     { "Multiply", "Multiply", 2, ":/icons/resources/asterisk.png" },
     { "Power", "Power", 2, ":/icons/resources/edit-superscript.png" },
@@ -50,6 +55,10 @@ namespace ADWIF
         QList<QtVariantProperty*> properties;
         properties << manager.addProperty(QVariant::Double, "Min")
                    << manager.addProperty(QVariant::Double, "Max");
+        property(manager, "Min")->setAttribute("decimals", 4);
+        property(manager, "Min")->setAttribute("singleStep", 0.01);
+        property(manager, "Max")->setAttribute("decimals", 4);
+        property(manager, "Max")->setAttribute("singleStep", 0.01);
         properties[0]->setPropertyId("min");
         properties[1]->setPropertyId("max");
         return properties;
@@ -60,6 +69,13 @@ namespace ADWIF
         val["min"] = property(manager, "Min")->value().value<double>();
         val["max"] = property(manager, "Max")->value().value<double>();
         return val;
+      },
+      [](QtVariantPropertyManager & manager, const Json::Value & val)
+      {
+        if (val["min"].isDouble())
+          property(manager, "Min")->setValue(val["min"].asDouble());
+        if (val["max"].isDouble())
+          property(manager, "Max")->setValue(val["max"].asDouble());
       }
     },
     { },
@@ -69,6 +85,10 @@ namespace ADWIF
         QList<QtVariantProperty*> properties;
         properties << manager.addProperty(QVariant::Double, "Scale")
                    << manager.addProperty(QVariant::Double, "Bias");
+        property(manager, "Scale")->setAttribute("decimals", 4);
+        property(manager, "Scale")->setAttribute("singleStep", 0.01);
+        property(manager, "Bias")->setAttribute("decimals", 4);
+        property(manager, "Bias")->setAttribute("singleStep", 0.01);
         return properties;
       },
       [](QtVariantPropertyManager & manager) -> Json::Value
@@ -77,6 +97,13 @@ namespace ADWIF
         val["scale"] = property(manager, "Scale")->value().value<double>();
         val["bias"] = property(manager, "Bias")->value().value<double>();
         return val;
+      },
+      [](QtVariantPropertyManager & manager, const Json::Value & val)
+      {
+        if (val["scale"].isDouble())
+          property(manager, "Scale")->setValue(val["scale"].asDouble());
+        if (val["bias"].isDouble())
+          property(manager, "Bias")->setValue(val["bias"].asDouble());
       }
     },
     { "Scale Point", "ScalePoint", 1, "",
@@ -94,6 +121,17 @@ namespace ADWIF
         val["scale"][1] = vec.y();
         val["scale"][2] = vec.z();
         return val;
+      },
+      [](QtVariantPropertyManager & manager, const Json::Value & val)
+      {
+        if (val["scale"].isArray())
+        {
+          QVector3D vec;
+          vec.setX(val["scale"][0].asDouble());
+          vec.setY(val["scale"][1].asDouble());
+          vec.setZ(val["scale"][2].asDouble());
+          property(manager, "Scale")->setValue(vec);
+        }
       }
     },
     { "Translate", "Translate", 1, "",
@@ -111,6 +149,17 @@ namespace ADWIF
         val["translation"][1] = vec.y();
         val["translation"][2] = vec.z();
         return val;
+      },
+      [](QtVariantPropertyManager & manager, const Json::Value & val)
+      {
+        if (val["translation"].isArray())
+        {
+          QVector3D vec;
+          vec.setX(val["translation"][0].asDouble());
+          vec.setY(val["translation"][1].asDouble());
+          vec.setZ(val["translation"][2].asDouble());
+          property(manager, "Translation")->setValue(vec);
+        }
       }
     },
     { "Rotate", "Rotate", 1, "",
@@ -128,6 +177,17 @@ namespace ADWIF
         val["rotation"][1] = vec.y();
         val["rotation"][2] = vec.z();
         return val;
+      },
+      [](QtVariantPropertyManager & manager, const Json::Value & val)
+      {
+        if (val["rotation"].isArray())
+        {
+          QVector3D vec;
+          vec.setX(val["rotation"][0].asDouble());
+          vec.setY(val["rotation"][1].asDouble());
+          vec.setZ(val["rotation"][2].asDouble());
+          property(manager, "Rotation")->setValue(vec);
+        }
       }
     },
     { },
@@ -138,6 +198,12 @@ namespace ADWIF
         properties << manager.addProperty(QVariant::Double, "Falloff")
                    << manager.addProperty(QVariant::Double, "Lower Bound")
                    << manager.addProperty(QVariant::Double, "Upper Bound");
+        property(manager, "Falloff")->setAttribute("decimals", 4);
+        property(manager, "Falloff")->setAttribute("singleStep", 0.01);
+        property(manager, "Lower Bound")->setAttribute("decimals", 4);
+        property(manager, "Lower Bound")->setAttribute("singleStep", 0.01);
+        property(manager, "Upper Bound")->setAttribute("decimals", 4);
+        property(manager, "Upper Bound")->setAttribute("singleStep", 0.01);
         return properties;
       },
       [](QtVariantPropertyManager & manager) -> Json::Value
@@ -147,6 +213,16 @@ namespace ADWIF
         val["bounds"][0] = property(manager, "Lower Bound")->value().value<double>();
         val["bounds"][1] = property(manager, "Upper Bound")->value().value<double>();
         return val;
+      },
+      [](QtVariantPropertyManager & manager, const Json::Value & val)
+      {
+        if (val["falloff"].isDouble())
+          property(manager, "Falloff")->setValue(val["falloff"].asDouble());
+        if (val["bounds"].isArray())
+        {
+          property(manager, "Lower Bound")->setValue(val["bounds"][0].asDouble());
+          property(manager, "Upper Bound")->setValue(val["bounds"][1].asDouble());
+        }
       }
     },
     { "Blend", "Blend", 3, ":/icons/resources/node.png" },
@@ -171,6 +247,16 @@ namespace ADWIF
           val["curve"].append(v);
         }
         return val;
+      },
+      [](QtVariantPropertyManager & manager, const Json::Value & val)
+      {
+        if (val["curve"].isArray())
+        {
+          QPolygonF poly;
+          for (const Json::Value & v : val["curve"])
+            poly << QPointF(v[0].asDouble(), v[1].asDouble());
+          property(manager, "Curve")->setValue(QVariant::fromValue(poly));
+        }
       }
     },
     { "Terrace", "Terrace", 1, "", // TODO: Terrace curve for editor
@@ -190,6 +276,16 @@ namespace ADWIF
           val["curve"].append(p.x());
         }
         return val;
+      },
+      [](QtVariantPropertyManager & manager, const Json::Value & val)
+      {
+        if (val["curve"].isArray())
+        {
+          QPolygonF poly;
+          for (const Json::Value & v : val["curve"])
+            poly << QPointF(v.asDouble(), 0);
+          property(manager, "Curve")->setValue(QVariant::fromValue(poly));
+        }
       }
     },
     { "Turbulence", "Turbulence", 1, "",
@@ -200,6 +296,12 @@ namespace ADWIF
                    << manager.addProperty(QVariant::Double, "Power")
                    << manager.addProperty(QVariant::Double, "Roughness")
                    << manager.addProperty(QVariant::Int, "Seed");
+        property(manager, "Frequency")->setAttribute("decimals", 4);
+        property(manager, "Frequency")->setAttribute("singleStep", 0.01);
+        property(manager, "Power")->setAttribute("decimals", 4);
+        property(manager, "Power")->setAttribute("singleStep", 0.01);
+        property(manager, "Roughness")->setAttribute("decimals", 4);
+        property(manager, "Roughness")->setAttribute("singleStep", 0.01);
         return properties;
       },
       [](QtVariantPropertyManager & manager) -> Json::Value
@@ -210,6 +312,17 @@ namespace ADWIF
         val["roughness"] = property(manager, "Roughness")->value().value<double>();
         val["seed"] = property(manager, "Seed")->value().value<int>();
         return val;
+      },
+      [](QtVariantPropertyManager & manager, const Json::Value & val)
+      {
+        if (val["frequency"].isDouble())
+          property(manager, "Frequency")->setValue(val["frequency"].asDouble());
+        if (val["power"].isDouble())
+          property(manager, "Power")->setValue(val["power"].asDouble());
+        if (val["roughness"].isDouble())
+          property(manager, "Roughness")->setValue(val["roughness"].asDouble());
+        if (val["seed"].isInt())
+          property(manager, "Seed")->setValue(val["seed"].asDouble());
       }
     },
     { },
@@ -218,6 +331,8 @@ namespace ADWIF
       {
         QList<QtVariantProperty*> properties;
         properties << manager.addProperty(QVariant::Double, "Value");
+        property(manager, "Value")->setAttribute("decimals", 4);
+        property(manager, "Value")->setAttribute("singleStep", 0.01);
         return properties;
       },
       [](QtVariantPropertyManager & manager) -> Json::Value
@@ -225,6 +340,12 @@ namespace ADWIF
         Json::Value val = Json::Value::null;
         val["value"] = property(manager, "Value")->value().value<double>();
         return val;
+      }
+      ,
+      [](QtVariantPropertyManager & manager, const Json::Value & val)
+      {
+        if (val["value"].isDouble())
+          property(manager, "Value")->setValue(val["value"].asDouble());
       }
     },
     { "Checkerboard", "Checkerboard", 0, "" },
@@ -236,7 +357,16 @@ namespace ADWIF
                    << manager.addProperty(QVariant::Double, "Lacunarity")
                    << manager.addProperty(QVariant::Double, "Persistence")
                    << manager.addProperty(QVariant::Int, "Seed")
-                   << manager.addProperty(QVariant::UInt, "Octaves");
+                   << manager.addProperty(QVariant::Int, "Octaves");
+        property(manager, "Frequency")->setAttribute("decimals", 4);
+        property(manager, "Frequency")->setAttribute("singleStep", 0.01);
+        property(manager, "Lacunarity")->setAttribute("decimals", 4);
+        property(manager, "Lacunarity")->setAttribute("singleStep", 0.01);
+        property(manager, "Persistence")->setAttribute("decimals", 4);
+        property(manager, "Persistence")->setAttribute("singleStep", 0.01);
+        property(manager, "Octaves")->setAttribute("minimum", 1);
+        property(manager, "Octaves")->setAttribute("maximum", noise::module::BILLOW_MAX_OCTAVE);
+        property(manager, "Octaves")->setValue(1);
         QtVariantProperty * quality = manager.addProperty(manager.enumTypeId(), "Quality");
         QStringList qualityNames;
         qualityNames << "Fast" << "Standard" << "Best";
@@ -251,7 +381,7 @@ namespace ADWIF
         val["lacunarity"] = property(manager, "Lacunarity")->value().value<double>();
         val["persistence"] = property(manager, "Persistence")->value().value<double>();
         val["seed"] = property(manager, "Seed")->value().value<int>();
-        val["octaves"] = property(manager, "Octaves")->value().value<uint>();
+        val["octaves"] = property(manager, "Octaves")->value().value<int>();
         switch(property(manager, "Quality")->value().value<int>())
         {
           case 0: val["quality"] = "fast"; break;
@@ -259,6 +389,28 @@ namespace ADWIF
           case 2: val["quality"] = "best"; break;
         }
         return val;
+      },
+      [](QtVariantPropertyManager & manager, const Json::Value & val)
+      {
+        if (val["frequency"].isDouble())
+          property(manager, "Frequency")->setValue(val["frequency"].asDouble());
+        if (val["lacunarity"].isDouble())
+          property(manager, "Lacunarity")->setValue(val["lacunarity"].asDouble());
+        if (val["persistence"].isDouble())
+          property(manager, "Persistence")->setValue(val["persistence"].asDouble());
+        if (val["seed"].isInt())
+          property(manager, "Seed")->setValue(val["seed"].asDouble());
+        if (val["octaves"].isUInt())
+          property(manager, "Octaves")->setValue(val["octaves"].asUInt());
+        if (val["quality"].isString())
+        {
+          if (val["quality"].asString() == "fast")
+            property(manager, "Quality")->setValue(0);
+          else if (val["quality"].asString() == "standard")
+            property(manager, "Quality")->setValue(1);
+          else if (val["quality"].asString() == "best")
+            property(manager, "Quality")->setValue(2);
+        }
       }
     },
     { "Perlin Noise", "Perlin", 0, "",
@@ -269,7 +421,16 @@ namespace ADWIF
                    << manager.addProperty(QVariant::Double, "Lacunarity")
                    << manager.addProperty(QVariant::Double, "Persistence")
                    << manager.addProperty(QVariant::Int, "Seed")
-                   << manager.addProperty(QVariant::UInt, "Octaves");
+                   << manager.addProperty(QVariant::Int, "Octaves");
+        property(manager, "Frequency")->setAttribute("decimals", 4);
+        property(manager, "Frequency")->setAttribute("singleStep", 0.01);
+        property(manager, "Lacunarity")->setAttribute("decimals", 4);
+        property(manager, "Lacunarity")->setAttribute("singleStep", 0.01);
+        property(manager, "Persistence")->setAttribute("decimals", 4);
+        property(manager, "Persistence")->setAttribute("singleStep", 0.01);
+        property(manager, "Octaves")->setAttribute("minimum", 1);
+        property(manager, "Octaves")->setAttribute("maximum", noise::module::PERLIN_MAX_OCTAVE);
+        property(manager, "Octaves")->setValue(1);
         QtVariantProperty * quality = manager.addProperty(manager.enumTypeId(), "Quality");
         QStringList qualityNames;
         qualityNames << "fast" << "standard" << "best";
@@ -284,7 +445,7 @@ namespace ADWIF
         val["lacunarity"] = property(manager, "Lacunarity")->value().value<double>();
         val["persistence"] = property(manager, "Persistence")->value().value<double>();
         val["seed"] = property(manager, "Seed")->value().value<int>();
-        val["octaves"] = property(manager, "Octaves")->value().value<uint>();
+        val["octaves"] = property(manager, "Octaves")->value().value<int>();
         switch(property(manager, "Quality")->value().value<int>())
         {
           case 0: val["quality"] = "fast"; break;
@@ -292,6 +453,28 @@ namespace ADWIF
           case 2: val["quality"] = "best"; break;
         }
         return val;
+      },
+      [](QtVariantPropertyManager & manager, const Json::Value & val)
+      {
+        if (val["frequency"].isDouble())
+          property(manager, "Frequency")->setValue(val["frequency"].asDouble());
+        if (val["lacunarity"].isDouble())
+          property(manager, "Lacunarity")->setValue(val["lacunarity"].asDouble());
+        if (val["persistence"].isDouble())
+          property(manager, "Persistence")->setValue(val["persistence"].asDouble());
+        if (val["seed"].isInt())
+          property(manager, "Seed")->setValue(val["seed"].asDouble());
+        if (val["octaves"].isUInt())
+          property(manager, "Octaves")->setValue(val["octaves"].asUInt());
+        if (val["quality"].isString())
+        {
+          if (val["quality"].asString() == "fast")
+            property(manager, "Quality")->setValue(0);
+          else if (val["quality"].asString() == "standard")
+            property(manager, "Quality")->setValue(1);
+          else if (val["quality"].asString() == "best")
+            property(manager, "Quality")->setValue(2);
+        }
       }
     },
     { "Ridged Noise", "RidgedMulti", 0, "",
@@ -301,7 +484,14 @@ namespace ADWIF
         properties << manager.addProperty(QVariant::Double, "Frequency")
                    << manager.addProperty(QVariant::Double, "Lacunarity")
                    << manager.addProperty(QVariant::Int, "Seed")
-                   << manager.addProperty(QVariant::UInt, "Octaves");
+                   << manager.addProperty(QVariant::Int, "Octaves");
+        property(manager, "Frequency")->setAttribute("decimals", 4);
+        property(manager, "Frequency")->setAttribute("singleStep", 0.01);
+        property(manager, "Lacunarity")->setAttribute("decimals", 4);
+        property(manager, "Lacunarity")->setAttribute("singleStep", 0.01);
+        property(manager, "Octaves")->setAttribute("minimum", 1);
+        property(manager, "Octaves")->setAttribute("maximum", noise::module::RIDGED_MAX_OCTAVE);
+        property(manager, "Octaves")->setValue(1);
         QtVariantProperty * quality = manager.addProperty(manager.enumTypeId(), "Quality");
         QStringList qualityNames;
         qualityNames << "fast" << "standard" << "best";
@@ -315,7 +505,7 @@ namespace ADWIF
         val["frequency"] = property(manager, "Frequency")->value().value<double>();
         val["lacunarity"] = property(manager, "Lacunarity")->value().value<double>();
         val["seed"] = property(manager, "Seed")->value().value<int>();
-        val["octaves"] = property(manager, "Octaves")->value().value<uint>();
+        val["octaves"] = property(manager, "Octaves")->value().value<int>();
         switch(property(manager, "Quality")->value().value<int>())
         {
           case 0: val["quality"] = "fast"; break;
@@ -323,6 +513,26 @@ namespace ADWIF
           case 2: val["quality"] = "best"; break;
         }
         return val;
+      },
+      [](QtVariantPropertyManager & manager, const Json::Value & val)
+      {
+        if (val["frequency"].isDouble())
+          property(manager, "Frequency")->setValue(val["frequency"].asDouble());
+        if (val["lacunarity"].isDouble())
+          property(manager, "Lacunarity")->setValue(val["lacunarity"].asDouble());
+        if (val["seed"].isInt())
+          property(manager, "Seed")->setValue(val["seed"].asDouble());
+        if (val["octaves"].isUInt())
+          property(manager, "Octaves")->setValue(val["octaves"].asUInt());
+        if (val["quality"].isString())
+        {
+          if (val["quality"].asString() == "fast")
+            property(manager, "Quality")->setValue(0);
+          else if (val["quality"].asString() == "standard")
+            property(manager, "Quality")->setValue(1);
+          else if (val["quality"].asString() == "best")
+            property(manager, "Quality")->setValue(2);
+        }
       }
     },
     { "Voronoi Diagram", "Voronoi", 0, "",
@@ -332,6 +542,10 @@ namespace ADWIF
         properties << manager.addProperty(QVariant::Double, "Frequency")
                    << manager.addProperty(QVariant::Double, "Displacement")
                    << manager.addProperty(QVariant::Int, "Seed");
+        property(manager, "Frequency")->setAttribute("decimals", 4);
+        property(manager, "Frequency")->setAttribute("singleStep", 0.01);
+        property(manager, "Displacement")->setAttribute("decimals", 4);
+        property(manager, "Displacement")->setAttribute("singleStep", 0.01);
         return properties;
       },
       [](QtVariantPropertyManager & manager) -> Json::Value
@@ -341,6 +555,15 @@ namespace ADWIF
         val["displacement"] = property(manager, "Displacement")->value().value<double>();
         val["seed"] = property(manager, "Seed")->value().value<int>();
         return val;
+      },
+      [](QtVariantPropertyManager & manager, const Json::Value & val)
+      {
+        if (val["frequency"].isDouble())
+          property(manager, "Frequency")->setValue(val["frequency"].asDouble());
+        if (val["displacement"].isDouble())
+          property(manager, "Displacement")->setValue(val["displacement"].asDouble());
+        if (val["seed"].isInt())
+          property(manager, "Seed")->setValue(val["seed"].asDouble());
       }
     },
     { "Cylinders", "Cylinders", 0, "",
@@ -348,6 +571,8 @@ namespace ADWIF
       {
         QList<QtVariantProperty*> properties;
         properties << manager.addProperty(QVariant::Double, "Frequency");
+        property(manager, "Frequency")->setAttribute("decimals", 4);
+        property(manager, "Frequency")->setAttribute("singleStep", 0.01);
         return properties;
       },
       [](QtVariantPropertyManager & manager) -> Json::Value
@@ -355,6 +580,11 @@ namespace ADWIF
         Json::Value val = Json::Value::null;
         val["frequency"] = property(manager, "Frequency")->value().value<double>();
         return val;
+      },
+      [](QtVariantPropertyManager & manager, const Json::Value & val)
+      {
+        if (val["frequency"].isDouble())
+          property(manager, "Frequency")->setValue(val["frequency"].asDouble());
       }
     },
     { "Spheres", "Spheres", 0, "",
@@ -369,6 +599,11 @@ namespace ADWIF
         Json::Value val = Json::Value::null;
         val["frequency"] = property(manager, "Frequency")->value().value<double>();
         return val;
+      },
+      [](QtVariantPropertyManager & manager, const Json::Value & val)
+      {
+        if (val["frequency"].isDouble())
+          property(manager, "Frequency")->setValue(val["frequency"].asDouble());
       }
     },
     { "Heightmap Source", "Heightmap", 0, "" }
@@ -376,6 +611,8 @@ namespace ADWIF
 
   NoiseGraphBuilder::NoiseGraphBuilder(QWidget * parent): QTreeView(parent)
   {
+    qRegisterMetaType<ModuleTemplate>("ModuleTemplate");
+
     setContextMenuPolicy(Qt::CustomContextMenu);
 
     setAlternatingRowColors(true);
@@ -388,32 +625,38 @@ namespace ADWIF
 
     QObject::connect(this, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(onShowContextMenu(QPoint)));
 
-    myModel = QSharedPointer<QStandardItemModel>(new QStandardItemModel);
-    myRoot = QSharedPointer<QStandardItem>(new QStandardItem);
-    myEmptyTemplate = QSharedPointer<NoiseModuleItem>(new NoiseModuleItem(QIcon(":/icons/resources/document-insert.png"), "Empty"));
+    myModel = QSharedPointer<QStandardItemModel>(new QStandardItemModel(this));
+    myProxyModel = QSharedPointer<QAbstractProxyModel>(new NoiseGraphItemModel(this));
+    myProxyModel->setSourceModel(myModel.data());
+
+    setModel(myProxyModel.data());
+
+    setDragEnabled(true);
+    viewport()->setAcceptDrops(true);
+    setDropIndicatorShown(true);
+    setDragDropMode(DragDropMode::DragDrop);
+    setDefaultDropAction(Qt::DropAction::CopyAction);
+    setDragDropOverwriteMode(true);
+    myProxyModel->setSupportedDragActions(Qt::DropAction::CopyAction);
+
+    myEmptyTemplate = QSharedPointer<NoiseModuleItem>(
+      new NoiseModuleItem(QIcon(":/icons/resources/document-insert.png"), "Empty"));
     myEmptyTemplate->setEditable(false);
-
-    myRoot->setText("Graph");
-    myRoot->setIcon(QIcon(":/icons/resources/document-tree.png"));
-    myRoot->setEditable(false);
-
-    myRoot->appendRow(myEmptyTemplate->clone());
-    myRoot->setBackground(Qt::red);
-
-    myModel->invisibleRootItem()->appendRow(myRoot.data());
-    setModel(myModel.data());
+    myEmptyTemplate->setData(true, NoiseModuleItem::IsEmptyRole);
+    myModel->setItemPrototype(myEmptyTemplate->clone());
+    myModel->invisibleRootItem()->appendRow(myEmptyTemplate->clone());
 
     myMenu = QSharedPointer<QMenu>(new QMenu);
     myInsertMenu = QSharedPointer<QMenu>(new QMenu);
     myInsertMenu->setIcon(QIcon(":/icons/resources/document-hf-insert.png"));
     myInsertMenu->setTitle("&Insert");
 
-    for (const ModuleTemplate & t: moduleTemplates)
+    for (int i = 1; i < moduleTemplates.size(); i++)
     {
-      if (!t.name.isEmpty())
+      if (!moduleTemplates[i].name.isEmpty())
       {
-        QAction * action = myInsertMenu->addAction(QIcon(t.icon.c_str()), t.name);
-        action->setData(QVariant::fromValue((void*)&t));
+        QAction * action = myInsertMenu->addAction(QIcon(moduleTemplates[i].icon), moduleTemplates[i].name);
+        action->setData(i);
         QObject::connect(action, SIGNAL(triggered()), this, SLOT(onActionTriggered()));
       } else
         myInsertMenu->addSeparator();
@@ -426,6 +669,67 @@ namespace ADWIF
     expandAll();
   }
 
+  void NoiseGraphBuilder::dropEvent(QDropEvent * e)
+  {
+    QModelIndex isrc = myProxyModel->mapToSource(currentIndex());
+    QModelIndex idst = myProxyModel->mapToSource(indexAt(e->pos()));
+
+    QStandardItem * src = dynamic_cast<NoiseModuleItem*>(myModel->itemFromIndex(isrc));
+    QStandardItem * dst = dynamic_cast<NoiseModuleItem*>(myModel->itemFromIndex(idst));
+
+    if (!src || !dst)
+    {
+      e->ignore();
+      return;
+    }
+
+    if (src->data(NoiseModuleItem::IsEmptyRole).value<bool>())
+    {
+      e->ignore();
+      return;
+    }
+
+    int srcRow = isrc.row(), srcCol = isrc.column(); QModelIndex srcParent = isrc.parent();
+    int dstRow = idst.row(), dstCol = idst.column(); QModelIndex dstParent = idst.parent();
+
+//     src = myModel->takeItem(isrc.row(), isrc.column());
+//     dst = myModel->takeItem(idst.row(), idst.column());
+
+//     myModel->insertRow(isrc.row(), isrc.parent());
+//     myModel->insertRow(idst.row(), idst.parent());
+
+    e->ignore();
+
+    clearSelection();
+
+    src = src->clone();
+    dst = dst->clone();
+
+    myModel->setItem(idst.row(), idst.column(), src);
+    myModel->setItem(isrc.row(), isrc.column(), dst);
+
+    this->reset();
+    myProxyModel->revert();
+    myModel->revert();
+
+
+    return;
+  }
+
+  void NoiseGraphBuilder::selectionChanged(const QItemSelection & selected, const QItemSelection & deselected)
+  {
+    QTreeView::selectionChanged(selected, deselected);
+
+    if (selected.empty()) return;
+
+    QModelIndex idx = myProxyModel->mapToSource(currentIndex());
+    NoiseModuleItem * item = dynamic_cast<NoiseModuleItem*>(myModel->itemFromIndex(idx));
+    myPropertyBrowser->clear();
+    if (item)
+      item->addToPropertyBrowser(myPropertyBrowser);
+    myPropertyBrowser->update();
+  }
+
   void NoiseGraphBuilder::onShowContextMenu(const QPoint & pt)
   {
     if (selectedIndexes().empty())
@@ -433,20 +737,24 @@ namespace ADWIF
 
     if (selectedIndexes().size() == 1)
     {
-      if (myModel->itemFromIndex(selectedIndexes()[0])->isEditable() ||
-          myModel->itemFromIndex(selectedIndexes()[0]) == myRoot.data())
+      QModelIndex idx = myProxyModel->mapToSource(currentIndex());
+      if ( myModel->itemFromIndex(idx)->isEditable() ||
+          !myModel->itemFromIndex(idx)->data(NoiseModuleItem::IsEmptyRole).value<bool>())
         myInsertMenu->setEnabled(false);
       else
         myInsertMenu->setEnabled(true);
+
+      if (!myModel->itemFromIndex(idx)->isEditable() ||
+           myModel->itemFromIndex(idx)->data(NoiseModuleItem::IsEmptyRole).value<bool>())
+        myDeleteAction->setEnabled(false);
+      else
+        myDeleteAction->setEnabled(true);
     }
     else
-      myInsertMenu->setEnabled(false);
-
-    if (!myModel->itemFromIndex(selectedIndexes()[0])->isEditable() ||
-        !myModel->itemFromIndex(selectedIndexes()[0])->data().value<void*>())
+    {
       myDeleteAction->setEnabled(false);
-    else
-      myDeleteAction->setEnabled(true);
+      myInsertMenu->setEnabled(false);
+    }
 
     myMenu->popup(mapToGlobal(pt));
   }
@@ -455,74 +763,69 @@ namespace ADWIF
   {
     QAction * action = dynamic_cast<QAction*>(QObject::sender());
 
+    QModelIndex idx = myProxyModel->mapToSource(currentIndex());
+
     if (action == myDeleteAction)
     {
-      NoiseModuleItem * item = dynamic_cast<NoiseModuleItem*>(myModel->itemFromIndex(selectedIndexes()[0]));
+      NoiseModuleItem * item = dynamic_cast<NoiseModuleItem*>(myModel->itemFromIndex(idx));
       item->setModuleTemplate(ModuleTemplate());
       item->setText("Empty");
       item->setIcon(QIcon(":/icons/resources/document-insert.png"));
       item->setEditable(false);
       item->removeRows(0, item->rowCount());
-      item->setBackground(myEmptyTemplate->background());
-      item->setData(QVariant::fromValue((void*)0));
-      item->parent()->setBackground(Qt::red);
+      item->setBackground(myModel->invisibleRootItem()->background());
+      item->setData(true, NoiseModuleItem::IsEmptyRole);
+      if (item->parent())
+        item->parent()->setBackground(Qt::red);
     }
     else
     {
-      const ModuleTemplate * templ = reinterpret_cast<const ModuleTemplate *>(action->data().value<void*>());
-      NoiseModuleItem * item = dynamic_cast<NoiseModuleItem*>(myModel->itemFromIndex(selectedIndexes()[0]));
-      item->setIcon(QIcon(templ->icon.c_str()));
-      item->setText(templ->name);
-      item->setEditable(true);
-      item->setData(QVariant::fromValue((void*)templ));
-      item->setModuleTemplate(*templ);
-      if (!item->parent()->data().value<void*>())
-        item->parent()->setBackground(myEmptyTemplate->background());
-      else
+      const ModuleTemplate & templ = moduleTemplates[action->data().value<int>()];
+
+      NoiseModuleItem * item = dynamic_cast<NoiseModuleItem*>(myModel->itemFromIndex(idx));
+      item->setModuleTemplate(templ);
+
+      if (item->parent())
       {
-        item->parent()->setBackground(myEmptyTemplate->background());
+        item->parent()->setBackground(myModel->invisibleRootItem()->background());
         for (int i = 0; i < item->parent()->rowCount(); i++)
         {
-          if (item->parent()->child(i)->isEditable() == false)
+          if (item->parent()->child(i)->data(NoiseModuleItem::IsEmptyRole).value<bool>() == true)
           {
             item->parent()->setBackground(Qt::red);
             break;
           }
         }
       }
-      for (int i = 0; i < templ->sources; i++)
-        item->appendRow(myEmptyTemplate->clone());
+
+      for (int i = 0; i < templ.sources; i++)
+      {
+        QStandardItem * clone = myEmptyTemplate->clone();
+        clone->setData(true, NoiseModuleItem::IsEmptyRole);
+        item->appendRow(clone);
+      }
+
       if (item->rowCount())
         item->setBackground(Qt::red);
       else
-        item->setBackground(myEmptyTemplate->background());
+        item->setBackground(myModel->invisibleRootItem()->background());
       myPropertyBrowser->clear();
       item->addToPropertyBrowser(myPropertyBrowser);
-      expand(selectedIndexes()[0]);
+      expand(currentIndex());
     }
-  }
-
-  void NoiseGraphBuilder::selectionChanged(const QItemSelection & selected, const QItemSelection & deselected)
-  {
-    QTreeView::selectionChanged(selected, deselected);
-    NoiseModuleItem * item = dynamic_cast<NoiseModuleItem*>(myModel->itemFromIndex(selected.indexes()[0]));
-    myPropertyBrowser->clear();
-    if (item)
-      item->addToPropertyBrowser(myPropertyBrowser);
-    myPropertyBrowser->update();
   }
 
   bool NoiseGraphBuilder::isComplete() const
   {
-    return isComplete(myRoot->child(0));
+    return isComplete(myModel->invisibleRootItem()->child(0));
   }
 
   bool NoiseGraphBuilder::isComplete(const QStandardItem * item) const
   {
-    if (!item || !item->data().value<void*>())
+    if (!item || item->data(NoiseModuleItem::IsEmptyRole).value<bool>())
       return false;
     for (int i = 0; i < item->rowCount(); i++)
-      if (!item->child(i)->data().value<void*>() || !isComplete(item->child(i)))
+      if (item->child(i)->data(NoiseModuleItem::IsEmptyRole).value<bool>() || !isComplete(item->child(i)))
         return false;
     return true;
   }
@@ -531,9 +834,82 @@ namespace ADWIF
   {
     if (!isComplete())
       return Json::Value();
-    if (auto item = dynamic_cast<NoiseModuleItem*>(myRoot->child(0)))
+    if (auto item = dynamic_cast<NoiseModuleItem*>(myModel->invisibleRootItem()->child(0)))
       return item->toJson();
     else
       return Json::Value();
   }
+
+  void NoiseModuleItem::setupPropertyManager()
+  {
+    myProperties.clear();
+    myManager = QSharedPointer<ExtendedVariantManager>(new ExtendedVariantManager);
+    myFactory = QSharedPointer<ExtendedVariantEditorFactory>(new ExtendedVariantEditorFactory);
+    myFactory->addPropertyManager(myManager.data());
+    QObject::connect(myManager.data(), SIGNAL(valueChanged(QtProperty *, const QVariant &)),
+                     this, SLOT(valueChanged(QtProperty *, const QVariant &)));
+  }
+
+  void NoiseModuleItem::setModuleTemplate(const ModuleTemplate & templ)
+  {
+    myTemplate = templ;
+    myProperties.clear();
+    myManager->clear();
+    setData(QVariant::fromValue(templ), ModuleTemplateRole);
+    if (!templ.jsonName.isEmpty())
+    {
+      if (templ.addToManager)
+        myProperties = templ.addToManager(*myManager);
+      setText(templ.name);
+      setIcon(QIcon(templ.icon));
+      setEditable(true);
+      setData(false, IsEmptyRole);
+    }
+  }
+
+  void NoiseModuleItem::addToPropertyBrowser(QtTreePropertyBrowser * browser)
+  {
+    for (int i = 0; i < myProperties.size(); i++)
+      browser->addProperty(myProperties[i]);
+    browser->setFactoryForManager(myManager.data(), myFactory.data());
+  }
+
+  Json::Value NoiseModuleItem::toJson() const
+  {
+    Json::Value value = Json::Value::null;
+    ModuleTemplate templ = data(ModuleTemplateRole).value<ModuleTemplate>();
+    if (templ.toJson) value = templ.toJson(*myManager);
+    value["module"] = templ.jsonName.toStdString();
+    if (rowCount())
+      value["sources"] = Json::Value::null;
+    for (int i = 0; i < rowCount(); i++)
+      if (auto m = dynamic_cast<NoiseModuleItem *>(child(i)))
+        value["sources"][i] = m->toJson();
+    return value;
+  }
+
+  void NoiseModuleItem::fromJson(const Json::Value & value)
+  {
+    if (myTemplate.fromJson) myTemplate.fromJson(*myManager, value);
+    if (!value["sources"].empty())
+    {
+      for (int i = 0; i < value["sources"].size(); i++)
+      {
+        NoiseModuleItem * child = new NoiseModuleItem;
+        QString moduleName = value["sources"][i]["module"].asCString();
+        for (const ModuleTemplate & m : moduleTemplates)
+        {
+          QString jsonName = m.jsonName;
+          if (!jsonName.compare(moduleName, Qt::CaseInsensitive))
+          {
+            child->setModuleTemplate(m);
+            break;
+          }
+        }
+        child->fromJson(value["sources"][i]);
+        insertRow(rowCount(), child);
+      }
+    }
+  }
 }
+

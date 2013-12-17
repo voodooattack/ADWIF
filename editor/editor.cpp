@@ -88,7 +88,7 @@ namespace ADWIF
       myEditor->ui()->propertyBrowser->addProperty(pname);
       myEditor->ui()->propertyBrowser->addProperty(pbiome);
 
-      std::cerr << boost::geometry::wkt(polygon()) << std::endl << std::endl;
+//       std::cerr << boost::geometry::wkt(polygon()) << std::endl << std::endl;
     }
 
     virtual void focusOutEvent(QFocusEvent * event)
@@ -136,7 +136,7 @@ namespace ADWIF
 
     myUi->graphicsView->setViewport(new QGLWidget);
     myUi->graphicsView->setScene(new QGraphicsScene);
-    myUi->graphicsView->setRenderHints(QPainter::Antialiasing);
+    myUi->graphicsView->setRenderHints(QPainter::HighQualityAntialiasing);
     myUi->graphicsView->setInteractive(true);
 
     myGame.reset(new Game(myEngine));

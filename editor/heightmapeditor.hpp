@@ -40,6 +40,7 @@ namespace ADWIF
 
   public slots:
     void onRenderButtonClicked();
+    void onShowSrcButtonClicked();
   private:
     QSharedPointer<Ui::HeightMapEditor> myUi;
     Editor * myEditor;

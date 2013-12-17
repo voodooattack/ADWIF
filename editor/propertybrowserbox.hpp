@@ -20,9 +20,10 @@
 #ifndef PROPERTYBROWSERBOX_H
 #define PROPERTYBROWSERBOX_H
 
-#include <QToolButton>
-#include <QLineEdit>
-#include <QFocusEvent>
+#include <QWidget>
+
+class QLineEdit;
+class QToolButton;
 
 namespace ADWIF
 {
@@ -31,24 +32,20 @@ namespace ADWIF
     Q_OBJECT
   public:
     explicit PropertyBrowseBox(QWidget * parent = 0, Qt::WindowFlags f = 0);
-    QString text() const { return myLineEdit->text(); }
-    void setText(const QString & text) { myLineEdit->setText(text); }
-    bool editable() const { return !myLineEdit->isReadOnly(); }
-    void setEditable(bool value) { myLineEdit->setReadOnly(!value); }
+    QString text() const;
+    void setText(const QString & text);
+    bool editable() const;
+    void setEditable(bool value);
+    QLineEdit * lineEdit() const { return myLineEdit; }
+    QToolButton * toolButton() const { return myButton; }
   signals:
     void textChanged(const QString & text);
     void buttonClicked();
   protected:
-    void focusInEvent(QFocusEvent * e)
-    {
-      myLineEdit->event(e);
-      if (e->reason() == Qt::TabFocusReason ||
-        e->reason() == Qt::BacktabFocusReason) { myLineEdit->selectAll(); }
-        QWidget::focusInEvent(e);
-    }
-    void focusOutEvent(QFocusEvent * e) { myLineEdit->event(e); QWidget::focusOutEvent(e); }
-    void keyPressEvent(QKeyEvent * e) { myLineEdit->event(e); }
-    void keyReleaseEvent(QKeyEvent * e) { myLineEdit->event(e); }
+    void focusInEvent(QFocusEvent * e);
+    void focusOutEvent(QFocusEvent * e);
+    void keyPressEvent(QKeyEvent * e);
+    void keyReleaseEvent(QKeyEvent * e);
   private:
     QLineEdit * myLineEdit;
     QToolButton * myButton;
