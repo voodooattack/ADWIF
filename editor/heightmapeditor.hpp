@@ -90,7 +90,8 @@ namespace ADWIF
     QSizeF myCellSize;
     std::shared_ptr<class Engine> myEngine;
     std::shared_ptr<NoiseGraph> myGraph;
-    QList<std::shared_ptr<AreaGenerationTask>> myTasks;
+    boost::recursive_mutex myMutex;
+    std::list<std::shared_ptr<AreaGenerationTask>> myTasks;
     Editor * myEditor;
   };
 }

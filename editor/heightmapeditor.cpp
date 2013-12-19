@@ -23,9 +23,9 @@
 #include "noiseutils.hpp"
 #include <physfs.hpp>
 #include <jsonutils.hpp>
+
 #include <QTextEdit>
 #include <QBoxLayout>
-
 #include <QtOpenGL/QGLWidget>
 #include <QTextEdit>
 #include <QStandardItemModel>
@@ -48,11 +48,13 @@ namespace ADWIF
     QObject::connect(myUi->buttonShowSrc, SIGNAL(clicked()), this, SLOT(onShowSrcButtonClicked()));
     QObject::connect(myUi->renderView, SIGNAL(viewChanged(QRectF)), this, SLOT(onViewChanged(QRectF)));
 
+    // No OpenGL rendering sadly.. there's bug with OGLWidget and QSplitter in Qt5 so this line will remain commented for now
 //     myUi->renderView->setViewport(new QGLWidget(myUi->renderView));
     myUi->renderView->setScene(new QGraphicsScene(myUi->renderView));
     myUi->renderView->setRenderHints(QPainter::Antialiasing);
+    QBrush sceneBrush(Qt::lightGray, Qt::BrushStyle::BDiagPattern);
+    myUi->renderView->scene()->setBackgroundBrush(sceneBrush);
     myUi->renderView->scene()->clear();
-//     myUi->renderView->scene()->setSceneRect(QRectF(-800, -800, 1600, 1600));
 
     myUi->splitterMain->setSizes({ myUi->splitterSub->minimumWidth(),
       geometry().width() - myUi->splitterSub->minimumWidth() });
@@ -60,9 +62,12 @@ namespace ADWIF
 
   void HeightMapEditor::onRenderButtonClicked()
   {
-    for (auto task : myTasks)
-      task->cancellationFlag.store(true);
-    myTasks.clear();
+    {
+      boost::recursive_mutex::scoped_lock guard(myMutex);
+      for (auto task : myTasks)
+        task->cancellationFlag.store(true);
+      myTasks.clear();
+    }
     myUi->renderView->scene()->clear();
     Json::Value graphJson = myUi->graphBuilder->toJson();
     myGraph.reset(new NoiseGraph);
@@ -83,7 +88,7 @@ namespace ADWIF
     std::shared_ptr<HeightMapModule> heightmap(new HeightMapModule(heights, 400, 240));
     try {
       myGraph->module = buildNoiseGraph(graphJson, myGraph->modules, myGraph->defs, heightmap, 0);
-    } catch (ParsingException & e) {
+    } catch (std::exception & e) {
       QMessageBox::critical(this, "Error", e.what());
       return;
     }
@@ -95,6 +100,7 @@ namespace ADWIF
   {
     myUi->renderView->scene()->addPixmap(QPixmap::fromImage(image, Qt::ColorOnly))->setPos(area.topLeft());
     myUi->renderView->scene()->update(area);
+    boost::recursive_mutex::scoped_lock guard(myMutex);
     for (auto task = myTasks.begin(); task != myTasks.end(); task++)
     {
       if ((*task)->cancellationFlag || (*task)->completeFlag)
@@ -142,15 +148,28 @@ namespace ADWIF
 
   void HeightMapEditor::generateRect(const QRectF & rect)
   {
-    for (auto task = myTasks.begin(); task != myTasks.end(); task++)
     {
-      if ((*task)->cancellationFlag || (*task)->completeFlag)
-        continue;
-      if ((*task)->area.intersects(rect)) {
-        (*task)->priority = 0;
-        return;
+      boost::recursive_mutex::scoped_lock guard(myMutex);
+      for (auto task = myTasks.begin(); task != myTasks.end(); task++)
+      {
+        if ((*task)->cancellationFlag || (*task)->completeFlag)
+          continue;
+        if ((*task)->area.intersects(rect)) {
+          QRegion region(rect.toRect(), QRegion::RegionType::Rectangle);
+          QRegion sub((*task)->area.toRect(), QRegion::RegionType::Rectangle);
+          region -= sub;
+          if (region.rectCount() > 1)
+          {
+            for (auto r : region.rects())
+            {
+              generateRect(r);
+            }
+          }
+          else
+            (*task)->priority = 0;
+          return;
+        }
       }
-      else (*task)->priority = 2;
     }
 
     std::shared_ptr<AreaGenerationTask> task(new AreaGenerationTask(myEngine, myGraph, rect));
@@ -181,10 +200,8 @@ namespace ADWIF
         image.setPixel(x - area.left(), y - area.top(), col.rgb());
       }
       if (priority != 0)
-      {
         if (counter % priority.load() == 0)
           engine->scheduler()->yield();
-      }
     }
     if (!cancellationFlag)
       emit generationCompleted(area, image);
