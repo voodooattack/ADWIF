@@ -94,10 +94,8 @@ namespace ADWIF
   {
     PropertyBrowseBox * parent = dynamic_cast<PropertyBrowseBox *>(QObject::sender());
     CurveEditor * editor = new CurveEditor(parent);
-    QPolygonF curve;
     QtProperty * prop = myEditorToPropMap[parent];
-    for (int i = 0; i < prop->subProperties().count(); i++)
-      curve << this->propertyManager(prop)->value(prop->subProperties()[i]).value<QPointF>();
+    QPolygonF curve = dynamic_cast<QtVariantProperty*>(prop)->value().value<Curve2D>();
     editor->setCurve(curve);
     QObject::connect(editor, SIGNAL(destroyed(QObject *)),
                      this, SLOT(onCurveEditorDestroyed(QObject *)));
@@ -107,7 +105,6 @@ namespace ADWIF
 
   void ExtendedVariantEditorFactory::onCurveEditorDestroyed(QObject * object)
   {
-
   }
 
   void ExtendedVariantEditorFactory::onCurveChanged(const QPolygonF & curve)
@@ -116,7 +113,7 @@ namespace ADWIF
     PropertyBrowseBox * parent = dynamic_cast<PropertyBrowseBox *>(editor->parent());
 
     QList<QtProperty*> props = myEditorToPropMap[parent]->subProperties();
-    for (int i = 0; i < props.size(); i ++)
+    for (int i = 0; i < props.size(); i++)
       myEditorToPropMap[parent]->removeSubProperty(props[i]);
 
     QString text;

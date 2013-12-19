@@ -21,6 +21,10 @@
 #define HEIGHTMAPEDITOR_H
 
 #include <QWidget>
+#include <QImage>
+
+#include <vector>
+#include <map>
 
 #include "editor.hpp"
 
@@ -29,8 +33,42 @@ namespace Ui
   class HeightMapEditor;
 }
 
+namespace noise { namespace module { class Module; } }
+
 namespace ADWIF
 {
+  struct NoiseGraph
+  {
+    std::vector<std::shared_ptr<noise::module::Module>> modules;
+    std::map<std::string, std::shared_ptr<noise::module::Module>> defs;
+    std::shared_ptr<noise::module::Module> module;
+  };
+
+  class AreaGenerationTask: public QObject
+  {
+    Q_OBJECT
+  public:
+    AreaGenerationTask(const std::shared_ptr<class Engine> & engine,
+                           const std::shared_ptr<NoiseGraph> & graph,
+                           const QRectF & area):
+      engine(engine), graph(graph), area(area), priority(-1),
+      cancellationFlag(false), completeFlag(false),
+      image(area.size().toSize(), QImage::Format_ARGB32)
+    {
+    }
+    void operator()();
+  signals:
+    void generationCompleted(QRectF area, QImage image);
+    void cancelled(QRectF area);
+  public:
+    std::shared_ptr<NoiseGraph> graph;
+    std::shared_ptr<class Engine> engine;
+    QRectF area;
+    boost::atomic_int priority;
+    boost::atomic_bool cancellationFlag, completeFlag;
+    QImage image;
+  };
+
   class HeightMapEditor: public QWidget
   {
     Q_OBJECT
@@ -38,11 +76,21 @@ namespace ADWIF
     explicit HeightMapEditor(Editor * parent = 0, Qt::WindowFlags f = 0);
     virtual ~HeightMapEditor() { }
 
+    std::shared_ptr<class Engine> engine() const { return myEngine; }
+    void setEngine(const std::shared_ptr<class Engine> & engine) { myEngine = engine; }
+
   public slots:
     void onRenderButtonClicked();
     void onShowSrcButtonClicked();
+    void onAreaGenerated(QRectF area, QImage image);
+    void onViewChanged(const QRectF & rect);
+    void generateRect(const QRectF & rect);
   private:
     QSharedPointer<Ui::HeightMapEditor> myUi;
+    QSizeF myCellSize;
+    std::shared_ptr<class Engine> myEngine;
+    std::shared_ptr<NoiseGraph> myGraph;
+    QList<std::shared_ptr<AreaGenerationTask>> myTasks;
     Editor * myEditor;
   };
 }

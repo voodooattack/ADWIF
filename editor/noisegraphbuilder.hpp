@@ -143,9 +143,6 @@ namespace ADWIF
       else
         return defaultFlags & ~Qt::ItemIsDragEnabled & ~Qt::ItemIsDropEnabled;
     }
-
-  private:
-
   };
 
   class NoiseGraphBuilder: public QTreeView
@@ -157,40 +154,26 @@ namespace ADWIF
     void setPropertyBrowser(QtTreePropertyBrowser * propertyBrowser) { myPropertyBrowser = propertyBrowser; }
 
     bool isComplete() const;
+
+    virtual void clear();
+
     Json::Value toJson() const;
+    bool fromJson(const Json::Value & val);
 
   private:
     bool isComplete(const QStandardItem * item) const;
 
-    QStandardItem * recursiveClone(QStandardItem * src)
-    {
-      QStandardItem * clone = src->clone();
-      for (int i = 0; i < src->rowCount(); i++)
-      {
-        QList<QStandardItem*> row;
-        for (int j = 0; j < src->columnCount(); j++)
-          row.push_back(recursiveClone(src->child(i, j)));
-        clone->insertRow(i, row);
-      }
-      return clone;
-    }
-
-    bool isDescendantOf(const QModelIndex & index, const QModelIndex & parent)
-    {
-      if (!parent.isValid())
-        return false;
-      else if (index.parent() == parent)
-        return true;
-      else
-        return isDescendantOf(index, index.parent());
-    }
+    QStandardItem * recursiveClone(QStandardItem * src);
+    bool isDescendantOf(const QModelIndex & index, const QModelIndex & parent);
 
   protected:
     void dropEvent(QDropEvent * e);
-  public slots:
+
+  protected slots:
     void onShowContextMenu(const QPoint & pt);
     void onActionTriggered();
     void selectionChanged(const QItemSelection & selected, const QItemSelection & deselected);
+
   private:
     QtTreePropertyBrowser * myPropertyBrowser;
     QSharedPointer<QStandardItem> myEmptyTemplate;

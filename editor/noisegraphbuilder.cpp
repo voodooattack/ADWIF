@@ -692,10 +692,10 @@ namespace ADWIF
       return;
     }
 
-    clearSelection();
-
     if (e->proposedAction() == Qt::DropAction::MoveAction)
     {
+      clearSelection();
+
       src = psrc->takeChild(isrc.row());
       dst = pdst->takeChild(idst.row());
 
@@ -703,20 +703,22 @@ namespace ADWIF
       pdst->setChild(idst.row(), src);
 
       e->acceptProposedAction();
+
+      myProxyModel->revert();
     }
     else if (e->proposedAction() == Qt::DropAction::CopyAction)
     {
+      clearSelection();
+
       src = recursiveClone(src);
       pdst->setChild(idst.row(), src);
 
       e->acceptProposedAction();
+
+      myProxyModel->revert();
     }
     else
       e->ignore();
-
-    myProxyModel->revert();
-
-    return;
   }
 
   void NoiseGraphBuilder::selectionChanged(const QItemSelection & selected, const QItemSelection & deselected)
@@ -833,6 +835,13 @@ namespace ADWIF
     return true;
   }
 
+  void NoiseGraphBuilder::clear()
+  {
+    myModel->clear();
+    myProxyModel->revert();
+    myModel->invisibleRootItem()->appendRow(myEmptyTemplate->clone());
+  }
+
   Json::Value NoiseGraphBuilder::toJson() const
   {
     if (!isComplete())
@@ -841,6 +850,40 @@ namespace ADWIF
       return item->toJson();
     else
       return Json::Value();
+  }
+
+  bool NoiseGraphBuilder::fromJson(const Json::Value & val)
+  {
+    if (auto item = dynamic_cast<NoiseModuleItem*>(myModel->invisibleRootItem()->child(0)))
+    {
+      clear();
+      item->fromJson(val);
+      return true;
+    } else
+      return false;
+  }
+
+  QStandardItem * NoiseGraphBuilder::recursiveClone(QStandardItem * src)
+  {
+    QStandardItem * clone = src->clone();
+    for (int i = 0; i < src->rowCount(); i++)
+    {
+      QList<QStandardItem *> row;
+      for (int j = 0; j < src->columnCount(); j++)
+        row.push_back(recursiveClone(src->child(i, j)));
+      clone->insertRow(i, row);
+    }
+    return clone;
+  }
+
+  bool NoiseGraphBuilder::isDescendantOf(const QModelIndex & index, const QModelIndex & parent)
+  {
+    if (!parent.isValid())
+      return false;
+    else if (index.parent() == parent)
+      return true;
+    else
+      return isDescendantOf(index, index.parent());
   }
 
   void NoiseModuleItem::setupPropertyManager()
@@ -883,6 +926,8 @@ namespace ADWIF
     ModuleTemplate templ = data(ModuleTemplateRole).value<ModuleTemplate>();
     if (templ.toJson) value = templ.toJson(*myManager);
     value["module"] = templ.jsonName.toStdString();
+    if (text() != templ.jsonName)
+      value["name"] = text().toStdString();
     if (rowCount())
       value["sources"] = Json::Value::null;
     for (int i = 0; i < rowCount(); i++)

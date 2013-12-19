@@ -17,54 +17,32 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CURVEEDITOR_H
-#define CURVEEDITOR_H
+#ifndef SCROLLABLEGRAPHICSVIEW_H
+#define SCROLLABLEGRAPHICSVIEW_H
 
-#include <QWidget>
-
-class QSizeGrip;
+#include <QGraphicsView>
 
 namespace ADWIF
 {
-  class CurveEditor: public QWidget
+  class ScrollableGraphicsView: public QGraphicsView
   {
     Q_OBJECT
   public:
-    explicit CurveEditor(QWidget * parent = 0, Qt::WindowFlags f = 0);
-    virtual ~CurveEditor();
+    ScrollableGraphicsView(QWidget * parent = 0);
+    virtual ~ScrollableGraphicsView() { }
 
-    QPolygonF curve() const { return myPoints; }
-    void setCurve(const QPolygonF & curve) { myPoints = curve; updateCurve(); }
-
-  signals:
-    void curveChanged(const QPolygonF & curve);
   protected:
-    virtual void keyPressEvent (QKeyEvent *);
-    virtual void mouseMoveEvent(QMouseEvent *);
     virtual void mousePressEvent(QMouseEvent *);
+    virtual void mouseMoveEvent(QMouseEvent *);
     virtual void mouseReleaseEvent(QMouseEvent *);
     virtual void wheelEvent(QWheelEvent *);
-    virtual void focusOutEvent(QFocusEvent *);
     virtual void resizeEvent(QResizeEvent *);
-    virtual void paintEvent(QPaintEvent *);
+  signals:
+    void viewChanged(const QRectF &);
 
-    void updateCurve();
   private:
-    bool myHighlightFlag;
-    double myZoomLevel;
-    QPolygonF myPoints;
-    QPolygonF myPolyline;
-    int myHighlight;
-    QTransform myTransform;
-    QRect myViewport;
-    QSizeGrip * mySizeGrip;
-    bool myResizingFlag;
-
-    inline static double cubicInterpolate (const double p[4], double x) {
-      return p[1] + 0.5 * x*(p[2] - p[0] + x*(2.0*p[0] - 5.0*p[1] +
-      4.0*p[2] - p[3] + x*(3.0*(p[1] - p[2]) + p[3] - p[0])));
-    }
+    QPoint myLastPos;
   };
 }
 
-#endif // CURVEEDITOR_H
+#endif // SCROLLABLEGRAPHICSVIEW_H

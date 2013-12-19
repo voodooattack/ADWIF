@@ -17,54 +17,56 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CURVEEDITOR_H
-#define CURVEEDITOR_H
+#include "scrollablegraphicsview.hpp"
 
-#include <QWidget>
-
-class QSizeGrip;
+#include <QMouseEvent>
 
 namespace ADWIF
 {
-  class CurveEditor: public QWidget
+  ScrollableGraphicsView::ScrollableGraphicsView(QWidget * parent): QGraphicsView(parent)
   {
-    Q_OBJECT
-  public:
-    explicit CurveEditor(QWidget * parent = 0, Qt::WindowFlags f = 0);
-    virtual ~CurveEditor();
+    setDragMode(QGraphicsView::DragMode::ScrollHandDrag);
+    setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+  }
 
-    QPolygonF curve() const { return myPoints; }
-    void setCurve(const QPolygonF & curve) { myPoints = curve; updateCurve(); }
+  void ScrollableGraphicsView::mousePressEvent(QMouseEvent * e)
+  {
+    QGraphicsView::mousePressEvent(e);
+    if (e->button() == Qt::LeftButton)
+      myLastPos = e->pos();
+  }
 
-  signals:
-    void curveChanged(const QPolygonF & curve);
-  protected:
-    virtual void keyPressEvent (QKeyEvent *);
-    virtual void mouseMoveEvent(QMouseEvent *);
-    virtual void mousePressEvent(QMouseEvent *);
-    virtual void mouseReleaseEvent(QMouseEvent *);
-    virtual void wheelEvent(QWheelEvent *);
-    virtual void focusOutEvent(QFocusEvent *);
-    virtual void resizeEvent(QResizeEvent *);
-    virtual void paintEvent(QPaintEvent *);
-
-    void updateCurve();
-  private:
-    bool myHighlightFlag;
-    double myZoomLevel;
-    QPolygonF myPoints;
-    QPolygonF myPolyline;
-    int myHighlight;
-    QTransform myTransform;
-    QRect myViewport;
-    QSizeGrip * mySizeGrip;
-    bool myResizingFlag;
-
-    inline static double cubicInterpolate (const double p[4], double x) {
-      return p[1] + 0.5 * x*(p[2] - p[0] + x*(2.0*p[0] - 5.0*p[1] +
-      4.0*p[2] - p[3] + x*(3.0*(p[1] - p[2]) + p[3] - p[0])));
+  void ScrollableGraphicsView::mouseMoveEvent(QMouseEvent * e)
+  {
+    QGraphicsView::mouseMoveEvent(e);
+    if (e->buttons() & Qt::LeftButton)
+    {
+      QPoint diff = myLastPos - e->pos();
+      myLastPos = e->pos();
+      setSceneRect(sceneRect().translated(diff));
+      emit viewChanged(sceneRect());
     }
-  };
+  }
+
+  void ScrollableGraphicsView::mouseReleaseEvent(QMouseEvent * e)
+  {
+    QGraphicsView::mouseReleaseEvent(e);
+    if (e->button() == Qt::LeftButton)
+    {
+      myLastPos = e->pos();
+      emit viewChanged(sceneRect());
+    }
+  }
+
+  void ScrollableGraphicsView::wheelEvent(QWheelEvent * e)
+  {
+    QGraphicsView::wheelEvent(e);
+  }
+
+  void ScrollableGraphicsView::resizeEvent(QResizeEvent * e)
+  {
+    setSceneRect(QRect((-width()/2)-200, (-height()/2)-200, width()+400, height()+400));
+  }
 }
 
-#endif // CURVEEDITOR_H

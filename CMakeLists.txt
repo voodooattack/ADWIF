@@ -107,10 +107,10 @@ if (ADWIF_BUILD_EDITOR)
   set(EDITOR_UI editor/editor.ui editor/heightmapeditor.ui)
   set(EDITOR_SOURCES editor/editor.cpp editor/heightmapeditor.cpp editor/noisegraphbuilder.cpp
                      editor/extendedvariantmanager.cpp editor/extendedvarianteditorfactory.cpp
-                     editor/propertybrowserbox.cpp editor/curveeditor.cpp)
+    editor/propertybrowserbox.cpp editor/curveeditor.cpp editor/scrollablegraphicsview.cpp)
   set(EDITOR_HEADERS editor/editor.hpp editor/heightmapeditor.hpp editor/noisegraphbuilder.hpp
                      editor/extendedvariantmanager.hpp editor/extendedvarianteditorfactory.hpp
-                     editor/propertybrowserbox.hpp editor/curveeditor.hpp)
+                     editor/propertybrowserbox.hpp editor/curveeditor.hpp editor/scrollablegraphicsview.hpp)
   set(EDITOR_RESOURCES editor/resources.qrc)
   qt5_wrap_ui(EDITOR_UI_SRC ${EDITOR_UI})
   qt5_add_resources(EDITOR_RC ${EDITOR_RESOURCES})

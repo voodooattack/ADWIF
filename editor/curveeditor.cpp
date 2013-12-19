@@ -40,10 +40,10 @@ namespace ADWIF
     setStyleSheet(QLatin1String(".QWidget {border-style: inset;border-width: 2px; }"));
     setMouseTracking(true);
     QVBoxLayout * layout = new QVBoxLayout(this);
-    QSizeGrip * sizeGrip = new QSizeGrip(this);
+    mySizeGrip = new QSizeGrip(this);
     layout->setContentsMargins(QMargins(0, 0, 0, 0));
     layout->setSpacing(0);
-    layout->addWidget(sizeGrip, 0, Qt::AlignBottom | Qt::AlignRight);
+    layout->addWidget(mySizeGrip, 0, Qt::AlignBottom | Qt::AlignRight);
     setLayout(layout);
     myViewport = geometry();
     myTransform.scale(geometry().width() / 2, geometry().height() / 2);
@@ -123,7 +123,10 @@ namespace ADWIF
   void CurveEditor::focusOutEvent(QFocusEvent * e)
   {
     QWidget::focusOutEvent(e);
-    this->close();
+    if (e->reason() == Qt::ActiveWindowFocusReason)
+    {
+      this->close();
+    }
   }
 
   void CurveEditor::wheelEvent(QWheelEvent * e)

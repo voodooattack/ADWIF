@@ -275,6 +275,7 @@ namespace ADWIF
     hmeditor.setAttribute(Qt::WA_ShowModal);
     hmeditor.setWindowFlags(Qt::WindowFlags(Qt::WindowType::Dialog));
     hmeditor.setWindowModality(Qt::WindowModality::ApplicationModal);
+    hmeditor.setEngine(myEngine);
     hmeditor.show();
     while (hmeditor.isVisible())
     {

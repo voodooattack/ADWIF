@@ -22,16 +22,20 @@
 
 #include "noiseutils.hpp"
 #include <physfs.hpp>
+#include <jsonutils.hpp>
 #include <QTextEdit>
 #include <QBoxLayout>
 
 #include <QtOpenGL/QGLWidget>
 #include <QTextEdit>
 #include <QStandardItemModel>
+#include <QGraphicsItem>
+#include <QMessageBox>
 
 namespace ADWIF
 {
-  HeightMapEditor::HeightMapEditor(ADWIF::Editor * parent, Qt::WindowFlags f): QWidget(parent, f), myEditor(parent)
+  HeightMapEditor::HeightMapEditor(ADWIF::Editor * parent, Qt::WindowFlags f):
+    QWidget(parent, f), myEditor(parent), myCellSize(200,200)
   {
     myUi = myUi.create();
     myUi->setupUi(this);
@@ -42,19 +46,26 @@ namespace ADWIF
 
     QObject::connect(myUi->buttonRender, SIGNAL(clicked()), this, SLOT(onRenderButtonClicked()));
     QObject::connect(myUi->buttonShowSrc, SIGNAL(clicked()), this, SLOT(onShowSrcButtonClicked()));
+    QObject::connect(myUi->renderView, SIGNAL(viewChanged(QRectF)), this, SLOT(onViewChanged(QRectF)));
 
 //     myUi->renderView->setViewport(new QGLWidget(myUi->renderView));
     myUi->renderView->setScene(new QGraphicsScene(myUi->renderView));
     myUi->renderView->setRenderHints(QPainter::Antialiasing);
     myUi->renderView->scene()->clear();
+//     myUi->renderView->scene()->setSceneRect(QRectF(-800, -800, 1600, 1600));
+
+    myUi->splitterMain->setSizes({ myUi->splitterSub->minimumWidth(),
+      geometry().width() - myUi->splitterSub->minimumWidth() });
   }
 
   void HeightMapEditor::onRenderButtonClicked()
   {
+    for (auto task : myTasks)
+      task->cancellationFlag.store(true);
+    myTasks.clear();
+    myUi->renderView->scene()->clear();
     Json::Value graphJson = myUi->graphBuilder->toJson();
-    std::cerr << graphJson.toStyledString() << std::endl;
-    std::vector<std::shared_ptr<noise::module::Module>> modules;
-    std::map<std::string, std::shared_ptr<noise::module::Module>> defs;
+    myGraph.reset(new NoiseGraph);
     PhysFS::ifstream fs("map/heightmap.png");
     std::vector<char> data;
     data.assign(std::istreambuf_iterator<char>(fs), std::istreambuf_iterator<char>());
@@ -70,21 +81,28 @@ namespace ADWIF
         heights[x][y] = (height / 256.0) * 2 - 1;
       }
     std::shared_ptr<HeightMapModule> heightmap(new HeightMapModule(heights, 400, 240));
-    std::shared_ptr<noise::module::Module> graph = buildNoiseGraph(graphJson, modules, defs, heightmap, 0);
-    QImage img(400 * 4, 240*4, QImage::Format::Format_ARGB32);
-    for (int y = 0; y < img.height(); y++)
-      for (int x = 0; x < img.width(); x++)
+    try {
+      myGraph->module = buildNoiseGraph(graphJson, myGraph->modules, myGraph->defs, heightmap, 0);
+    } catch (ParsingException & e) {
+      QMessageBox::critical(this, "Error", e.what());
+      return;
+    }
+
+    generateRect(myUi->renderView->sceneRect());
+  }
+
+  void HeightMapEditor::onAreaGenerated(QRectF area, QImage image)
+  {
+    myUi->renderView->scene()->addPixmap(QPixmap::fromImage(image, Qt::ColorOnly))->setPos(area.topLeft());
+    myUi->renderView->scene()->update(area);
+    for (auto task = myTasks.begin(); task != myTasks.end(); task++)
+    {
+      if ((*task)->cancellationFlag || (*task)->completeFlag)
       {
-        double value = graph->GetValue((double)x, (double)y, 0.0);
-        double height = (value + 1.0) * 0.5;
-//         std::cerr << value << std::endl;
-        if (height < 0) height = 0;
-        if (height > 1) height = 1;
-        QColor col (height * 255.0, height * 255.0, height * 255.0);
-        img.setPixel(x, y, col.rgb());
+        task = myTasks.erase(task);
+        continue;
       }
-    myUi->renderView->scene()->clear();
-    myUi->renderView->scene()->addPixmap(QPixmap::fromImage(img, Qt::ColorOnly));
+    }
   }
 
   void HeightMapEditor::onShowSrcButtonClicked()
@@ -99,6 +117,80 @@ namespace ADWIF
     window->setAttribute(Qt::WA_DeleteOnClose);
     edit->setText(graphJson.toStyledString().c_str());
     window->show();
+  }
+
+  void HeightMapEditor::onViewChanged(const QRectF & rect)
+  {
+    if (!myGraph) return;
+    if (myUi->renderView->scene()->children().count() > 50)
+      myUi->renderView->scene()->clear();
+
+    QRectF trect;
+
+    trect.setLeft(rect.left() - fmod(rect.left(), myCellSize.width()));
+    trect.setTop(rect.top() - fmod(rect.top(), myCellSize.height()));
+    trect.setRight(rect.right() - fmod(rect.right(), myCellSize.width()));
+    trect.setBottom(rect.bottom() - fmod(rect.bottom(), myCellSize.height()));
+
+    for (double y = trect.top(); y < trect.bottom(); y += myCellSize.height())
+      for (double x = trect.left(); x < trect.right(); x += myCellSize.width())
+      {
+        QRectF r(x,y,myCellSize.width(), myCellSize.height());
+        generateRect(r);
+      }
+  }
+
+  void HeightMapEditor::generateRect(const QRectF & rect)
+  {
+    for (auto task = myTasks.begin(); task != myTasks.end(); task++)
+    {
+      if ((*task)->cancellationFlag || (*task)->completeFlag)
+        continue;
+      if ((*task)->area.intersects(rect)) {
+        (*task)->priority = 0;
+        return;
+      }
+      else (*task)->priority = 2;
+    }
+
+    std::shared_ptr<AreaGenerationTask> task(new AreaGenerationTask(myEngine, myGraph, rect));
+
+    task->priority = 0;
+    QObject::connect(task.get(), SIGNAL(generationCompleted(QRectF, QImage)),
+                     this, SLOT(onAreaGenerated(QRectF, QImage)), Qt::QueuedConnection);
+
+    myEngine->scheduler()->schedule(boost::bind(&AreaGenerationTask::operator(), task));
+    myTasks.push_back(task);
+  }
+
+  void AreaGenerationTask::operator()()
+  {
+    int counter = 0;
+    for (double y = area.top(); y < area.bottom(); y++)
+    {
+      counter++;
+      for (double x = area.left(); x < area.right(); x++)
+      {
+        if (cancellationFlag)
+          break;
+        double value = graph->module->GetValue(x, y, 0.0);
+        double height = (value + 1.0) * 0.5;
+        if (height < 0) height = 0;
+        if (height > 1) height = 1;
+        QColor col(height * 255.0, height * 255.0, height * 255.0);
+        image.setPixel(x - area.left(), y - area.top(), col.rgb());
+      }
+      if (priority != 0)
+      {
+        if (counter % priority.load() == 0)
+          engine->scheduler()->yield();
+      }
+    }
+    if (!cancellationFlag)
+      emit generationCompleted(area, image);
+    else
+      emit cancelled(area);
+    completeFlag.store(true);
   }
 }
 
