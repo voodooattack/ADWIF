@@ -31,6 +31,9 @@ namespace ADWIF
     ScrollableGraphicsView(QWidget * parent = 0);
     virtual ~ScrollableGraphicsView() { }
 
+    QSizeF cellSize() const { return myCellSize; }
+    void setCellSize(const QSizeF & cellSize) { myCellSize = cellSize; }
+
   protected:
     virtual void mousePressEvent(QMouseEvent *);
     virtual void mouseMoveEvent(QMouseEvent *);
@@ -42,6 +45,8 @@ namespace ADWIF
 
   private:
     QPoint myLastPos;
+    QSizeF myCellSize;
+    double myScale;
   };
 }
 

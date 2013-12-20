@@ -20,10 +20,11 @@
 #include "scrollablegraphicsview.hpp"
 
 #include <QMouseEvent>
+#include <QGraphicsItem>
 
 namespace ADWIF
 {
-  ScrollableGraphicsView::ScrollableGraphicsView(QWidget * parent): QGraphicsView(parent)
+  ScrollableGraphicsView::ScrollableGraphicsView(QWidget * parent): QGraphicsView(parent), myCellSize(200,200)
   {
     setDragMode(QGraphicsView::DragMode::ScrollHandDrag);
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -61,12 +62,16 @@ namespace ADWIF
 
   void ScrollableGraphicsView::wheelEvent(QWheelEvent * e)
   {
-    QGraphicsView::wheelEvent(e);
+    // ignore all zooming functionality for now, will need to implement multi-res streaming for this
   }
 
   void ScrollableGraphicsView::resizeEvent(QResizeEvent * e)
   {
-    setSceneRect(QRect((-width()/2)-200, (-height()/2)-200, width()+400, height()+400));
+    setSceneRect(QRectF((-width() / 2) - myCellSize.width(),
+                        (-height() / 2) - myCellSize.height(),
+                        width() + myCellSize.width() * 2,
+                        height() + myCellSize.height() * 2));
+    emit viewChanged(sceneRect());
   }
 }
 

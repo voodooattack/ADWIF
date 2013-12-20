@@ -50,14 +50,23 @@ namespace ADWIF
 
     // No OpenGL rendering sadly.. there's bug with OGLWidget and QSplitter in Qt5 so this line will remain commented for now
 //     myUi->renderView->setViewport(new QGLWidget(myUi->renderView));
+    myUi->renderView->setCellSize(myCellSize);
     myUi->renderView->setScene(new QGraphicsScene(myUi->renderView));
-    myUi->renderView->setRenderHints(QPainter::Antialiasing);
+    myUi->renderView->setRenderHints(QPainter::RenderHint::SmoothPixmapTransform);
     QBrush sceneBrush(Qt::lightGray, Qt::BrushStyle::BDiagPattern);
     myUi->renderView->scene()->setBackgroundBrush(sceneBrush);
     myUi->renderView->scene()->clear();
 
     myUi->splitterMain->setSizes({ myUi->splitterSub->minimumWidth(),
       geometry().width() - myUi->splitterSub->minimumWidth() });
+  }
+
+  HeightMapEditor::~HeightMapEditor()
+  {
+    boost::recursive_mutex::scoped_lock guard(myMutex);
+    for (auto task : myTasks)
+      task->cancellationFlag.store(true);
+    myTasks.clear();
   }
 
   void HeightMapEditor::onRenderButtonClicked()
@@ -96,9 +105,9 @@ namespace ADWIF
     generateRect(myUi->renderView->sceneRect());
   }
 
-  void HeightMapEditor::onAreaGenerated(QRectF area, QImage image)
+  void HeightMapEditor::onAreaGenerated(const QRectF & area, const QImage & image)
   {
-    myUi->renderView->scene()->addPixmap(QPixmap::fromImage(image, Qt::ColorOnly))->setPos(area.topLeft());
+    myUi->renderView->scene()->addPixmap(QPixmap::fromImage(image, Qt::AutoColor))->setPos(area.topLeft());
     myUi->renderView->scene()->update(area);
     boost::recursive_mutex::scoped_lock guard(myMutex);
     for (auto task = myTasks.begin(); task != myTasks.end(); task++)
@@ -129,7 +138,12 @@ namespace ADWIF
   {
     if (!myGraph) return;
     if (myUi->renderView->scene()->children().count() > 50)
-      myUi->renderView->scene()->clear();
+    {
+      QList<QGraphicsItem *> items = myUi->renderView->scene()->items();
+      for (QGraphicsItem * i : items)
+        if (!i->isVisible())
+          myUi->renderView->scene()->removeItem(i);
+    }
 
     QRectF trect;
 
@@ -138,8 +152,12 @@ namespace ADWIF
     trect.setRight(rect.right() - fmod(rect.right(), myCellSize.width()));
     trect.setBottom(rect.bottom() - fmod(rect.bottom(), myCellSize.height()));
 
-    for (double y = trect.top(); y < trect.bottom(); y += myCellSize.height())
-      for (double x = trect.left(); x < trect.right(); x += myCellSize.width())
+    for (double y = trect.top() - fmod(trect.top(), myCellSize.height());
+         y < trect.bottom() + myCellSize.height() - fmod(trect.bottom(), myCellSize.height());
+            y += myCellSize.height())
+      for (double x = trect.left() - fmod(trect.left(), myCellSize.width());
+           x < trect.right() + myCellSize.width() - fmod(trect.right(), myCellSize.width());
+              x += myCellSize.width())
       {
         QRectF r(x,y,myCellSize.width(), myCellSize.height());
         generateRect(r);
@@ -148,23 +166,24 @@ namespace ADWIF
 
   void HeightMapEditor::generateRect(const QRectF & rect)
   {
+    QRegion region(rect.toRect(), QRegion::RegionType::Rectangle);
+
+    for (QGraphicsItem * i : myUi->renderView->scene()->items())
+      region -= i->boundingRegion(myUi->renderView->transform().inverted());
+
     {
       boost::recursive_mutex::scoped_lock guard(myMutex);
       for (auto task = myTasks.begin(); task != myTasks.end(); task++)
       {
         if ((*task)->cancellationFlag || (*task)->completeFlag)
           continue;
-        if ((*task)->area.intersects(rect)) {
-          QRegion region(rect.toRect(), QRegion::RegionType::Rectangle);
+        if ((*task)->area.intersects(rect))
+        {
           QRegion sub((*task)->area.toRect(), QRegion::RegionType::Rectangle);
           region -= sub;
           if (region.rectCount() > 1)
-          {
             for (auto r : region.rects())
-            {
               generateRect(r);
-            }
-          }
           else
             (*task)->priority = 0;
           return;
@@ -182,6 +201,18 @@ namespace ADWIF
     myTasks.push_back(task);
   }
 
+  AreaGenerationTask::AreaGenerationTask(const std::shared_ptr< Engine > & engine,
+                                         const std::shared_ptr< NoiseGraph > & graph,
+                                         const QRectF & area) :
+    engine(engine), graph(graph), area(area), priority(-1),
+    cancellationFlag(false), completeFlag(false),
+    image(area.size().toSize(), QImage::Format_Indexed8)
+  {
+    image.setColorCount(256);
+    for (int i = 0; i < 256; i++)
+      image.setColor(i, QColor(i, i, i, 255).rgba());
+  }
+
   void AreaGenerationTask::operator()()
   {
     int counter = 0;
@@ -196,8 +227,7 @@ namespace ADWIF
         double height = (value + 1.0) * 0.5;
         if (height < 0) height = 0;
         if (height > 1) height = 1;
-        QColor col(height * 255.0, height * 255.0, height * 255.0);
-        image.setPixel(x - area.left(), y - area.top(), col.rgb());
+        image.setPixel(floor(x - area.left()), floor(y - area.top()), qRound(height * 255.0));
       }
       if (priority != 0)
         if (counter % priority.load() == 0)

@@ -28,6 +28,7 @@
 #include <QGLWidget>
 #include <QTimer>
 #include <QGraphicsPolygonItem>
+#include <QThread>
 
 #include <qtpropertymanager.h>
 #include <qtvariantproperty.h>
@@ -281,6 +282,8 @@ namespace ADWIF
     {
       QApplication::processEvents();
       QApplication::sendPostedEvents();
+      if (!QApplication::hasPendingEvents())
+        QThread::usleep(50);
     }
   }
 }

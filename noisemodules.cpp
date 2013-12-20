@@ -18,3 +18,48 @@
  */
 
 #include "noisemodules.hpp"
+
+namespace ADWIF
+{
+  double HeightMapModule::GetValue(double x, double y, double z) const
+  {
+    int cellX = x / myCellSizeX, cellY = y / myCellSizeY;
+    int xmin = myHeightmap.index_bases()[0], xmax = myHeightmap.shape()[0];
+    int ymin = myHeightmap.index_bases()[1], ymax = myHeightmap.shape()[1];
+
+    double offsetx = 0.25, offsety = 0.25;
+
+    auto clamp = [](int x, int min, int max)
+    {
+      if (x < min) return min;
+      if (x > max) return max;
+      return x;
+    };
+
+    auto inRange = [](int x, int min, int max)
+    {
+      if (x < min) return false;
+      if (x > max) return false;
+      return true;
+    };
+
+    unsigned int id[4][4][2];
+
+    for (int j = 0; j <= 3; j++)
+      for (int i = 0; i <= 3; i++)
+      {
+        id[i][j][0] = clamp(cellX + i - offsetx * 4, xmin, xmax);
+        id[i][j][1] = clamp(cellY + j - offsety * 4, ymin, ymax);
+      }
+
+    double m[4][4];
+
+    for (int j = 0; j <= 3; j++)
+      for (int i = 0; i <= 3; i++)
+        m[i][j] = myHeightmap[id[i][j][0]][id[i][j][1]];
+
+    double vx = fmod(x, myCellSizeX) / myCellSizeX, vy = fmod(y, myCellSizeY) / myCellSizeY;
+    return bicubicInterpolate(m, offsetx + vx, offsety + vy);
+  }
+}
+

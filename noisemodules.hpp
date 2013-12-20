@@ -55,40 +55,7 @@ namespace ADWIF
 
     virtual int GetSourceModuleCount() const { return 0; }
 
-    virtual double GetValue(double x, double y, double z) const {
-      int cellX = x / myCellSizeX, cellY = y / myCellSizeY;
-      int xmin = myHeightmap.index_bases()[0], xmax = myHeightmap.shape()[0];
-      int ymin = myHeightmap.index_bases()[1], ymax = myHeightmap.shape()[1];
-
-      if (cellX < xmin || cellY < ymin || cellX >= xmax || cellY >= ymax)
-        return 0;
-
-      double m[4][4];
-
-      for (int j = 0; j < 4; j++)
-        for (int i = 0; i < 4; i++)
-          m[i][j] = myHeightmap[cellX][cellY];
-
-        int startx = 0, endx = 3;
-      int starty = 0, endy = 3;
-
-      while (cellX + startx < xmin+1) startx++;
-      while (cellX + startx > xmax-1) startx--;
-      while (cellY + starty < ymin+1) starty++;
-      while (cellY + starty > ymax-1) starty--;
-
-      while (cellX + endx < xmin) endx++;
-      while (cellX + endx > xmax) endx--;
-      while (cellY + endy < ymin) endy++;
-      while (cellY + endy > ymax) endy--;
-
-      for (int j = starty; j <= endy; j++)
-        for (int i = startx; i <= endx; i++)
-          m[i][j] = myHeightmap[cellX+i-1][cellY+j-1];
-
-        double vx = fmod(x, myCellSizeX) / myCellSizeX, vy = fmod(y, myCellSizeY) / myCellSizeY;
-      return bicubicInterpolate(m, 0.25 + vx, 0.25 + vy);
-    }
+    virtual double GetValue(double x, double y, double z) const;
 
     int myCellSizeX, myCellSizeY;
     const boost::multi_array<double, 2> myHeightmap;

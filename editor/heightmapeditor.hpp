@@ -49,16 +49,11 @@ namespace ADWIF
     Q_OBJECT
   public:
     AreaGenerationTask(const std::shared_ptr<class Engine> & engine,
-                           const std::shared_ptr<NoiseGraph> & graph,
-                           const QRectF & area):
-      engine(engine), graph(graph), area(area), priority(-1),
-      cancellationFlag(false), completeFlag(false),
-      image(area.size().toSize(), QImage::Format_ARGB32)
-    {
-    }
+                       const std::shared_ptr<NoiseGraph> & graph,
+                       const QRectF & area);
     void operator()();
   signals:
-    void generationCompleted(QRectF area, QImage image);
+    void generationCompleted(const QRectF & area, const QImage & image);
     void cancelled(QRectF area);
   public:
     std::shared_ptr<NoiseGraph> graph;
@@ -74,7 +69,7 @@ namespace ADWIF
     Q_OBJECT
   public:
     explicit HeightMapEditor(Editor * parent = 0, Qt::WindowFlags f = 0);
-    virtual ~HeightMapEditor() { }
+    virtual ~HeightMapEditor();
 
     std::shared_ptr<class Engine> engine() const { return myEngine; }
     void setEngine(const std::shared_ptr<class Engine> & engine) { myEngine = engine; }
@@ -82,7 +77,7 @@ namespace ADWIF
   public slots:
     void onRenderButtonClicked();
     void onShowSrcButtonClicked();
-    void onAreaGenerated(QRectF area, QImage image);
+    void onAreaGenerated(const QRectF & area, const QImage & image);
     void onViewChanged(const QRectF & rect);
     void generateRect(const QRectF & rect);
   private:

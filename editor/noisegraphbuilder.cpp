@@ -926,7 +926,7 @@ namespace ADWIF
     ModuleTemplate templ = data(ModuleTemplateRole).value<ModuleTemplate>();
     if (templ.toJson) value = templ.toJson(*myManager);
     value["module"] = templ.jsonName.toStdString();
-    if (text() != templ.jsonName)
+    if (text() != templ.name)
       value["name"] = text().toStdString();
     if (rowCount())
       value["sources"] = Json::Value::null;
