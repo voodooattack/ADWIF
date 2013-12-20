@@ -59,6 +59,18 @@ namespace ADWIF
 
     myUi->splitterMain->setSizes({ myUi->splitterSub->minimumWidth(),
       geometry().width() - myUi->splitterSub->minimumWidth() });
+
+    PhysFS::ifstream fs("terraingen.json");
+    std::string json;
+    json.assign(std::istreambuf_iterator<std::string::value_type>(fs),
+                std::istreambuf_iterator<std::string::value_type>());
+    Json::Value value;
+    Json::Reader reader;
+
+    if (reader.parse(json, value))
+    {
+      myUi->graphBuilder->fromJson(value);
+    }
   }
 
   HeightMapEditor::~HeightMapEditor()
@@ -99,6 +111,7 @@ namespace ADWIF
       myGraph->module = buildNoiseGraph(graphJson, myGraph->modules, myGraph->defs, heightmap, 0);
     } catch (std::exception & e) {
       QMessageBox::critical(this, "Error", e.what());
+      myGraph.reset();
       return;
     }
 

@@ -24,6 +24,8 @@
 #include "jsonutils.hpp"
 #include "util.hpp"
 #include "threadingutils.hpp"
+#include "noisemodules.hpp"
+#include "noiseutils.hpp"
 
 #include <string>
 #include <algorithm>
@@ -40,15 +42,6 @@
 // #include <boost/geometry/geometries/geometries.hpp>
 // #include <boost/geometry/geometries/adapted/boost_polygon.hpp>
 // #include <boost/assign.hpp>
-// #include <boost/iterator.hpp>
-
-#ifdef NOISE_DIR_IS_LIBNOISE
-#include <libnoise/noise.h>
-#else
-#include <noise/noise.h>
-#endif
-
-#include "noisemodules.hpp"
 
 template<class T>
 std::ostream & operator<< (std::ostream & os, const boost::polygon::point_data<T> & p)
@@ -70,8 +63,8 @@ namespace ADWIF
     myBiomeMap(), myRegions(), myHeight(0), myWidth(0), myDepth(512),
     mySeed(boost::chrono::system_clock::now().time_since_epoch().count()),
     myGenerationLock(), myGeneratorCount(0), myGeneratorAbortFlag(false),
-    myLastChunkX(-1), myLastChunkY(-1), myLastChunkZ(-1), myModules(), myHeightSource(),
-    myMapPreprocessingProgress(0), myInitialisedFlag(false)
+    myLastChunkX(-1), myLastChunkY(-1), myLastChunkZ(-1), myNoiseModules(), myNoiseModuleDefs(),
+    myHeightSource(), myMapPreprocessingProgress(0), myInitialisedFlag(false)
   {
     myRandomEngine.seed(mySeed);
     myGeneratorAbortFlag.store(false);
@@ -87,112 +80,19 @@ namespace ADWIF
       myInitialisedFlag = generateBiomeMap();
     }
 
-    myModules.clear();
+    PhysFS::ifstream fs("terraingen.json");
+    std::string json;
+    json.assign(std::istreambuf_iterator<std::string::value_type>(fs),
+                std::istreambuf_iterator<std::string::value_type>());
+    Json::Value value;
+    Json::Reader reader;
 
-    using namespace noise;
-    using namespace noise::module;
-
-    std::shared_ptr<HeightMapModule> baseHeightmapSource(new HeightMapModule(myHeights, myChunkSizeX, myChunkSizeY));
-    std::shared_ptr<Cache> heightmapSource(new Cache);
-
-    std::shared_ptr<Billow> baseFlatTerrain(new Billow);
-    std::shared_ptr<Turbulence> flatTerrainTurbulence(new Turbulence);
-    std::shared_ptr<ScaleBias> flatTerrain(new ScaleBias);
-
-    std::shared_ptr<Perlin> baseMountainTerrain(new Perlin);
-    std::shared_ptr<Curve> mountainTerrainCurve(new Curve);
-    std::shared_ptr<Turbulence> mountainTerrainTurbulence(new Turbulence);
-    std::shared_ptr<Cache> mountainTerrainCache(new Cache);
-    std::shared_ptr<ScaleBias> mountainTerrain(new ScaleBias);
-
-    std::shared_ptr<Select> terrainSelect(new Select);
-    std::shared_ptr<Add> terrainFinal(new Add);
-
-    myModules.push_back(baseHeightmapSource);
-    myModules.push_back(heightmapSource);
-
-    myModules.push_back(baseFlatTerrain);
-    myModules.push_back(flatTerrainTurbulence);
-    myModules.push_back(flatTerrain);
-
-    myModules.push_back(baseMountainTerrain);
-    myModules.push_back(mountainTerrainCurve);
-    myModules.push_back(mountainTerrainTurbulence);
-    myModules.push_back(mountainTerrainCache);
-    myModules.push_back(mountainTerrain);
-
-    myModules.push_back(terrainSelect);
-    myModules.push_back(terrainFinal);
-
-    heightmapSource->SetSourceModule(0, *baseHeightmapSource);
-
-    baseFlatTerrain->SetSeed(mySeed);
-    baseFlatTerrain->SetOctaveCount(6);
-    baseFlatTerrain->SetFrequency(0.02);
-    baseFlatTerrain->SetPersistence(0.015);
-    baseFlatTerrain->SetLacunarity(2.0);
-
-    flatTerrainTurbulence->SetSourceModule(0, *baseFlatTerrain);
-    flatTerrainTurbulence->SetSeed(mySeed);
-    flatTerrainTurbulence->SetFrequency(1.5);
-    flatTerrainTurbulence->SetPower(2);
-    flatTerrainTurbulence->SetRoughness(3);
-
-    flatTerrain->SetSourceModule(0, *flatTerrainTurbulence);
-    flatTerrain->SetBias(0);
-    flatTerrain->SetScale(0.005);
-
-    baseMountainTerrain->SetSeed(mySeed);
-    baseMountainTerrain->SetOctaveCount(4);
-    baseMountainTerrain->SetFrequency(0.01);
-    baseMountainTerrain->SetLacunarity(2.5);
-    baseMountainTerrain->SetPersistence(0.1);
-
-    mountainTerrainCurve->SetSourceModule(0, *baseMountainTerrain);
-    mountainTerrainCurve->AddControlPoint(-1, 0);
-    mountainTerrainCurve->AddControlPoint(0, 0.5);
-    mountainTerrainCurve->AddControlPoint(1, 2);
-    mountainTerrainCurve->AddControlPoint(2, 4);
-
-    mountainTerrainTurbulence->SetSourceModule(0, *mountainTerrainCurve);
-    mountainTerrainTurbulence->SetSeed(mySeed);
-    mountainTerrainTurbulence->SetFrequency(0.5);
-    mountainTerrainTurbulence->SetPower(1);
-    mountainTerrainTurbulence->SetRoughness(2);
-
-    mountainTerrainCache->SetSourceModule(0, *mountainTerrainTurbulence);
-
-    mountainTerrain->SetSourceModule(0, *mountainTerrainCache);
-    mountainTerrain->SetBias(0.0);
-    mountainTerrain->SetScale(0.5);
-
-    terrainSelect->SetSourceModule(0, *mountainTerrain);
-    terrainSelect->SetSourceModule(1, *flatTerrain);
-    terrainSelect->SetControlModule(*heightmapSource);
-    terrainSelect->SetBounds(-0.1, 0.3);
-    terrainSelect->SetEdgeFalloff(0.5);
-
-    terrainFinal->SetSourceModule(0, *terrainSelect);
-    terrainFinal->SetSourceModule(1, *heightmapSource);
-
-    myHeightSource = terrainFinal;
-    myHeightMapModule = heightmapSource;
-    myHeightPerlin = flatTerrain;
-
-    fipImage im;
-    im.setSize(FREE_IMAGE_TYPE::FIT_BITMAP, chunkSizeX() * 2, chunkSizeY() * 2, 32);
-    int offy = 169 * chunkSizeY(), offx = 171 * chunkSizeX();
-    for(int y = offy; y < offy + chunkSizeY() * 2; y++)
-      for(int x = offx; x < offx + chunkSizeX() * 2; x++)
-      {
-        double v = (myHeightSource->GetValue(x, y, 0) + 1) / 2;
-//         std::cerr << v << std::endl;
-        if (v < 0) v = 0; else if (v > 1) v = 1;
-        RGBQUAD r = { v * 255, v * 255, v * 255, 255 };
-        im.setPixelColor(x-offx, y-offy, &r);
-      }
-    std::string s = (saveDir / "heightmap2.bmp").native();
-    im.save(s.c_str());
+    if (reader.parse(json, value))
+    {
+      std::shared_ptr<HeightMapModule> heightmap(new HeightMapModule(myHeights, myChunkSizeX, myChunkSizeY));
+      myHeightSource = buildNoiseGraph(value, myNoiseModules, myNoiseModuleDefs, heightmap, mySeed);
+    } else
+      throw std::runtime_error("error parsing 'terraingen.json'");
   }
 
   bool MapGenerator::generateBiomeMap()
@@ -823,7 +723,7 @@ namespace ADWIF
       perlinMat.SetOctaveCount(1);
       perlinMat.SetNoiseQuality(noise::QUALITY_FAST);
 
-      scaleMat.SetSourceModule(0, *myHeightPerlin);
+      scaleMat.SetSourceModule(0, *myHeightSource);
       scaleMat.SetBias(2);
       scaleMat.SetScale(possible.size() * 0.005);
 

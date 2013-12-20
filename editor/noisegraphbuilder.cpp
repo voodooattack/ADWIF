@@ -856,7 +856,7 @@ namespace ADWIF
   {
     if (auto item = dynamic_cast<NoiseModuleItem*>(myModel->invisibleRootItem()->child(0)))
     {
-      clear();
+//       clear();
       item->fromJson(val);
       return true;
     } else
@@ -938,22 +938,22 @@ namespace ADWIF
 
   void NoiseModuleItem::fromJson(const Json::Value & value)
   {
+    QString moduleName = value["module"].asCString();
+    for (const ModuleTemplate & m : moduleTemplates)
+    {
+      QString jsonName = m.jsonName;
+      if (!jsonName.compare(moduleName, Qt::CaseInsensitive))
+      {
+        setModuleTemplate(m);
+        break;
+      }
+    }
     if (myTemplate.fromJson) myTemplate.fromJson(*myManager, value);
     if (!value["sources"].empty())
     {
-      for (int i = 0; i < value["sources"].size(); i++)
+      for (int i = 0; i < myTemplate.sources; i++)
       {
         NoiseModuleItem * child = new NoiseModuleItem;
-        QString moduleName = value["sources"][i]["module"].asCString();
-        for (const ModuleTemplate & m : moduleTemplates)
-        {
-          QString jsonName = m.jsonName;
-          if (!jsonName.compare(moduleName, Qt::CaseInsensitive))
-          {
-            child->setModuleTemplate(m);
-            break;
-          }
-        }
         child->fromJson(value["sources"][i]);
         insertRow(rowCount(), child);
       }
