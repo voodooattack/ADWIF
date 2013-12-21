@@ -20,6 +20,9 @@
 #ifndef MAPPRIVATE_H
 #define MAPPRIVATE_H
 
+#include "map.hpp"
+#include "mapbank.hpp"
+
 #include <vector>
 #include <unordered_map>
 #include <algorithm>
@@ -31,7 +34,6 @@
 #include <boost/functional/hash/hash.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/condition_variable.hpp>
-#include "map.hpp"
 
 namespace ovdb = openvdb::v1_1;
 
@@ -77,9 +79,9 @@ namespace ADWIF
     };
 
   public:
-    MapImpl(Map * parent, const std::shared_ptr<class Engine> & engine, const std::shared_ptr<MapBank> & bank,
-            const boost::filesystem::path & mapPath, bool load, unsigned int chunkSizeX,
-            unsigned int chunkSizeY, unsigned int chunkSizeZ, const MapCell & bgValue = MapCell());
+    MapImpl(Map * parent, const std::shared_ptr<class Engine> & engine, const boost::filesystem::path & mapPath,
+            bool load, unsigned int chunkSizeX, unsigned int chunkSizeY, unsigned int chunkSizeZ,
+            const MapCell & bgValue = MapCell());
     ~MapImpl();
 
     const MapCell & get(int x, int y, int z) const;
@@ -123,6 +125,7 @@ namespace ADWIF
     boost::condition_variable myPruneThreadCond;
     boost::mutex myPruneThreadMutex;
     boost::atomic_bool myPruneThreadQuitFlag;
+    std::fstream myIndexStream;
 //     boost::asio::basic_waitable_timer<clock_type> myPruneTimer;
 
     static bool myInitialisedFlag;

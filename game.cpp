@@ -56,9 +56,8 @@
 namespace ADWIF
 {
 
-  Game::Game(const std::shared_ptr<ADWIF::Engine> & engine): myEngine(engine), myPlayer(nullptr), myMap(nullptr),
-    myBank(nullptr), myIndexStream(), myRaces(), myProfessions(), mySkills(), myFactions(),
-    myMaterials(), myBiomes()
+  Game::Game(const std::shared_ptr<ADWIF::Engine> & engine): myEngine(engine), myPlayer(nullptr),
+    myMap(nullptr), myRaces(), myProfessions(), mySkills(), myFactions(), myMaterials(), myBiomes()
   {
   }
 
@@ -298,12 +297,6 @@ namespace ADWIF
 
   void Game::createMap()
   {
-    myIndexStream.open((saveDir / "index").native(),
-                       std::ios_base::out | std::ios_base::trunc);
-    myIndexStream.close();
-    myIndexStream.open((saveDir / "index").native(),
-                       std::ios_base::binary | std::ios_base::in | std::ios_base::out);
-
     MapCell bg;
 
     bg.type = TerrainType::Hole;
@@ -312,8 +305,7 @@ namespace ADWIF
     bg.visible = true;
     bg.background = true;
 
-    myBank.reset(new MapBank(myIndexStream));
-    myMap.reset(new Map(engine(), myBank, saveDir / "map", false, 512, 512, 32, bg));
+    myMap.reset(new Map(engine(), saveDir / "map", false, 512, 512, 32, bg));
 
     myGenerator.reset(new MapGenerator(shared_from_this()));
 
@@ -343,20 +335,13 @@ namespace ADWIF
 
   void Game::loadMap()
   {
-    myIndexStream.open((saveDir / "index").native(),
-                       std::ios_base::out | std::ios_base::app);
-    myIndexStream.close();
-    myIndexStream.open((saveDir / "index").native(),
-                       std::ios_base::binary | std::ios_base::in | std::ios_base::out);
-
     MapCell bg;
 
     bg.type = TerrainType::Hole;
     bg.material = "Air";
     bg.symIdx = 0;
 
-    myBank.reset(new MapBank(myIndexStream));
-    myMap.reset(new Map(engine(), myBank, saveDir / "map", true, 512, 512, 32, bg));
+    myMap.reset(new Map(engine(), saveDir / "map", true, 512, 512, 32, bg));
 
     myGenerator.reset(new MapGenerator(shared_from_this()));
 
@@ -377,7 +362,6 @@ namespace ADWIF
   {
     myGenerator->abort();
     myMap->save();
-    myBank->prune(true);
 
     boost::iostreams::file_sink fs((saveDir / "generator").native());
     boost::iostreams::filtering_ostream os;

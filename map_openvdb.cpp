@@ -18,7 +18,7 @@
  */
 
 #include "map.hpp"
-#include "map_p.hpp"
+#include "map_openvdb.hpp"
 #include "engine.hpp"
 
 #include <boost/filesystem.hpp>
@@ -37,13 +37,13 @@ namespace iostreams = boost::iostreams;
 namespace ADWIF
 {
   MapImpl::MapImpl(ADWIF::Map * parent, const std::shared_ptr<class Engine> & engine,
-                   const std::shared_ptr< ADWIF::MapBank > & bank, const boost::filesystem::path & mapPath,
+                   const boost::filesystem::path & mapPath,
                    bool load, unsigned int chunkSizeX, unsigned int chunkSizeY, unsigned int chunkSizeZ,
                    const ADWIF::MapCell & bgValue):
-    myMap(parent), myEngine(engine), myChunks(), myBank(bank), myChunkSize(chunkSizeX, chunkSizeY, chunkSizeZ),
+    myMap(parent), myEngine(engine), myChunks(), myBank(), myChunkSize(chunkSizeX, chunkSizeY, chunkSizeZ),
     myAccessTolerance(200000), myBackgroundValue(0), myMapPath(mapPath), myClock(),
     myAccessCounter(0), myMemThresholdMB(2048), myDurationThreshold(boost::chrono::minutes(1)),
-    myPruningInterval(boost::chrono::seconds(10)),myLock(), myPruningInProgressFlag()/*, myPruneTimer(myService)*/
+    myPruningInterval(boost::chrono::seconds(10)),myLock(), myPruningInProgressFlag(), myIndexStream()/*, myPruneTimer(myService)*/
   {
     if (!myInitialisedFlag)
     {
@@ -51,12 +51,27 @@ namespace ADWIF
       GridType::registerGrid();
       myInitialisedFlag = true;
     }
-    myBackgroundValue = myBank->put(bgValue);
     if (!load)
     {
       boost::filesystem::remove_all(myMapPath);
       boost::filesystem::create_directory(myMapPath);
+      myIndexStream.open((mapPath / "index").native(),
+                         std::ios_base::out | std::ios_base::trunc);
+      myIndexStream.close();
     }
+    else
+    {
+      myIndexStream.open((mapPath / "index").native(),
+                         std::ios_base::out | std::ios_base::app);
+      myIndexStream.close();
+    }
+
+    myIndexStream.open((mapPath / "index").native(),
+                       std::ios_base::binary | std::ios_base::in | std::ios_base::out);
+
+    myBank.reset(new MapBank(myIndexStream));
+    myBackgroundValue = myBank->put(bgValue);
+
     myPruningInProgressFlag.store(false);
     myPruneThreadQuitFlag.store(false);
     myPruneThread = boost::thread(boost::bind(&MapImpl::pruneTask, this));
@@ -228,6 +243,7 @@ namespace ADWIF
     }
     if (freed)
       myEngine.lock()->log("Map"), "scheduled ", freed, "MB to be freed";
+    myBank->prune(pruneAll);
     myPruningInProgressFlag.store(false);
   }
 
@@ -317,11 +333,10 @@ namespace ADWIF
 
   std::shared_ptr<MapBank> MapImpl::bank() const { return myBank; }
 
-  Map::Map(const std::shared_ptr<class Engine> & engine, const std::shared_ptr<MapBank> & bank,
-           const boost::filesystem::path & mapPath, bool load, unsigned int chunkSizeX,
+  Map::Map(const std::shared_ptr<class Engine> & engine, const boost::filesystem::path & mapPath, bool load, unsigned int chunkSizeX,
            unsigned int chunkSizeY, unsigned int chunkSizeZ, const MapCell & bgValue): myImpl(nullptr)
   {
-    myImpl = new MapImpl(this, engine, bank, mapPath, load,
+    myImpl = new MapImpl(this, engine, mapPath, load,
                          chunkSizeX, chunkSizeY, chunkSizeZ, bgValue);
   }
 
@@ -330,7 +345,6 @@ namespace ADWIF
   const MapCell & Map::get(int x, int y, int z) const { return myImpl->get(x,y,z); }
   void Map::set(int x, int y, int z, const MapCell & cell) { myImpl->set(x, y, z, cell);}
   const MapCell & Map::background() const { return myImpl->background(); }
-  std::shared_ptr< MapBank > Map::bank() const { return myImpl->bank(); }
   void Map::prune() const { myImpl->prune(false); }
   void Map::save() const { myImpl->prune(true); }
 

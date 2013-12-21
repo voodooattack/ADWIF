@@ -164,10 +164,6 @@ namespace ADWIF
     const std::shared_ptr<class Map> & map() const { return myMap; }
     void map(const std::shared_ptr<class Map> & map) { myMap = map; }
 
-    std::shared_ptr<class MapBank> & mapbank() { return myBank; }
-    const std::shared_ptr<class MapBank> & mapbank() const { return myBank; }
-    void mapbank(const std::shared_ptr<MapBank> & mapbank) { myBank = mapbank; }
-
     std::shared_ptr<class MapGenerator> & generator() { return myGenerator; }
     const std::shared_ptr<class MapGenerator> & generator() const { return myGenerator; }
     void generator(const std::shared_ptr<class MapGenerator> & generator) { myGenerator = generator; }
@@ -201,9 +197,6 @@ namespace ADWIF
     std::weak_ptr<class Engine> myEngine;
     std::shared_ptr<class Player> myPlayer;
     std::shared_ptr<class Map> myMap;
-    std::shared_ptr<class MapBank> myBank;
-
-    std::fstream myIndexStream;
 
     std::map<std::string, Race *> myRaces;
     std::map<std::string, Profession *> myProfessions;
