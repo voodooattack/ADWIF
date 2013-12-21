@@ -39,12 +39,12 @@ namespace ADWIF
   private slots:
     void onPropertyChanged(QtProperty * property, const QVariant & value);
     void onPropertyAttributeChanged(QtProperty * property, const QString & attribute, const QVariant & value);
-    void onSetValue(const QString & value);
+    void onValueSet(const QString & value);
     void onEditorDestroyed(QObject * object);
     void onCurveEditorDestroyed(QObject * object);
     void onCurveChanged(const QPolygonF & curve);
-    void onShowCurveEditor();
     void onCurveSubPropertyChanged(QtProperty * property);
+    void onShowCurveEditor();
   private:
     QMap<QtProperty *, QList<QWidget*> > myPropToEditorMap;
     QMap<QWidget *, QtProperty *> myEditorToPropMap;

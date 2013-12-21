@@ -23,8 +23,8 @@ namespace ADWIF
 {
   ExtendedVariantManager::ExtendedVariantManager(QObject * parent) : QtVariantPropertyManager(parent)
   {
-    QObject::connect(this, SIGNAL(propertyChanged(QtProperty*)), this, SLOT(onPropertyChanged(QtProperty*)));
-    QObject::connect(this, SIGNAL(propertyDestroyed(QtProperty*)), this, SLOT(onPropertyDestroyed(QtProperty*)));
+    QObject::connect(this, SIGNAL(onPropertyChanged(QtProperty*)), this, SLOT(onPropertyChanged(QtProperty*)));
+    QObject::connect(this, SIGNAL(onPropertyDestroyed(QtProperty*)), this, SLOT(onPropertyDestroyed(QtProperty*)));
   }
 
   QVariant ExtendedVariantManager::value(const QtProperty * property) const
@@ -112,7 +112,7 @@ namespace ADWIF
         return;
       d.curve = v;
       myCurveData[property] = d;
-      emit propertyChanged(property);
+      emit onPropertyChanged(property);
       emit valueChanged(property, val);
       return;
     }
@@ -121,7 +121,7 @@ namespace ADWIF
       if (val.type() != QVariant::Vector3D && !val.canConvert(QVariant::Vector3D))
         return;
       myV3dData[property] = val.value<QVector3D>();
-      emit propertyChanged(property);
+      emit onPropertyChanged(property);
       emit valueChanged(property, val);
       return;
     }

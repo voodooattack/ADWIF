@@ -113,15 +113,15 @@ namespace ADWIF
 
     qRegisterMetaType<LogLevel>("LogLevel");
 
-    QObject::connect(myUi->action_Create_Map, SIGNAL(triggered()), this, SLOT(createMap()));
-    QObject::connect(myUi->action_Reload, SIGNAL(triggered()), this, SLOT(reloadData()));
-    QObject::connect(myUi->action_Terrain_Parameters, SIGNAL(triggered()), this, SLOT(showHeightMapEditor()));
+    QObject::connect(myUi->action_Create_Map, SIGNAL(triggered()), this, SLOT(onCreateMap()));
+    QObject::connect(myUi->action_Reload, SIGNAL(triggered()), this, SLOT(onReloadData()));
+    QObject::connect(myUi->action_Terrain_Parameters, SIGNAL(triggered()), this, SLOT(onShowHeightMapEditor()));
     QObject::connect(logProvider.get(),
                      SIGNAL(onMessage(LogLevel, const QString &, const QString &)),
                      this,
                      SLOT(onMessage(LogLevel, const QString &, const QString &)));
-    QObject::connect(this, SIGNAL(onDataReloaded()), this, SLOT(dataChanged()));
-    QObject::connect(this, SIGNAL(onMapReady()), this, SLOT(refreshMap()));
+    QObject::connect(this, SIGNAL(dataReloaded()), this, SLOT(onDataChanged()), Qt::QueuedConnection);
+    QObject::connect(this, SIGNAL(mapReady()), this, SLOT(onMapReady()), Qt::QueuedConnection);
 
     myUi->tableLog->setEditTriggers(QAbstractItemView::NoEditTriggers);
     myUi->tableLog->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -142,22 +142,22 @@ namespace ADWIF
 
     myGame.reset(new Game(myEngine));
 
-    reloadData();
+    onReloadData();
   }
 
   Editor::~Editor()
   {
   }
 
-  void Editor::reloadData()
+  void Editor::onReloadData()
   {
     myEngine->service().post([&] {
       myGame->reloadData();
-      emit onDataReloaded();
+      emit dataReloaded();
     });
   }
 
-  void Editor::dataChanged()
+  void Editor::onDataChanged()
   {
     if (boost::filesystem::exists(dataDir / "save" / "index") &&
         boost::filesystem::file_size(dataDir / "save" / "index"))
@@ -174,21 +174,21 @@ namespace ADWIF
     myUi->action_Save_As->setEnabled(true);
   }
 
-  void Editor::createMap()
+  void Editor::onCreateMap()
   {
     myEngine->scheduler()->schedule([&] {
       myGame->createMap();
-      emit onMapReady();
+      emit mapReady();
     });
     myStatusProgress->show();
     myStatusLabel->setText("Preprocessing map, please wait..");
     if (myProgressTimer) delete myProgressTimer;
     myProgressTimer = new QTimer;
-    QObject::connect(myProgressTimer, SIGNAL(timeout()), this, SLOT(updateProgress()));
+    QObject::connect(myProgressTimer, SIGNAL(timeout()), this, SLOT(onProgress()));
     myProgressTimer->start(100);
   }
 
-  void Editor::updateProgress()
+  void Editor::onProgress()
   {
     if (!myGame->generator()) return;
     int progress = myGame->generator()->preprocessingProgress();
@@ -202,11 +202,11 @@ namespace ADWIF
       myUi->action_Load_Map->setEnabled(false);
       myUi->action_Unload_Map->setEnabled(true);
       myUi->action_Terrain_Parameters->setEnabled(true);
-      emit onMapReady();
+      emit mapReady();
     }
   }
 
-  void Editor::refreshMap()
+  void Editor::onMapReady()
   {
     myUi->graphicsView->scene()->setSceneRect(0, 0, myGame->generator()->width(), myGame->generator()->height());
     for (unsigned int i = 0; i < myGame->generator()->regions().size(); i++)
@@ -270,7 +270,7 @@ namespace ADWIF
     }
   }
 
-  void Editor::showHeightMapEditor()
+  void Editor::onShowHeightMapEditor()
   {
     HeightMapEditor hmeditor(this);
     hmeditor.setAttribute(Qt::WA_ShowModal);

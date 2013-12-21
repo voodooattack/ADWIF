@@ -170,8 +170,8 @@ namespace ADWIF
     void dropEvent(QDropEvent * e);
 
   protected slots:
-    void onShowContextMenu(const QPoint & pt);
-    void onActionTriggered();
+    void showContextMenu(const QPoint & pt);
+    void actionTriggered();
     void selectionChanged(const QItemSelection & selected, const QItemSelection & deselected);
 
   private:

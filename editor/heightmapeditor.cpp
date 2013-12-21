@@ -60,7 +60,7 @@ namespace ADWIF
     myUi->splitterMain->setSizes({ myUi->splitterSub->minimumWidth(),
       geometry().width() - myUi->splitterSub->minimumWidth() });
 
-    PhysFS::ifstream fs("terraingen.json");
+    PhysFS::ifstream fs("map/heightgraph.json");
     std::string json;
     json.assign(std::istreambuf_iterator<std::string::value_type>(fs),
                 std::istreambuf_iterator<std::string::value_type>());

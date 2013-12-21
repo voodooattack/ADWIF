@@ -82,19 +82,19 @@ namespace ADWIF
     QSharedPointer<Ui::Editor> ui() { return myUi; }
 
   public slots:
-    void reloadData();
-    void createMap();
-    void refreshMap();
+    void onReloadData();
+    void onCreateMap();
+    void onMapReady();
 
-    void dataChanged();
-    void updateProgress();
+    void onDataChanged();
+    void onProgress();
     void onMessage(LogLevel level, const QString & source, const QString & message);
-    void showHeightMapEditor();
+    void onShowHeightMapEditor();
 
   signals:
-    void onDataReloaded();
-    void onMapReady();
-    void onMapProgress(double progress);
+    void dataReloaded();
+    void mapReady();
+    void mapProgress(double progress);
 
   private:
     std::shared_ptr<Engine> myEngine;

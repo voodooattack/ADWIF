@@ -80,7 +80,7 @@ namespace ADWIF
       myInitialisedFlag = generateBiomeMap();
     }
 
-    PhysFS::ifstream fs("terraingen.json");
+    PhysFS::ifstream fs("map/heightgraph.json");
     std::string json;
     json.assign(std::istreambuf_iterator<std::string::value_type>(fs),
                 std::istreambuf_iterator<std::string::value_type>());
@@ -92,7 +92,7 @@ namespace ADWIF
       std::shared_ptr<HeightMapModule> heightmap(new HeightMapModule(myHeights, myChunkSizeX, myChunkSizeY));
       myHeightSource = buildNoiseGraph(value, myNoiseModules, myNoiseModuleDefs, heightmap, mySeed);
     } else
-      throw std::runtime_error("error parsing 'terraingen.json'");
+      throw std::runtime_error("error parsing 'map/heightgraph.json'");
   }
 
   bool MapGenerator::generateBiomeMap()

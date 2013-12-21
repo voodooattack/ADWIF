@@ -56,7 +56,7 @@ namespace ADWIF
       myPropToEditorMap[property].append(editor);
       myEditorToPropMap[editor] = property;
       QObject::connect(editor, SIGNAL(textChanged(QString)),
-              this, SLOT(onSetValue(const QString &)));
+              this, SLOT(onValueSet(const QString &)));
       QObject::connect(editor, SIGNAL(destroyed(QObject *)),
                        this, SLOT(onEditorDestroyed(QObject *)));
       QObject::connect(editor, SIGNAL(buttonClicked()), this, SLOT(onShowCurveEditor()));
@@ -80,7 +80,7 @@ namespace ADWIF
 
   }
 
-  void ExtendedVariantEditorFactory::onSetValue(const QString & value)
+  void ExtendedVariantEditorFactory::onValueSet(const QString & value)
   {
 
   }
@@ -127,7 +127,7 @@ namespace ADWIF
       text += QLatin1String(" ");
       mySubpropertyToPropertyMap[subProperty] = myEditorToPropMap[parent];
       QObject::connect(this->propertyManager(myEditorToPropMap[parent]), SIGNAL(propertyChanged(QtProperty*)),
-                       this, SLOT(onCurveSubPropertyChanged(QtProperty*)));
+                       this, SLOT(curveSubPropertyChanged(QtProperty*)));
     }
     parent->setText(text);
     this->propertyManager(myEditorToPropMap[parent])->setValue(myEditorToPropMap[parent], QVariant::fromValue(curve));

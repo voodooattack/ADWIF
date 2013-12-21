@@ -49,11 +49,11 @@ namespace ADWIF
     virtual QVariant attributeValue(const QtProperty * property, const QString & attribute);
 
     static int curve2dTypeId();
-
-  public slots:
+  
     virtual void setValue(QtProperty * property, const QVariant & val);
     virtual void setAttribute(QtProperty * property,
                               const QString & attribute, const QVariant & value);
+  public slots:
     virtual void onPropertyChanged(QtProperty * property);
     virtual void onPropertyDestroyed(QtProperty * property);
   protected:

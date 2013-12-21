@@ -619,7 +619,7 @@ namespace ADWIF
     setSelectionMode(SelectionMode::SingleSelection);
     setSelectionBehavior(SelectionBehavior::SelectRows);
 
-    QObject::connect(this, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(onShowContextMenu(QPoint)));
+    QObject::connect(this, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showContextMenu(QPoint)));
 
     myModel = QSharedPointer<QStandardItemModel>(new QStandardItemModel(this));
     myProxyModel = QSharedPointer<QAbstractProxyModel>(new NoiseGraphItemModel(this));
@@ -652,14 +652,14 @@ namespace ADWIF
       {
         QAction * action = myInsertMenu->addAction(QIcon(moduleTemplates[i].icon), moduleTemplates[i].name);
         action->setData(i);
-        QObject::connect(action, SIGNAL(triggered()), this, SLOT(onActionTriggered()));
+        QObject::connect(action, SIGNAL(triggered()), this, SLOT(actionTriggered()));
       } else
         myInsertMenu->addSeparator();
     }
 
     myMenu->addMenu(myInsertMenu.data());
     myDeleteAction = myMenu->addAction(QIcon(":/icons/resources/document-hf-delete.png"), "&Delete");
-    QObject::connect(myDeleteAction, SIGNAL(triggered()), this, SLOT(onActionTriggered()));
+    QObject::connect(myDeleteAction, SIGNAL(triggered()), this, SLOT(actionTriggered()));
 
     expandAll();
   }
@@ -735,7 +735,7 @@ namespace ADWIF
     myPropertyBrowser->update();
   }
 
-  void NoiseGraphBuilder::onShowContextMenu(const QPoint & pt)
+  void NoiseGraphBuilder::showContextMenu(const QPoint & pt)
   {
     if (selectedIndexes().empty())
       return;
@@ -764,7 +764,7 @@ namespace ADWIF
     myMenu->popup(mapToGlobal(pt));
   }
 
-  void NoiseGraphBuilder::onActionTriggered()
+  void NoiseGraphBuilder::actionTriggered()
   {
     QAction * action = dynamic_cast<QAction*>(QObject::sender());
 
@@ -838,8 +838,8 @@ namespace ADWIF
   void NoiseGraphBuilder::clear()
   {
     myModel->clear();
-    myProxyModel->revert();
     myModel->invisibleRootItem()->appendRow(myEmptyTemplate->clone());
+    myProxyModel->revert();
   }
 
   Json::Value NoiseGraphBuilder::toJson() const
@@ -854,10 +854,11 @@ namespace ADWIF
 
   bool NoiseGraphBuilder::fromJson(const Json::Value & val)
   {
+    clear();
     if (auto item = dynamic_cast<NoiseModuleItem*>(myModel->invisibleRootItem()->child(0)))
     {
-//       clear();
       item->fromJson(val);
+      expandAll();
       return true;
     } else
       return false;

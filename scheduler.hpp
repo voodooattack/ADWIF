@@ -208,10 +208,7 @@ namespace boost {
           if (current.get() && !current->finished())
             tasks.push(current.release());
           else
-          {
             current.reset();
-            return false;
-          }
           return true;
         }
         else

@@ -79,6 +79,7 @@ namespace ADWIF
     void onShowSrcButtonClicked();
     void onAreaGenerated(const QRectF & area, const QImage & image);
     void onViewChanged(const QRectF & rect);
+  protected:
     void generateRect(const QRectF & rect);
   private:
     QSharedPointer<Ui::HeightMapEditor> myUi;
