@@ -23,8 +23,8 @@ namespace ADWIF
 {
   ExtendedVariantManager::ExtendedVariantManager(QObject * parent) : QtVariantPropertyManager(parent)
   {
-    QObject::connect(this, SIGNAL(onPropertyChanged(QtProperty*)), this, SLOT(onPropertyChanged(QtProperty*)));
-    QObject::connect(this, SIGNAL(onPropertyDestroyed(QtProperty*)), this, SLOT(onPropertyDestroyed(QtProperty*)));
+    QObject::connect(this, SIGNAL(propertyChanged(QtProperty*)), this, SLOT(onPropertyChanged(QtProperty*)));
+    QObject::connect(this, SIGNAL(propertyDestroyed(QtProperty*)), this, SLOT(onPropertyDestroyed(QtProperty*)));
   }
 
   QVariant ExtendedVariantManager::value(const QtProperty * property) const

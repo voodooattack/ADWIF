@@ -106,7 +106,7 @@ namespace ADWIF
   void CurveEditor::mouseReleaseEvent(QMouseEvent * e)
   {
     QWidget::mouseReleaseEvent(e);
-    if (!myHighlightFlag)
+    if (!myHighlightFlag && e->button() == Qt::LeftButton)
     {
       myPoints << myTransform.inverted().scale(myZoomLevel, myZoomLevel).map(QPointF(e->pos()));
       updateCurve();

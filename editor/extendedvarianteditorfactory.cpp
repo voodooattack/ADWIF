@@ -31,19 +31,19 @@ namespace ADWIF
 
   void ExtendedVariantEditorFactory::connectPropertyManager(QtVariantPropertyManager * manager)
   {
-    QObject::connect(manager, SIGNAL(valueChanged(QtProperty *, const QVariant &)),
+    QObject::connect(manager, SIGNAL(valueChanged(QtProperty*,QVariant)),
                      this, SLOT(onPropertyChanged(QtProperty *, const QVariant &)));
-    QObject::connect(manager, SIGNAL(attributeChanged(QtProperty *, const QString &, const QVariant &)),
-                     this, SLOT(onPropertyAttributeChanged(QtProperty *, const QString &, const QVariant &)));
+    QObject::connect(manager, SIGNAL(attributeChanged(QtProperty*,QString,QVariant)),
+                     this, SLOT(onPropertyAttributeChanged(QtProperty*,QString,QVariant)));
     QtVariantEditorFactory::connectPropertyManager(manager);
   }
 
   void ExtendedVariantEditorFactory::disconnectPropertyManager(QtVariantPropertyManager * manager)
   {
-    QObject::disconnect(manager, SIGNAL(valueChanged(QtProperty *, const QVariant &)),
+    QObject::disconnect(manager, SIGNAL(valueChanged(QtProperty*,QVariant)),
                         this, SLOT(onPropertyChanged(QtProperty *, const QVariant &)));
-    QObject::disconnect(manager, SIGNAL(attributeChanged(QtProperty *, const QString &, const QVariant &)),
-                        this, SLOT(onPropertyAttributeChanged(QtProperty *, const QString &, const QVariant &)));
+    QObject::disconnect(manager, SIGNAL(attributeChanged(QtProperty*,QString,QVariant)),
+                        this, SLOT(onPropertyAttributeChanged(QtProperty*,QString,QVariant)));
     QtVariantEditorFactory::disconnectPropertyManager(manager);
   }
 
@@ -56,9 +56,9 @@ namespace ADWIF
       myPropToEditorMap[property].append(editor);
       myEditorToPropMap[editor] = property;
       QObject::connect(editor, SIGNAL(textChanged(QString)),
-              this, SLOT(onValueSet(const QString &)));
+              this, SLOT(onValueSet(QString)));
       QObject::connect(editor, SIGNAL(destroyed(QObject *)),
-                       this, SLOT(onEditorDestroyed(QObject *)));
+                       this, SLOT(onEditorDestroyed(QObject*)));
       QObject::connect(editor, SIGNAL(buttonClicked()), this, SLOT(onShowCurveEditor()));
       return editor;
     }
@@ -127,7 +127,7 @@ namespace ADWIF
       text += QLatin1String(" ");
       mySubpropertyToPropertyMap[subProperty] = myEditorToPropMap[parent];
       QObject::connect(this->propertyManager(myEditorToPropMap[parent]), SIGNAL(propertyChanged(QtProperty*)),
-                       this, SLOT(curveSubPropertyChanged(QtProperty*)));
+                       this, SLOT(onCurveSubPropertyChanged(QtProperty*)));
     }
     parent->setText(text);
     this->propertyManager(myEditorToPropMap[parent])->setValue(myEditorToPropMap[parent], QVariant::fromValue(curve));
