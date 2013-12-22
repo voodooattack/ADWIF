@@ -102,7 +102,7 @@ namespace ADWIF
     virtual void drawEntity(const class Entity *, int x, int y) { }
     virtual void drawRegion(int x, int y, int z, int w, int h, int scrx, int scry, const class Game * game, class Map * map) { }
 
-    virtual bool supportsMultiLayers() const { }
+    virtual bool supportsMultiLayers() const { return false; }
   };
 }
 

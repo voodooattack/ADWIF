@@ -309,20 +309,22 @@ namespace ADWIF
   {
     boost::upgrade_lock<boost::shared_mutex> guard(chunk->lock);
     boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
-    if (!chunk->dirty)
-      return;
     if (!chunk->grid)
       return;
-    myEngine.lock()->log("Map"), "saving ", chunk->pos;
-    boost::filesystem::path path = myMapPath / chunk->fileName;
-    iostreams::file_sink fs(path.native());
-    iostreams::filtering_ostream os;
-    os.push(iostreams::bzip2_compressor());
-    os.push(fs);
-    ovdb::io::Stream ss;
-    ss.setCompressionEnabled(false);
-    ovdb::GridPtrVec vc = { chunk->grid };
-    ss.write(os, vc);
+    if (chunk->dirty)
+    {
+      myEngine.lock()->log("Map"), "saving ", chunk->pos;
+      boost::filesystem::path path = myMapPath / chunk->fileName;
+      iostreams::file_sink fs(path.native());
+      iostreams::filtering_ostream os;
+      os.push(iostreams::bzip2_compressor());
+      os.push(fs);
+      ovdb::io::Stream ss;
+      ss.setCompressionEnabled(false);
+      ovdb::GridPtrVec vc = { chunk->grid };
+      ss.write(os, vc);
+    } else
+      myEngine.lock()->log("Map"), "unloading ", chunk->pos;
     chunk->accessor.reset();
     chunk->grid.reset();
     chunk->dirty = false;
@@ -342,7 +344,7 @@ namespace ADWIF
 
   Map::~Map() { delete myImpl; }
 
-  const MapCell & Map::get(int x, int y, int z) const { return myImpl->get(x,y,z); }
+  const MapCell Map::get(int x, int y, int z) const { return myImpl->get(x,y,z); }
   void Map::set(int x, int y, int z, const MapCell & cell) { myImpl->set(x, y, z, cell);}
   const MapCell & Map::background() const { return myImpl->background(); }
   void Map::prune() const { myImpl->prune(false); }

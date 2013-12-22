@@ -17,8 +17,8 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MAPPRIVATE_H
-#define MAPPRIVATE_H
+#ifndef MAP_OPENVDB_H
+#define MAP_OPENVDB_H
 
 #include "map.hpp"
 #include "mapbank.hpp"
@@ -131,4 +131,4 @@ namespace ADWIF
     static bool myInitialisedFlag;
   };
 }
-#endif // MAPPRIVATE_H
+#endif // MAP_OPENVDB_H

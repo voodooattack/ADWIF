@@ -22,6 +22,7 @@
 
 #include <vector>
 #include <memory>
+#include <sstream>
 
 #include <boost/thread.hpp>
 #include <boost/asio/io_service.hpp>
@@ -52,6 +53,7 @@ namespace ADWIF
       myLevel = other.myLevel;
       mySource = other.mySource;
       other.myEngine.reset();
+      return *this;
     }
     ~Log() { flush(); }
     template <typename T>
@@ -59,8 +61,8 @@ namespace ADWIF
     void flush();
   private:
     mutable std::shared_ptr<const class Engine> myEngine;
-    mutable std::string mySource;
     mutable std::ostringstream myMessage;
+    mutable std::string mySource;
     mutable LogLevel myLevel;
   };
 

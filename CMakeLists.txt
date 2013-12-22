@@ -7,9 +7,9 @@ include(GetGitRevisionDescription)
 get_git_head_revision(ADWIF_GIT_BRANCH ADWIF_GIT_REVISION)
 
 project(adwif)
-enable_language(CXX)
+enable_language(C CXX)
 
-set(ADWIF_SOURCES noisemodules.cpp noiseutils.cpp imageutils.cpp mapbank.cpp mapgenerator.cpp mapgenstate.cpp item.cpp map.cpp
+set(ADWIF_SOURCES noisemodules.cpp noiseutils.cpp imageutils.cpp mapgenerator.cpp mapgenstate.cpp item.cpp
                   fileutils.cpp jsonutils.cpp renderer.cpp animationutils.cpp util.cpp scripting.cpp game.cpp
                   player.cpp newgamestate.cpp introanimation.cpp animation.cpp mainmenustate.cpp introstate.cpp
                   engine.cpp main.cpp)
@@ -40,7 +40,7 @@ endif()
 
 if(NOT DEFINED PHYSFS_CPP_CHECKOUT)
   execute_process(COMMAND ${GIT_EXECUTABLE} clone https://github.com/kahowell/physfs-cpp/ ${PHYSFS_CPP_ROOT})
-  set(PHYSFS_CPP_CHECKOUT TRUE CACHE INTERNAL "whether or not physfscpp was checked out")
+  set(PHYSFS_CPP_CHECKOUT TRUE CACHE INTERNAL "whether or not physfs-cpp was checked out")
 endif()
 
 add_subdirectory(${DEP_DIR})
@@ -48,12 +48,33 @@ add_subdirectory(${DEP_DIR})
 if(CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_CXX_FLAGS "-std=gnu++11")
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  set(CMAKE_CXX_FLAGS "-std=c++11")
+  set(CMAKE_CXX_FLAGS "-std=c++11 -stdlib=libstdc++")
 elseif(MSVC)
   # On by default
 endif()
 
 #execute_process(COMMAND make -C ${V8_ROOT} -f ${V8_ROOT}/Makefile i18nsupport=off werror=no native)
+
+set(ADWIF_MAP_ENGINE "OpenVDB" CACHE STRING
+  "Select a mapping backend, valid values are 'OpenVDB' and 'Field3D'")
+set_property(CACHE ADWIF_MAP_ENGINE PROPERTY STRINGS
+  "OpenVDB" "Field3D")
+
+if(ADWIF_MAP_ENGINE STREQUAL "OpenVDB")
+  find_package(OpenVDB REQUIRED)
+  find_package(Half)
+  find_package(TBB)
+  set(ADWIF_SOURCES ${ADWIF_SOURCES} map_openvdb.cpp mapbank.cpp)
+  set(ADWIF_MAP_INCLUDES ${OPENVDB_INCLUDE_DIRS} ${TBB_INCLUDE_DIRS})
+  set(ADWIF_MAP_LIBRARIES ${OPENVDB_LIBRARIES} ${TBB_LIBRARIES} ${HALF_LIBRARIES})
+elseif(ADWIF_MAP_ENGINE STREQUAL "Field3D")
+  find_package(Field3D REQUIRED)
+  find_package(ILMBase REQUIRED)
+  find_package(HDF5 REQUIRED)
+  set(ADWIF_SOURCES ${ADWIF_SOURCES} map_field3d.cpp mapbank.cpp)
+  set(ADWIF_MAP_INCLUDES ${FIELD3D_INCLUDE_DIRS} ${ILMBASE_INCLUDE_DIRS} ${HDF5_INCLUDE_DIRS})
+  set(ADWIF_MAP_LIBRARIES ${FIELD3D_LIBRARIES} ${HDF5_LIBRARIES})
+endif()
 
 set(ADWIF_RENDERER "curses" CACHE STRING
   "Select a rendering backend, valid values are 'curses' and 'tcod'")
@@ -85,15 +106,12 @@ endif()
 
 find_package(V8 REQUIRED)
 find_package(PhysFS REQUIRED)
-find_package(Threads REQUIRED)
-find_package(TBB REQUIRED)
 find_package(JsonCpp REQUIRED)
-find_package(OpenVDB REQUIRED)
-find_package(Half REQUIRED)
 find_package(FreeImage REQUIRED)
 find_package(Noise REQUIRED)
 #find_package(Eigen3 REQUIRED)
 find_package(Boost 1.54.0 COMPONENTS serialization coroutine context filesystem system iostreams regex program_options thread chrono REQUIRED)
+find_package(Threads REQUIRED)
 
 option(ADWIF_BUILD_EDITOR "whether or not to build the game editor" OFF)
 
@@ -125,10 +143,10 @@ endif()
 
 configure_file ("${PROJECT_SOURCE_DIR}/config.hpp.in" "${PROJECT_BINARY_DIR}/config.hpp")
 
-include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR} ${EDITOR_INCLUDES}
+include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR} ${EDITOR_INCLUDES} ${ADWIF_MAP_INCLUDES}
                     ${ADWIF_RENDERER_INCLUDES} ${PHYSFS_INCLUDE_DIR} ${V8_INCLUDE_DIR}
-                    ${Boost_INCLUDE_DIRS} ${HALF_INCLUDE_DIRS} ${PHYSFS_CPP_ROOT}/include ${JSONCPP_INCLUDE_DIR} ${OPENVDB_INCLUDE_DIRS}
-                    ${TBB_INCLUDE_DIRS} ${UTF8CPP_INCLUDE_DIR} ${FREEIMAGE_INCLUDE_PATH} ${NOISE_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIR})
+                    ${Boost_INCLUDE_DIRS} ${HALF_INCLUDE_DIRS} ${PHYSFS_CPP_ROOT}/include ${JSONCPP_INCLUDE_DIR}
+                    ${UTF8CPP_INCLUDE_DIR} ${FREEIMAGE_INCLUDE_PATH} ${NOISE_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIR})
 add_executable(adwif ${ADWIF_RENDERER_SOURCES} ${ADWIF_SOURCES})
 add_dependencies(adwif physfs++)
 
@@ -138,9 +156,9 @@ if (ADWIF_BUILD_EDITOR)
   qt5_use_modules(adwif Core Widgets OpenGL)
 endif()
 
-target_link_libraries(adwif ${EDITOR_LIBRARIES} ${ADWIF_RENDERER_LIBRARIES} ${PHYSFS_LIBRARY} ${V8_LIBRARIES} ${Boost_LIBRARIES} ${HALF_LIBRARIES}
-                      ${FREEIMAGE_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${JSONCPP_LIBRARIES} ${OPENVDB_LIBRARIES} ${TBB_LIBRARIES} ${NOISE_LIBRARY}
-                      physfs++)
+target_link_libraries(adwif ${EDITOR_LIBRARIES} ${ADWIF_RENDERER_LIBRARIES} ${ADWIF_MAP_LIBRARIES} ${PHYSFS_LIBRARY}
+                      ${V8_LIBRARIES} ${Boost_LIBRARIES} ${FREEIMAGE_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${JSONCPP_LIBRARIES}
+                      ${NOISE_LIBRARY} physfs++)
 
 #add_custom_command(TARGET adwif POST_BUILD COMMENT
 #                     COMMAND ${CMAKE_COMMAND} -E copy_directory

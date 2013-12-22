@@ -117,7 +117,7 @@ namespace ADWIF
 
   void Renderer::drawRegion(int x, int y, int z, int w, int h, int scrx, int scry, const Game * game, Map * map)
   {
-    auto drawCell = [&](const MapCell & c, int x, int y, int overrideStyle = -1)
+    auto drawCell = [&](const MapCell & c, int x, int y, int overrideStyle)
     {
       if (c.structure == Structure::None)
       {
@@ -173,7 +173,7 @@ namespace ADWIF
           }
         }
         else
-          drawCell(c, scrx + xx, scry + yy);
+          drawCell(c, scrx + xx, scry + yy, -1);
       }
     }
   }

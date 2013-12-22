@@ -32,7 +32,7 @@ namespace ADWIF
         const MapCell & bgValue);
     ~Map();
 
-    const MapCell & get(int x, int y, int z) const;
+    const MapCell get(int x, int y, int z) const;
     void set(int x, int y, int z, const MapCell & cell);
 
     const MapCell & background() const;

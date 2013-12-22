@@ -51,12 +51,15 @@ namespace ADWIF
       if ((i % bufferWidth) == 0)
         if (c != ' ')
           for (int j = (i - 1); j > -1 ; j--)
+          {
             if (s[j] == ' ')
             {
               s.insert(j, spaceCount, ' ');
               break;
             }
-            else spaceCount++;
+            else
+              spaceCount++;
+          }
     }
 
     return s;

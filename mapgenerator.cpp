@@ -43,11 +43,15 @@
 // #include <boost/geometry/geometries/adapted/boost_polygon.hpp>
 // #include <boost/assign.hpp>
 
-template<class T>
-std::ostream & operator<< (std::ostream & os, const boost::polygon::point_data<T> & p)
-{
-  os << p.x() << "," << p.y();
-  return os;
+namespace boost {
+  namespace polygon {
+    template<class T>
+    std::ostream & operator<< (std::ostream & os, const boost::polygon::point_data<T> & p)
+    {
+      os << p.x() << "," << p.y();
+      return os;
+    }
+  }
 }
 
 namespace ADWIF
@@ -298,7 +302,7 @@ namespace ADWIF
 
         std::map<segment, bool> mendMap;
 
-        auto mendNearest = [&](const point & p, int r = 1)
+        auto mendNearest = [&](const point & p, int r)
         {
           if (r <= 0)
             return segments.end();
@@ -566,6 +570,7 @@ namespace ADWIF
 //
 //         i++;
 //       }
+    return true;
   }
 
   void MapGenerator::generateAll()
