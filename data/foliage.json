@@ -3,20 +3,20 @@
     "name": "Grass",
     "grow": true,
     "needs": ["Water"],
-    "soil": "Dirt",
+    "soil": ["Dirt"],
     "disp":{
       "Floor": [{ "sym":"," }, { "sym":"." }, { "sym":"`" },
                 { "sym":",", "style":{"attributes":["Bold"] } },
                 { "sym":".", "style":{"attributes":["Bold"] } },
                 { "sym":"`", "style":{"attributes":["Bold"] } },
-                { "sym":",", "style":{"attributes":["Dim"] } },
-                { "sym":".", "style":{"attributes":["Dim"] } },
-                { "sym":"`", "style":{"attributes":["Dim"] } }
+                { "sym":"," },
+                { "sym":"." },
+                { "sym":"`" }
       ],
       "Wall":  null,
       "RampU": [{ "sym":"^", "usym":"▴" }],
       "RampD": [{ "sym":"v", "usym":"▾" }]
     },
-    "style": {"fgcolour":"Green", "attributes":["Dim"] }
+    "style": { "fgcolour":"Green" }
   }
 ]

@@ -3,7 +3,7 @@
   "sources" : [
     {
       "bounds" : [ -0.10, 0.30 ],
-      "falloff" : 0.50,
+      "falloff" : 1.00,
       "module" : "Select",
       "sources" : [
         {
@@ -69,7 +69,7 @@
                     "module" : "Billow",
                     "octaves" : 2,
                     "persistence" : 0.060,
-                    "quality" : "standard",
+                    "quality" : "best",
                     "seed" : 0
                   }
                   ]

@@ -589,7 +589,12 @@ namespace ADWIF
       return;
 
     if (myGeneratorAbortFlag)
+    {
+      boost::recursive_mutex::scoped_lock guard(myGenerationLock);
+      myGenerationMap[x][y][z+myDepth/2] = false;
+      myPriorityFlags[x][y][z+myDepth/2] = false;
       return;
+    }
 
     {
       boost::recursive_mutex::scoped_lock guard(myGenerationLock);
@@ -778,14 +783,20 @@ namespace ADWIF
 
     auto generateCell = [&](int xx, int yy, int zz, int height)
     {
+      if (zz > height) return;
+
       MapCell c(map->get(xx, yy, zz));
-      if (c.generated && !regenerate) return;
-      if (!c.generated)
+
+      if (c.generated && !regenerate)
+        return;
+
+      if (!c.generated || !c.cmaterial)
       {
         std::string smat = getMaterial(xx, yy, zz, height);
         c.material = smat;
         c.cmaterial = game()->materials()[smat];
       }
+
       if (zz == height)
       {
         std::uniform_int_distribution<int> ud2(0, c.cmaterial->disp[TerrainType::Floor].size() - 1);
@@ -794,19 +805,17 @@ namespace ADWIF
         c.generated = true;
         c.background = false;
         c.type = TerrainType::Floor;
-        if ((getHeight(xx+1,yy) == height + 1 ||
-          getHeight(xx,yy+1) == height + 1 ||
-          getHeight(xx-1,yy) == height + 1 ||
-          getHeight(xx,yy-1) == height + 1))
+        if (!c.cmaterial->liquid &&
+          (getHeight(xx+1,yy) == height + 1 ||
+           getHeight(xx,yy+1) == height + 1 ||
+           getHeight(xx-1,yy) == height + 1 ||
+           getHeight(xx,yy-1) == height + 1))
         {
-          if (!c.cmaterial->liquid)
-          {
-            MapCell cc = c;
-            c.type = TerrainType::RampU;
-            cc.type = TerrainType::RampD;
-            cc.generated = true;
-            map->set(xx, yy, height+1, cc);
-          }
+          MapCell cc = c;
+          c.type = TerrainType::RampU;
+          cc.type = TerrainType::RampD;
+          cc.generated = true;
+          map->set(xx, yy, height+1, cc);
         }
       }
       else if (zz < height)
@@ -818,16 +827,15 @@ namespace ADWIF
         c.visible = false;
         c.generated = true;
 
-        double hw = getHeight(xx-1, yy);
-        double he = getHeight(xx+1, yy);
-        double hn = getHeight(xx, yy-1);
-        double hs = getHeight(xx, yy+1);
+        int hw = getHeight(xx-1, yy);
+        int he = getHeight(xx+1, yy);
+        int hn = getHeight(xx, yy-1);
+        int hs = getHeight(xx, yy+1);
 
         if (he < zz || hw < zz || hs < zz || hn < zz)
           c.visible = true;
       }
-      else
-        return;
+
       map->set(xx, yy, zz, c);
     };
 
@@ -835,17 +843,17 @@ namespace ADWIF
 
     for (unsigned int yy = offy; yy < offy + myChunkSizeY; yy++)
     {
+      if (myGeneratorAbortFlag)
+      {
+        boost::recursive_mutex::scoped_lock guard(myGenerationLock);
+        myGenerationMap[x][y][z+myDepth/2] = false;
+        myPriorityFlags[x][y][z+myDepth/2] = false;
+        return;
+      }
       if (cooperative && !myPriorityFlags[x][y][z+myDepth/2] && counter++ % 100 == 0)
         game()->engine()->scheduler()->yield();
       for (unsigned int xx = offx; xx < offx + myChunkSizeX; xx++)
       {
-        if (myGeneratorAbortFlag)
-        {
-          boost::recursive_mutex::scoped_lock guard(myGenerationLock);
-          myGenerationMap[x][y][z+myDepth/2] = false;
-          myPriorityFlags[x][y][z+myDepth/2] = false;
-          return;
-        }
         int height = getHeight(xx,yy);
         for (int zz = offz; zz <= (offz + myChunkSizeZ > height ? height : offz + myChunkSizeZ); zz++)
           generateCell(xx, yy, zz, height);
@@ -940,21 +948,21 @@ namespace ADWIF
 
     myPriorityFlags[chunkX][chunkY][chunkZ+myDepth/2] = true;
 
-    if (isGenerated(chunkX, chunkY, chunkZ) == false)
-      abort();
+//     if (isGenerated(chunkX, chunkY, chunkZ) == false)
+//       abort();
 
-    for (int r = -radius; r <= radius; r++)
+    if (radius > 0) for (int r = -radius; r <= radius; r++)
     {
       for (int i = -r; i <= r; i++)
         for (int j = -r; j <= r; j++)
           for (int k = -r; k <= r; k++)
             if (isGenerated(chunkX+i, chunkY+j, chunkZ+k) == false)
               if (!(i == 0 && j == 0 && k == 0))
-              game()->engine()->scheduler()->schedule(boost::bind<void>(&MapGenerator::generateOne, this,
-                                                      chunkX+i, chunkY+j, chunkZ+k, false, true));
+                game()->engine()->scheduler()->schedule(boost::bind<void>(&MapGenerator::generateOne, this,
+                                                        chunkX+i, chunkY+j, chunkZ+k, false, true));
     }
 
-    generateOne(chunkX, chunkY, chunkZ);
+    generateOne(chunkX, chunkY, chunkZ, false, false);
 
     do
     {

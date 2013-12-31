@@ -221,7 +221,7 @@ namespace boost {
         {
           if (process())
             boost::this_thread::yield();
-          if (!service->poll_one())
+          else if (!service->poll_one())
             boost::this_thread::sleep_for(boost::chrono::microseconds(200));
         }
       }

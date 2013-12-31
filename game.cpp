@@ -45,8 +45,8 @@
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/shared_ptr.hpp>
-#include <boost/archive/text_iarchive.hpp>
-#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
 #include <boost/serialization/shared_ptr.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
@@ -351,7 +351,7 @@ namespace ADWIF
       boost::iostreams::filtering_istream os;
       os.push(boost::iostreams::bzip2_decompressor());
       os.push(fs);
-      boost::archive::text_iarchive ia(os);
+      boost::archive::binary_iarchive ia(os);
       ia & *myGenerator;
     }
 
@@ -367,7 +367,7 @@ namespace ADWIF
     boost::iostreams::filtering_ostream os;
     os.push(boost::iostreams::bzip2_compressor());
     os.push(fs);
-    boost::archive::text_oarchive oa(os);
+    boost::archive::binary_oarchive oa(os);
     oa & *myGenerator;
 
     myGenerator->notifySave();

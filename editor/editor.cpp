@@ -227,7 +227,10 @@ namespace ADWIF
       pi->setPen(pen);
       pi->setBrush(brush);
       pi->setPolygon(sqring);
-      pi->setZValue(1/myGame->generator()->regions()[i].area);
+      QPolygonF convex;
+      boost::geometry::convex_hull(sqring, convex);
+      double area = boost::geometry::area(convex);
+      pi->setZValue(-area);
       pi->setData(0, i);
       pi->setFlag(QGraphicsItem::GraphicsItemFlag::ItemIsFocusable, true);
       pi->setFlag(QGraphicsItem::GraphicsItemFlag::ItemIsSelectable, true);

@@ -52,7 +52,8 @@ namespace ADWIF
     virtual void startWindow(int x, int y, int w, int h);
     virtual void endWindow();
     virtual void drawChar(int x, int y, int c);
-    virtual void drawText(int x, int y, const std::string & text) ;
+    virtual void drawText(int x, int y, const std::string & text);
+    virtual void drawMessage(const std::string & message);
     virtual void drawEntity(const class Entity *, int x, int y) { }
 
     virtual bool supportsMultiLayers() const { return false; }

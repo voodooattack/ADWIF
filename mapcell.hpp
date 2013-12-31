@@ -109,7 +109,8 @@ namespace ADWIF
     }
 
     virtual uint64_t hash() const {
-      size_t h = boost::hash<int>()(type);
+      size_t h = 0;
+      boost::hash_combine(h, (int)type);
       boost::hash_combine(h, (int)structure);
       boost::hash_combine(h, material);
       boost::hash_combine(h, smaterial);

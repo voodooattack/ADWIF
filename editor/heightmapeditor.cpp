@@ -210,7 +210,7 @@ namespace ADWIF
     QObject::connect(task.get(), SIGNAL(generationCompleted(QRectF, QImage)),
                      this, SLOT(onAreaGenerated(QRectF, QImage)), Qt::QueuedConnection);
 
-    myEngine->scheduler()->schedule(boost::bind(&AreaGenerationTask::operator(), task));
+    myEngine->scheduler()->schedule((std::bind(&AreaGenerationTask::operator(), task)));
     myTasks.push_back(task);
   }
 

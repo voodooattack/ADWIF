@@ -36,10 +36,11 @@ namespace ADWIF
 
   const MapCell & MapBank::get(uint64_t hash)
   {
-    boost::recursive_mutex::scoped_lock guard(myMutex);
+    boost::upgrade_lock<boost::shared_mutex> guard(myMutex);
     auto cell = myCache.find(hash);
     if (cell == myCache.end())
     {
+      boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
       myCache[hash] = loadCell(hash);
     }
     myAccessTimes[hash] = myClock.now();
@@ -50,7 +51,8 @@ namespace ADWIF
 
   void MapBank::prune(bool pruneAll)
   {
-    boost::recursive_mutex::scoped_lock guard(myMutex);
+    boost::upgrade_lock<boost::shared_mutex> guard(myMutex);
+    boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
     std::unordered_map<uint64_t, MapCell> toStore;
     auto i = myAccessTimes.begin();
     while (i != myAccessTimes.end())
@@ -97,7 +99,6 @@ namespace ADWIF
 
   MapCell MapBank::loadCell(uint64_t hash)
   {
-    boost::recursive_mutex::scoped_lock guard(myMutex);
     myStream.seekg(std::ios_base::beg);
     MapCell cell;
 
@@ -106,7 +107,11 @@ namespace ADWIF
       uint64_t fhash;
       uint32_t size;
       if (!read<uint64_t>(myStream, fhash) || !read<uint32_t>(myStream, size))
-        throw std::runtime_error("malformed map bank");
+      {
+        myStream.clear();
+        myStream.seekg(std::ios_base::beg);
+        break;
+      }
 
       if (fhash == hash)
       {
@@ -118,13 +123,14 @@ namespace ADWIF
         myStream.seekg(size, std::ios_base::cur);
     }
 
-    throw std::runtime_error("stream error finding cell " + boost::lexical_cast<std::string>(hash));
-    //return MapCell();
+//     throw std::runtime_error("stream error finding cell " + boost::lexical_cast<std::string>(hash));
+    return MapCell();
   }
 
   uint64_t MapBank::put(const MapCell & cell)
   {
-    boost::recursive_mutex::scoped_lock guard(myMutex);
+    boost::upgrade_lock<boost::shared_mutex> guard(myMutex);
+    boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
     uint64_t hash = cell.hash();
     myAccessTimes[hash] = myClock.now();
     if (myCache.find(hash) == myCache.end())

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.8)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMakeModules" ${CMAKE_MODULE_PATH})
 
-include(cotire)
+# include(cotire)
 include(GetGitRevisionDescription)
 
 get_git_head_revision(ADWIF_GIT_BRANCH ADWIF_GIT_REVISION)
@@ -9,10 +9,12 @@ get_git_head_revision(ADWIF_GIT_BRANCH ADWIF_GIT_REVISION)
 project(adwif)
 enable_language(C CXX)
 
-set(ADWIF_SOURCES noisemodules.cpp noiseutils.cpp imageutils.cpp mapgenerator.cpp mapgenstate.cpp item.cpp
-                  fileutils.cpp jsonutils.cpp renderer.cpp animationutils.cpp util.cpp scripting.cpp game.cpp
-                  player.cpp newgamestate.cpp introanimation.cpp animation.cpp mainmenustate.cpp introstate.cpp
-                  engine.cpp main.cpp)
+set(ADWIF_SOURCES
+  noisemodules.cpp noiseutils.cpp imageutils.cpp mapgenerator.cpp mapgenstate.cpp item.cpp
+  fileutils.cpp jsonutils.cpp renderer.cpp animationutils.cpp util.cpp scripting.cpp game.cpp
+  player.cpp newgamestate.cpp introanimation.cpp animation.cpp mainmenustate.cpp introstate.cpp
+  engine.cpp main.cpp
+)
 
 set(DEP_DIR ${PROJECT_SOURCE_DIR}/deps)
 set(V8_ROOT ${DEP_DIR}/v8)
@@ -123,12 +125,16 @@ if (ADWIF_BUILD_EDITOR)
   find_package(Qt5OpenGL REQUIRED)
   find_package(OpenGL REQUIRED)
   set(EDITOR_UI editor/editor.ui editor/heightmapeditor.ui)
-  set(EDITOR_SOURCES editor/editor.cpp editor/heightmapeditor.cpp editor/noisegraphbuilder.cpp
-                     editor/extendedvariantmanager.cpp editor/extendedvarianteditorfactory.cpp
-    editor/propertybrowserbox.cpp editor/curveeditor.cpp editor/scrollablegraphicsview.cpp)
-  set(EDITOR_HEADERS editor/editor.hpp editor/heightmapeditor.hpp editor/noisegraphbuilder.hpp
-                     editor/extendedvariantmanager.hpp editor/extendedvarianteditorfactory.hpp
-                     editor/propertybrowserbox.hpp editor/curveeditor.hpp editor/scrollablegraphicsview.hpp)
+  set(EDITOR_SOURCES
+    editor/editor.cpp editor/heightmapeditor.cpp editor/noisegraphbuilder.cpp
+    editor/extendedvariantmanager.cpp editor/extendedvarianteditorfactory.cpp
+    editor/propertybrowserbox.cpp editor/curveeditor.cpp editor/scrollablegraphicsview.cpp
+  )
+  set(EDITOR_HEADERS
+    editor/editor.hpp editor/heightmapeditor.hpp editor/noisegraphbuilder.hpp
+    editor/extendedvariantmanager.hpp editor/extendedvarianteditorfactory.hpp
+    editor/propertybrowserbox.hpp editor/curveeditor.hpp editor/scrollablegraphicsview.hpp
+  )
   set(EDITOR_RESOURCES editor/resources.qrc)
   qt5_wrap_ui(EDITOR_UI_SRC ${EDITOR_UI})
   qt5_add_resources(EDITOR_RC ${EDITOR_RESOURCES})

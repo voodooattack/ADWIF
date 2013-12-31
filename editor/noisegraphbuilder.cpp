@@ -396,8 +396,8 @@ namespace ADWIF
           property(manager, "Persistence")->setValue(val["persistence"].asDouble());
         if (val["seed"].isInt())
           property(manager, "Seed")->setValue(val["seed"].asDouble());
-        if (val["octaves"].isUInt())
-          property(manager, "Octaves")->setValue(val["octaves"].asUInt());
+        if (val["octaves"].isInt())
+          property(manager, "Octaves")->setValue(val["octaves"].asInt());
         if (val["quality"].isString())
         {
           if (val["quality"].asString() == "fast")
@@ -460,8 +460,8 @@ namespace ADWIF
           property(manager, "Persistence")->setValue(val["persistence"].asDouble());
         if (val["seed"].isInt())
           property(manager, "Seed")->setValue(val["seed"].asDouble());
-        if (val["octaves"].isUInt())
-          property(manager, "Octaves")->setValue(val["octaves"].asUInt());
+        if (val["octaves"].isInt())
+          property(manager, "Octaves")->setValue(val["octaves"].asInt());
         if (val["quality"].isString())
         {
           if (val["quality"].asString() == "fast")
@@ -518,8 +518,8 @@ namespace ADWIF
           property(manager, "Lacunarity")->setValue(val["lacunarity"].asDouble());
         if (val["seed"].isInt())
           property(manager, "Seed")->setValue(val["seed"].asDouble());
-        if (val["octaves"].isUInt())
-          property(manager, "Octaves")->setValue(val["octaves"].asUInt());
+        if (val["octaves"].isInt())
+          property(manager, "Octaves")->setValue(val["octaves"].asInt());
         if (val["quality"].isString())
         {
           if (val["quality"].asString() == "fast")
@@ -674,7 +674,7 @@ namespace ADWIF
     QStandardItem * psrc = myModel->itemFromIndex(isrc.parent());
     QStandardItem * pdst = myModel->itemFromIndex(idst.parent());
 
-    if (!src || !dst)
+    if (!src || !dst || !pdst || !psrc)
     {
       e->ignore();
       return;
@@ -686,11 +686,11 @@ namespace ADWIF
       return;
     }
 
-    if (isDescendantOf(isrc, idst) || isDescendantOf(idst, isrc))
-    {
-      e->ignore();
-      return;
-    }
+//     if (isDescendantOf(isrc, idst) || isDescendantOf(idst, isrc))
+//     {
+//       e->ignore();
+//       return;
+//     }
 
     if (e->proposedAction() == Qt::DropAction::MoveAction)
     {

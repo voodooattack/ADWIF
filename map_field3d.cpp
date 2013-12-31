@@ -291,7 +291,7 @@ namespace ADWIF
             else if (dur > myDurationThreshold)
               myEngine.lock()->log("Map"), "scheduling save operation for ", i->second->pos, ", last accessed in ", dur;
 
-            myEngine.lock()->service().dispatch(boost::bind(&MapImpl::saveChunk, this, i->second));
+            myEngine.lock()->service().post(boost::bind(&MapImpl::saveChunk, this, i->second));
           }
           else
           {

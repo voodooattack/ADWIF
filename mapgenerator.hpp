@@ -27,6 +27,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <cmath>
 #include <unordered_map>
 #include <memory>
 #include <random>
@@ -168,9 +169,14 @@ namespace ADWIF
 
     void abort();
 
-    inline int getHeight(int x, int y)
+    inline int getHeight(double x, double y)
     {
-      return floor(myHeightSource->GetValue(x, y, 0) * myChunkSizeZ * (myDepth / 2));
+      return ceil(getHeightReal(x, y));
+    }
+
+    inline double getHeightReal(double x, double y)
+    {
+      return myHeightSource->GetValue(x, y, 0) * (double)myChunkSizeZ * ((double)myDepth / 2.0);
     }
 
   private:

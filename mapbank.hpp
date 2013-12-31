@@ -26,7 +26,7 @@
 #include <chrono>
 #include <unordered_map>
 
-#include <boost/thread/recursive_mutex.hpp>
+#include <boost/thread/shared_mutex.hpp>
 
 namespace ADWIF
 {
@@ -48,7 +48,7 @@ namespace ADWIF
 
   private:
     std::iostream & myStream;
-    boost::recursive_mutex myMutex;
+    boost::shared_mutex myMutex;
     std::unordered_map<uint64_t, MapCell> myCache;
     std::unordered_map<uint64_t, time_point> myAccessTimes;
     clock_type myClock;
