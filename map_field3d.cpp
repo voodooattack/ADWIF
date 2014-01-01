@@ -325,7 +325,7 @@ namespace ADWIF
 
   Map::~Map() { delete myImpl; }
 
-  const MapCell Map::get(int x, int y, int z) const { return myImpl->get(x,y,z); }
+  const MapCell & Map::get(int x, int y, int z) const { return myImpl->get(x,y,z); }
   void Map::set(int x, int y, int z, const MapCell & cell) { myImpl->set(x, y, z, cell);}
   const MapCell & Map::background() const { return myImpl->background(); }
   void Map::save() const { myImpl->prune(true); }

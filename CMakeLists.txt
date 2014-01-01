@@ -13,7 +13,7 @@ set(ADWIF_SOURCES
   noisemodules.cpp noiseutils.cpp imageutils.cpp mapgenerator.cpp mapgenstate.cpp item.cpp
   fileutils.cpp jsonutils.cpp renderer.cpp animationutils.cpp util.cpp scripting.cpp game.cpp
   player.cpp newgamestate.cpp introanimation.cpp animation.cpp mainmenustate.cpp introstate.cpp
-  engine.cpp main.cpp
+  mapcell.cpp engine.cpp main.cpp
 )
 
 set(DEP_DIR ${PROJECT_SOURCE_DIR}/deps)

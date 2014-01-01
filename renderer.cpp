@@ -119,23 +119,93 @@ namespace ADWIF
   {
     auto drawCell = [&](const MapCell & c, int x, int y, int overrideStyle)
     {
-      if (c.structure == Structure::None)
+      if (c.elements().size() == 0)
       {
-        const Material * mat = c.cmaterial;
-        if (!mat)
-        {
-          auto mit = game->materials().find(c.material);
-          if (mit == game->materials().end())
-            throw std::runtime_error("material '" + c.material + "' undefined");
-          mat = mit->second;
-        }
-        auto dit = mat->disp.find(c.type);
-        if (dit == mat->disp.end())
-          throw std::runtime_error("terrain type '" + terrainTypeStr(c.type) + "' undefined in material '" + mat->name + "'");
-        const Material::dispEntry & disp = dit->second[c.symIdx < dit->second.size() ? c.symIdx : dit->second.size() - 1];
-        style(disp.style.fg, disp.style.bg, overrideStyle == -1 ? disp.style.style : overrideStyle);
-        drawChar(x, y, disp.sym);
+        style(Colour::Cyan, Colour::Cyan, overrideStyle == -1 ? Style::Normal : overrideStyle);
+        drawChar(x, y, ' ');
+        return;
       }
+
+      Element * e = nullptr;
+
+      for(Element * el : c.elements())
+      {
+        if (!e || (!el->isMaterial() && !el->isStructure() && (e->isMaterial() || e->isStructure())))
+          e = el;
+        else if (!e || (el->isStructure() && e->isMaterial()))
+          e = el;
+        else if (!e || (el->isMaterial() && e->isMaterial() && el->volume() > e->volume()))
+          e = el;
+        else if (!e || (el->isMaterial() && e->isMaterial() && el->isAnchored() == true && e->isAnchored() == false))
+          e = el;
+        else if (!e || ((!el->isMaterial() && !el->isStructure() && !e->isMaterial() && !e->isStructure()) && el->volume() > e->volume()))
+          e = el;
+      }
+
+      if (e)
+      {
+        if (e->isMaterial())
+        {
+          const MaterialElement * me = dynamic_cast<MaterialElement*>(e);
+          const Material * mat = me->cmaterial;
+          if (!mat)
+          {
+            auto mit = game->materials().find(me->material);
+            if (mit == game->materials().end())
+              throw std::runtime_error("material '" + me->material + "' undefined");
+            mat = mit->second;
+          }
+          TerrainType type = TerrainType::Hole;
+          if (me->anchored && me->materialState() == MaterialState::Solid)
+          {
+            if (me->vol == MapCell::MaxVolume)
+              type = TerrainType::Wall;
+            else if (me->vol >= 500000000)
+            {
+              if (me->alignment)
+                type = TerrainType::RampD;
+              else
+                type = TerrainType::RampU;
+            }
+            else if (me->vol < 500000000)
+              type = TerrainType::Floor;
+          }
+
+          if (type != TerrainType::Hole)
+          {
+            auto dit = mat->disp.find(type);
+            if (dit == mat->disp.end())
+              throw std::runtime_error("terrain type '" + terrainTypeStr(type) + "' undefined in material '" + mat->name + "'");
+            const Material::dispEntry & disp = dit->second[me->symIdx < dit->second.size() ? me->symIdx : dit->second.size() - 1];
+            style(disp.style.fg, disp.style.bg, overrideStyle == -1 ? disp.style.style : overrideStyle);
+            drawChar(x, y, disp.sym);
+          }
+          else
+          {
+            style(Colour::Cyan, Colour::Cyan, overrideStyle == -1 ? Style::Normal : overrideStyle);
+            drawChar(x, y, ' ');
+          }
+        }
+      }
+
+
+//       if (c.structure == Structure::None)
+//       {
+//         const Material * mat = c.cmaterial;
+//         if (!mat)
+//         {
+//           auto mit = game->materials().find(c.material);
+//           if (mit == game->materials().end())
+//             throw std::runtime_error("material '" + c.material + "' undefined");
+//           mat = mit->second;
+//         }
+//         auto dit = mat->disp.find(c.type);
+//         if (dit == mat->disp.end())
+//           throw std::runtime_error("terrain type '" + terrainTypeStr(c.type) + "' undefined in material '" + mat->name + "'");
+//         const Material::dispEntry & disp = dit->second[c.symIdx < dit->second.size() ? c.symIdx : dit->second.size() - 1];
+//         style(disp.style.fg, disp.style.bg, overrideStyle == -1 ? disp.style.style : overrideStyle);
+//         drawChar(x, y, disp.sym);
+//       }
     };
 
     for (int yy = 0; yy < h; yy++)
@@ -143,12 +213,12 @@ namespace ADWIF
       for (int xx = 0; xx < w; xx++)
       {
         const MapCell & c = map->get(x + xx, y + yy, z);
-        if (!c.visible && c.type == TerrainType::Wall)
+        if (!c.seen() && c.free() == 0)
         {
           style(Colour::Black, Colour::Black, Style::Normal);
           drawChar(scrx + xx, scry + yy, ' ');
         }
-        else if (c.type == TerrainType::Hole || c.background)
+        else if (c.used() == 0)
         {
           if (!supportsMultiLayers())
           {
@@ -158,12 +228,12 @@ namespace ADWIF
           else
           {
             const MapCell & cc = map->get(x + xx, y + yy, z-1);
-            if (!cc.visible && cc.type == TerrainType::Wall)
+            if (!cc.seen() && cc.free() == 0)
             {
               style(Colour::Black, Colour::Black, Style::Normal);
               drawChar(scrx + xx, scry + yy, ' ');
             }
-            else if (cc.type == TerrainType::Hole || cc.background)
+            else if (cc.used() == 0)
             {
               style(Colour::Cyan, Colour::Cyan, Style::Dim);
               drawChar(scrx + xx, scry + yy, ' ');

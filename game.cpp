@@ -31,6 +31,7 @@
 #include "mapgenerator.hpp"
 #include "serialisationutils.hpp"
 #include "imageutils.hpp"
+#include "fileutils.hpp"
 
 #include <string>
 #include <iostream>
@@ -298,13 +299,7 @@ namespace ADWIF
   void Game::createMap()
   {
     MapCell bg;
-
-    bg.type = TerrainType::Hole;
-    bg.material = "Air";
-    bg.symIdx = 0;
-    bg.visible = true;
-    bg.background = true;
-
+    bg.clear();
     myMap.reset(new Map(engine(), saveDir / "map", false, 512, 512, 32, bg));
 
     myGenerator.reset(new MapGenerator(shared_from_this()));
@@ -336,11 +331,7 @@ namespace ADWIF
   void Game::loadMap()
   {
     MapCell bg;
-
-    bg.type = TerrainType::Hole;
-    bg.material = "Air";
-    bg.symIdx = 0;
-
+    bg.clear();
     myMap.reset(new Map(engine(), saveDir / "map", true, 512, 512, 32, bg));
 
     myGenerator.reset(new MapGenerator(shared_from_this()));

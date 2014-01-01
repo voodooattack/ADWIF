@@ -17,14 +17,16 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "mapbank.hpp"
 
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/vector.hpp>
-#include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/thread/recursive_mutex.hpp>
+
+#include "mapbank.hpp"
+#include "fileutils.hpp"
 
 namespace ADWIF
 {
@@ -57,7 +59,7 @@ namespace ADWIF
     auto i = myAccessTimes.begin();
     while (i != myAccessTimes.end())
     {
-      if (pruneAll || myClock.now() - i->second > std::chrono::seconds(4))
+      if (pruneAll || myClock.now() - i->second > std::chrono::minutes(2))
       {
         auto item = myCache.find(i->first);
         toStore.insert({item->first, item->second});
@@ -123,7 +125,7 @@ namespace ADWIF
         myStream.seekg(size, std::ios_base::cur);
     }
 
-//     throw std::runtime_error("stream error finding cell " + boost::lexical_cast<std::string>(hash));
+    throw std::runtime_error("stream error finding cell " + boost::lexical_cast<std::string>(hash));
     return MapCell();
   }
 

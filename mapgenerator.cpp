@@ -31,6 +31,7 @@
 #include <algorithm>
 
 #include <physfs.hpp>
+#include "mapcell.hpp"
 
 #include <boost/container/flat_set.hpp>
 #include <boost/polygon/polygon.hpp>
@@ -787,45 +788,55 @@ namespace ADWIF
 
       MapCell c(map->get(xx, yy, zz));
 
-      if (c.generated && !regenerate)
+      if (c.generated() && !regenerate)
         return;
 
-      if (!c.generated || !c.cmaterial)
-      {
-        std::string smat = getMaterial(xx, yy, zz, height);
-        c.material = smat;
-        c.cmaterial = game()->materials()[smat];
-      }
+      c.clear();
+
+      MaterialElement * mat = new MaterialElement;
+
+      mat->material = getMaterial(xx, yy, zz, height);
+      mat->cmaterial = game()->materials()[mat->material];
 
       if (zz == height)
       {
-        std::uniform_int_distribution<int> ud2(0, c.cmaterial->disp[TerrainType::Floor].size() - 1);
-        c.symIdx = ud2(myRandomEngine);
-        c.biome = biome->name;
-        c.generated = true;
-        c.background = false;
-        c.type = TerrainType::Floor;
-        if (!c.cmaterial->liquid &&
+        c.generated(true);
+        std::uniform_int_distribution<int> ud2(0, mat->cmaterial->disp[TerrainType::Floor].size() - 1);
+        mat->symIdx = ud2(myRandomEngine);
+        mat->vol = 100000000;
+        mat->anchored = true;
+
+        if (!mat->cmaterial->liquid &&
           (getHeight(xx+1,yy) == height + 1 ||
            getHeight(xx,yy+1) == height + 1 ||
            getHeight(xx-1,yy) == height + 1 ||
            getHeight(xx,yy-1) == height + 1))
         {
-          MapCell cc = c;
-          c.type = TerrainType::RampU;
-          cc.type = TerrainType::RampD;
-          cc.generated = true;
+//           if (std::abs(1 - (double)height - getHeightReal(xx,yy)) < 0.5)
+            mat->vol = 500000000;
+          MapCell cc(c);
+          MaterialElement * cmat = new MaterialElement(*mat);
+          mat->alignment = false;
+          mat->state = MaterialState::Solid;
+          cmat->alignment = true;
+          cmat->state = MaterialState::Solid;
+          cc.addElement(cmat);
+          cc.generated(true);
           map->set(xx, yy, height+1, cc);
         }
       }
       else if (zz < height)
       {
-        if (c.cmaterial->disp.find(TerrainType::Wall) == c.cmaterial->disp.end())
+        if (mat->cmaterial->disp.find(TerrainType::Wall) == mat->cmaterial->disp.end())
           return;
-        c.type = TerrainType::Wall;
-        c.symIdx = 0;
-        c.visible = false;
-        c.generated = true;
+        std::uniform_int_distribution<int> ud2(0, mat->cmaterial->disp[TerrainType::Wall].size() - 1);
+        mat->symIdx = ud2(myRandomEngine);
+        mat->vol = MapCell::MaxVolume;
+        mat->anchored = true;
+        mat->state = MaterialState::Solid;
+
+        c.seen(false);
+        c.generated(true);
 
         int hw = getHeight(xx-1, yy);
         int he = getHeight(xx+1, yy);
@@ -833,8 +844,10 @@ namespace ADWIF
         int hs = getHeight(xx, yy+1);
 
         if (he < zz || hw < zz || hs < zz || hn < zz)
-          c.visible = true;
+          c.seen(true);
       }
+
+      c.addElement(mat);
 
       map->set(xx, yy, zz, c);
     };

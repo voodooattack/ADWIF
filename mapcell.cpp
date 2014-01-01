@@ -17,33 +17,12 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MAP_H
-#define MAP_H
-
 #include "mapcell.hpp"
-#include <boost/filesystem.hpp>
+#include <boost/serialization/export.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+// #include <boost/archive/polymorphic_binary_iarchive.hpp>
+// #include <boost/archive/polymorphic_binary_oarchive.hpp>
 
-namespace ADWIF
-{
-  class Map
-  {
-  public:
-    Map(const std::shared_ptr<class Engine> & engine, const boost::filesystem::path & mapPath,
-        bool load, unsigned int chunkSizeX, unsigned int chunkSizeY, unsigned int chunkSizeZ,
-        const MapCell & bgValue);
-    ~Map();
-
-    const MapCell & get(int x, int y, int z) const;
-    void set(int x, int y, int z, const MapCell & cell);
-
-    const MapCell & background() const;
-
-    void prune() const;
-    void save() const;
-
-  private:
-    class MapImpl * myImpl;
-  };
-}
-
-#endif // MAP_H
+BOOST_CLASS_EXPORT_IMPLEMENT(ADWIF::Element)
+BOOST_CLASS_EXPORT_IMPLEMENT(ADWIF::MaterialElement)
