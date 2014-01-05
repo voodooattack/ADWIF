@@ -24,6 +24,7 @@
 #include "game.hpp"
 #include "mapgenerator.hpp"
 #include "heightmapeditor.hpp"
+#include "fileutils.hpp"
 
 #include <QGLWidget>
 #include <QTimer>

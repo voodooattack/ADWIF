@@ -3,6 +3,8 @@ deps/v8
 debug/
 release/
 build/
+.kdev_include_paths
+
 
 # Compiled source #
 ###################

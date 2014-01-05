@@ -129,7 +129,10 @@ namespace ADWIF
   public:
 //     typedef boost::variant<void*, char, short, int, double, float, std::string> Meta;
 
-    MapCell(): myElements(), myVolume(0), myCachedHash(0) { clear(); }
+    MapCell(): myElements(), /*myMeta(),*/
+      myGeneratedFlag(false), mySeenFlag(false),
+      myVolume(0), myTemp(294.15), myPressure(101325),
+      myCachedHash(0)  { clear(); }
     explicit MapCell(const MapCell & other)
     {
       clear();
@@ -139,6 +142,8 @@ namespace ADWIF
       myGeneratedFlag = other.myGeneratedFlag;
       mySeenFlag = other.mySeenFlag;
       myVolume = other.myVolume;
+      myTemp = other.myTemp;
+      myPressure = other.myPressure;
 //       myMeta = other.myMeta;
     }
     MapCell(MapCell && other)
@@ -148,6 +153,8 @@ namespace ADWIF
       myGeneratedFlag = other.myGeneratedFlag;
       mySeenFlag = other.mySeenFlag;
       myVolume = other.myVolume;
+      myTemp = other.myTemp;
+      myPressure = other.myPressure;
       //       myMeta = std::move(other.myMeta);
     }
     ~MapCell() { clear(); }
@@ -161,6 +168,8 @@ namespace ADWIF
       myGeneratedFlag = other.myGeneratedFlag;
       mySeenFlag = other.mySeenFlag;
       myVolume = other.myVolume;
+      myTemp = other.myTemp;
+      myPressure = other.myPressure;
 //       myMeta = other.myMeta;
       return *this;
     }
@@ -250,9 +259,9 @@ namespace ADWIF
 //     std::map<std::string, Meta> myMeta;
     bool myGeneratedFlag;
     bool mySeenFlag;
+    int myVolume;
     int myTemp;
     int myPressure;
-    int myVolume;
     mutable uint64_t myCachedHash;
 
   private:
@@ -333,70 +342,5 @@ namespace ADWIF
 
 BOOST_CLASS_EXPORT_KEY(ADWIF::Element)
 BOOST_CLASS_EXPORT_KEY(ADWIF::MaterialElement)
-
-//   struct MapCell: public ItemContainer
-//   {
-//     MapCell(): type(TerrainType::Hole), structure(None), material("Air"), smaterial(), biome(), symIdx(0), visible(false),
-//     background(false), generated(false), contents(), cmaterial(nullptr), csmaterial(nullptr), cbiome(nullptr) {}
-//     ~MapCell() { }
-//
-//     TerrainType type;
-//     Structure structure;
-//     std::string material;
-//     std::string smaterial;
-//     std::string biome;
-//     unsigned char symIdx;
-//     bool visible, background, generated;
-//     std::vector<Item> contents;
-//
-//     // cached lookups
-//     mutable struct Material * cmaterial, * csmaterial;
-//     mutable struct Biome * cbiome;
-//
-//     virtual size_t itemCount()  { return contents.size(); }
-//     virtual const Item & getItem(size_t index)  { return contents[index]; }
-//
-//     virtual bool addItem(const class Item & item) {
-//       contents.push_back(item);
-//       return true;
-//     }
-//
-//     virtual bool removeItem(const class Item & item) {
-//       contents.erase(std::remove(contents.begin(), contents.end(), item), contents.end());
-//       return true;
-//     }
-//
-//     virtual uint64_t hash() const {
-//       size_t h = 0;
-//       boost::hash_combine(h, (int)type);
-//       boost::hash_combine(h, (int)structure);
-//       boost::hash_combine(h, material);
-//       boost::hash_combine(h, smaterial);
-//       boost::hash_combine(h, biome);
-//       boost::hash_combine(h, symIdx);
-//       boost::hash_combine(h, visible);
-//       boost::hash_combine(h, background);
-//       boost::hash_combine(h, generated);
-//       for(auto i : contents)
-//         boost::hash_combine(h, i.hash());
-//       return h;
-//     }
-//
-//     template<class Archive>
-//     void serialize(Archive & ar, const unsigned int version)
-//     {
-//       ar & type;
-//       ar & structure;
-//       ar & material;
-//       ar & smaterial;
-//       ar & biome;
-//       ar & symIdx;
-//       ar & visible;
-//       ar & contents;
-//     }
-//
-//     friend class boost::serialization::access;
-//   };
-
 
 #endif // MAPCELL_H

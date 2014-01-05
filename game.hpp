@@ -39,6 +39,7 @@
 namespace ADWIF
 {
   class Game;
+  class MapGenerator;
   class Skill;
   class Profession;
   class Faction;
@@ -164,8 +165,8 @@ namespace ADWIF
     const std::shared_ptr<class Map> & map() const { return myMap; }
     void map(const std::shared_ptr<class Map> & map) { myMap = map; }
 
-    std::shared_ptr<class MapGenerator> & generator() { return myGenerator; }
-    const std::shared_ptr<class MapGenerator> & generator() const { return myGenerator; }
+    std::shared_ptr<MapGenerator> & generator() { return myGenerator; }
+    const std::shared_ptr<MapGenerator> & generator() const { return myGenerator; }
     void generator(const std::shared_ptr<class MapGenerator> & generator) { myGenerator = generator; }
 
     std::map<std::string, Race *> & races() { return myRaces; }

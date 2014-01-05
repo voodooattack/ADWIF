@@ -117,7 +117,7 @@ namespace ADWIF
 
   void Renderer::drawRegion(int x, int y, int z, int w, int h, int scrx, int scry, const Game * game, Map * map)
   {
-    auto drawCell = [&](const MapCell & c, int x, int y, int overrideStyle)
+    auto drawCell = [&](const MapCell & c, int x, int y, int overrideStyle, bool flipRamps)
     {
       if (c.elements().size() == 0)
       {
@@ -148,28 +148,23 @@ namespace ADWIF
         {
           const MaterialElement * me = dynamic_cast<MaterialElement*>(e);
           const Material * mat = me->cmaterial;
+
           if (!mat)
           {
             auto mit = game->materials().find(me->material);
             if (mit == game->materials().end())
               throw std::runtime_error("material '" + me->material + "' undefined");
-            mat = mit->second;
+            mat = me->cmaterial = mit->second;
           }
+
           TerrainType type = TerrainType::Hole;
-          if (me->anchored && me->materialState() == MaterialState::Solid)
-          {
-            if (me->vol == MapCell::MaxVolume)
-              type = TerrainType::Wall;
-            else if (me->vol >= 500000000)
-            {
-              if (me->alignment)
-                type = TerrainType::RampD;
-              else
-                type = TerrainType::RampU;
-            }
-            else if (me->vol < 500000000)
-              type = TerrainType::Floor;
-          }
+
+          if (c.free() == 0)
+            type = TerrainType::Wall;
+          else if (c.used() == 0)
+            type = TerrainType::Hole;
+          else
+            type = TerrainType::Floor;
 
           if (type != TerrainType::Hole)
           {
@@ -235,15 +230,34 @@ namespace ADWIF
             }
             else if (cc.used() == 0)
             {
-              style(Colour::Cyan, Colour::Cyan, Style::Dim);
-              drawChar(scrx + xx, scry + yy, ' ');
+              const MapCell & ccc = map->get(x + xx, y + yy, z-2);
+              if (!ccc.seen() && ccc.free() == 0)
+              {
+                style(Colour::Black, Colour::Black, Style::Normal);
+                drawChar(scrx + xx, scry + yy, ' ');
+              }
+              else if (ccc.used() == 0)
+              {
+                if (map->get(x + xx, y + yy, z-3).used() == 0)
+                {
+                  style(Colour::Cyan, Colour::Cyan, Style::Dim);
+                  drawChar(scrx + xx, scry + yy, ' ');
+                }
+                else
+                {
+                  style(Colour::Black, Colour::Black, Style::Bold);
+                  drawChar(scrx + xx, scry + yy, '.');
+                }
+              }
+              else
+                drawCell(ccc, scrx + xx, scry + yy, Style::Dark, false);
             }
             else
-              drawCell(cc, scrx + xx, scry + yy, Style::Dark);
+              drawCell(cc, scrx + xx, scry + yy, Style::Dim, false);
           }
         }
         else
-          drawCell(c, scrx + xx, scry + yy, -1);
+          drawCell(c, scrx + xx, scry + yy, -1, true);
       }
     }
   }

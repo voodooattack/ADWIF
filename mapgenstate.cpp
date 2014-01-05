@@ -18,13 +18,13 @@
  */
 
 #include "mapgenstate.hpp"
+#include "mapgenerator.hpp"
 #include "player.hpp"
 #include "engine.hpp"
 #include "map.hpp"
 #include "game.hpp"
 #include "input.hpp"
 #include "renderer.hpp"
-#include "mapgenerator.hpp"
 
 #include <physfs.hpp>
 #include <boost/filesystem.hpp>
@@ -68,11 +68,12 @@ namespace ADWIF
 //     myViewOffX = 0;
 //     myViewOffY = 0;
 
-    myViewOffZ = myGame->generator()->getHeight(myViewOffX, myViewOffY);
+    myViewOffZ = myGame->generator()->getHeight(myViewOffX + myEngine->renderer()->width() / 2,
+                                                myViewOffY + myEngine->renderer()->height() / 2) + 1;
 
     myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
                                         myViewOffY + myEngine->renderer()->height() / 2,
-                                        myViewOffZ);
+                                        myViewOffZ-1);
     myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
                                         myViewOffY + myEngine->renderer()->height() / 2,
                                         myViewOffZ+1, 1);
@@ -91,7 +92,7 @@ namespace ADWIF
     int chunkZ = myViewOffZ / myGame->generator()->chunkSizeZ();
 
     myEngine->renderer()->clear();
-    myEngine->renderer()->drawRegion(myViewOffX, myViewOffY, myViewOffZ, myEngine->renderer()->width(),
+    myEngine->renderer()->drawRegion(myViewOffX, myViewOffY, myViewOffZ+1, myEngine->renderer()->width(),
                                      myEngine->renderer()->height(), 0, 0, myGame.get(), myGame->map().get());
     myEngine->renderer()->style(White, Black, Style::Bold);
     myEngine->renderer()->drawChar(myEngine->renderer()->width() / 2, myEngine->renderer()->height() / 2, '@');
@@ -102,6 +103,7 @@ namespace ADWIF
 
   void MapGenState::consume(int key)
   {
+    const MapCell & from = myGame->map()->get(myViewOffX, myViewOffY, myViewOffZ);
     if (key == Key::Escape)
     {
       std::string str = "Saving map, please wait.";
@@ -165,12 +167,17 @@ namespace ADWIF
             //myEngine->sleep(0);
           }
     }
+
+    myViewOffZ = myGame->generator()->getHeight(myViewOffX + myEngine->renderer()->width() / 2,
+                                                myViewOffY + myEngine->renderer()->height() / 2);
+
     myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
                                         myViewOffY + myEngine->renderer()->height() / 2,
                                         myViewOffZ, 1);
     myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
                                         myViewOffY + myEngine->renderer()->height() / 2,
                                         myViewOffZ + 1, 1);
+
   }
 
   void MapGenState::activate() { }
