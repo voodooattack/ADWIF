@@ -67,58 +67,62 @@ namespace ADWIF
         i = myAccessTimes.erase(i);
       } else ++i;
     }
-    myStream.seekg(std::ios_base::beg);
-    myStream.seekp(std::ios_base::beg);
+    myStream.clear();
+    myStream.seekg(0, std::ios_base::beg);
     while (!toStore.empty())
     {
-      uint64_t fhash;// = read<uint64_t>(myStream);
-      uint32_t size; // = read<uint32_t>(myStream);
-      //
+      uint64_t fhash;
+      uint32_t size;
       if (read<uint64_t>(myStream, fhash) && read<uint32_t>(myStream, size))
       {
         myStream.seekg(size, std::ios_base::cur);
         toStore.erase(fhash);
       }
       else
-      {
-        myStream.clear();
-        myStream.seekp(myStream.tellg(), std::ios_base::beg);
-        for (auto const & i : toStore)
-        {
-          write<uint64_t>(myStream, i.first);
-          std::ostringstream ss(std::ios_base::binary);
-          {
-            boost::archive::binary_oarchive io(ss, boost::archive::no_header);
-            io & i.second;
-          }
-          const std::string str = ss.str();
-          write<std::string::value_type,uint32_t>(myStream, str);
-        }
         break;
-      }
+    }
+    for (auto const & i : toStore)
+    {
+      myStream.clear();
+      write<uint64_t>(myStream, i.first);
+      std::streampos sizePos = myStream.tellp();
+      write<uint32_t>(myStream, -1);
+      std::streampos start = myStream.tellp();
+      boost::archive::binary_oarchive io(myStream, boost::archive::no_header);
+      io & i.second;
+      std::streampos endpos = myStream.tellp();
+      std::streamsize size = endpos - start;
+      myStream.seekp(sizePos, std::ios_base::beg);
+      write<uint32_t>(myStream, (uint32_t)size);
+      myStream.seekp(endpos, std::ios_base::beg);
     }
   }
 
   MapCell MapBank::loadCell(uint64_t hash)
   {
-    myStream.seekg(std::ios_base::beg);
-    MapCell cell;
+    myStream.clear();
+    myStream.seekg(0, std::ios_base::beg);
 
     while (myStream.good())
     {
       uint64_t fhash;
       uint32_t size;
+
       if (!read<uint64_t>(myStream, fhash) || !read<uint32_t>(myStream, size))
       {
         myStream.clear();
-        myStream.seekg(std::ios_base::beg);
+        myStream.seekg(0, std::ios_base::beg);
         break;
       }
 
       if (fhash == hash)
       {
+        MapCell cell;
         boost::archive::binary_iarchive ia(myStream, boost::archive::no_header);
         ia & cell;
+        if (cell.calcHash() != fhash)
+          throw std::runtime_error("invalid cell hash " + boost::lexical_cast<std::string>(hash));
+        myStream.seekg(0, std::ios_base::beg);
         return std::move(cell);
       }
       else

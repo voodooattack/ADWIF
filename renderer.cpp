@@ -117,7 +117,7 @@ namespace ADWIF
 
   void Renderer::drawRegion(int x, int y, int z, int w, int h, int scrx, int scry, const Game * game, Map * map)
   {
-    auto drawCell = [&](const MapCell & c, int x, int y, int overrideStyle, bool flipRamps)
+    auto drawCell = [&](const MapCell & c, int x, int y, int overrideStyle)
     {
       if (c.elements().size() == 0)
       {
@@ -170,10 +170,17 @@ namespace ADWIF
           {
             auto dit = mat->disp.find(type);
             if (dit == mat->disp.end())
-              throw std::runtime_error("terrain type '" + terrainTypeStr(type) + "' undefined in material '" + mat->name + "'");
-            const Material::dispEntry & disp = dit->second[me->symIdx < dit->second.size() ? me->symIdx : dit->second.size() - 1];
-            style(disp.style.fg, disp.style.bg, overrideStyle == -1 ? disp.style.style : overrideStyle);
-            drawChar(x, y, disp.sym);
+            {
+//               throw std::runtime_error("terrain type '" + terrainTypeStr(type) + "' undefined in material '" + mat->name + "'");
+              style(Colour::Yellow, Colour::Red, Style::Bold);
+              drawChar(x, y, '?');
+            }
+            else
+            {
+              const Material::dispEntry & disp = dit->second[me->symIdx < dit->second.size() ? me->symIdx : dit->second.size() - 1];
+              style(disp.style.fg, disp.style.bg, overrideStyle == -1 ? disp.style.style : overrideStyle);
+              drawChar(x, y, disp.sym);
+            }
           }
           else
           {
@@ -182,7 +189,6 @@ namespace ADWIF
           }
         }
       }
-
 
 //       if (c.structure == Structure::None)
 //       {
@@ -250,14 +256,14 @@ namespace ADWIF
                 }
               }
               else
-                drawCell(ccc, scrx + xx, scry + yy, Style::Dark, false);
+                drawCell(ccc, scrx + xx, scry + yy, Style::Dark);
             }
             else
-              drawCell(cc, scrx + xx, scry + yy, Style::Dim, false);
+              drawCell(cc, scrx + xx, scry + yy, Style::Dim);
           }
         }
         else
-          drawCell(c, scrx + xx, scry + yy, -1, true);
+          drawCell(c, scrx + xx, scry + yy, -1);
       }
     }
   }

@@ -64,7 +64,7 @@ namespace ADWIF
 
   MapGenerator::MapGenerator(const std::shared_ptr<Game> & game):
     myGame(game), myMapImg(), myHeightMap(), myChunkSizeX(32), myChunkSizeY(32), myChunkSizeZ(16),
-    myColourIndex(), myRandomEngine(), myGenerationMap(), myPriorityFlags(),
+    myColourIndex(), myRandomEngine(), myGenerationMap(), myPriorityFlags(), myScheduledFlags(),
     myBiomeMap(), myRegions(), myHeight(0), myWidth(0), myDepth(512),
     mySeed(boost::chrono::system_clock::now().time_since_epoch().count()),
     myGenerationLock(), myGeneratorCount(0), myGeneratorAbortFlag(false),
@@ -112,6 +112,7 @@ namespace ADWIF
     myHeights.resize(boost::extents[myWidth][myHeight]);
     myGenerationMap.resize(boost::extents[myWidth][myHeight][myDepth]);
     myPriorityFlags.resize(boost::extents[myWidth][myHeight][myDepth]);
+    myScheduledFlags.resize(boost::extents[myWidth][myHeight][myDepth]);
 
     for(unsigned int y = 0; y < myHeight; y++)
       for(unsigned int x = 0; x < myWidth; x++)
@@ -606,8 +607,6 @@ namespace ADWIF
 
     game()->engine()->log("MapGenerator"), boost::str(boost::format("generating cell: %ix%ix%i") % x % y % z);
 
-    Map * map = game()->map().get();
-
     AtomicRefCount<std::size_t> refCount(myGeneratorCount);
 
     int offx = x * myChunkSizeX, offy = y * myChunkSizeY;
@@ -786,12 +785,14 @@ namespace ADWIF
     {
       if (zz > height) return;
 
-      MapCell c(map->get(xx, yy, zz));
+      MapCell c(game()->map()->get(xx, yy, zz));
 
       if (c.generated() && !regenerate)
         return;
 
       c.clear();
+
+//       MapCell c;
 
       MaterialElement * mat = new MaterialElement;
 
@@ -800,45 +801,25 @@ namespace ADWIF
 
       if (zz == height)
       {
+        double h = getHeightReal(xx,yy);
+        double vol = (h - double(height));
+        vol = ((int)round(vol * 100) / 100.0);
+
         c.generated(true);
 
         std::uniform_int_distribution<int> ud2(0, mat->cmaterial->disp[TerrainType::Floor].size() - 1);
         mat->symIdx = ud2(myRandomEngine);
-        mat->vol = 100000000;
+        mat->vol = vol * MapCell::MaxVolume;
+        if (mat->vol <= 0)
+          mat->vol = 1;
         mat->anchored = true;
         mat->alignment = false;
         mat->state = MaterialState::Solid;
-
-//         if (!mat->cmaterial->liquid &&
-//           (getHeight(xx+1,yy) == height + 1 ||
-//            getHeight(xx,yy+1) == height + 1 ||
-//            getHeight(xx-1,yy) == height + 1 ||
-//            getHeight(xx,yy-1) == height + 1))
-//         {
-// //           if (std::abs(1 - (double)height - getHeightReal(xx,yy)) < 0.5)
-//           c.type(TerrainType::RampU);
-//           mat->symIdx = 0;
-//           mat->vol = 500000000;
-//           MapCell cc;
-//           MaterialElement * cmat = new MaterialElement;
-//           cmat->material = getMaterial(xx, yy, zz, height+1);
-//           cmat->cmaterial = game()->materials()[mat->material];
-//           cmat->vol = 500000000;
-//           cmat->symIdx = 0;
-//           cmat->anchored = true;
-//           cmat->alignment = true;
-//           cmat->state = MaterialState::Solid;
-//           cc.type(TerrainType::RampD);
-//           cc.generated(true);
-//           cc.addElement(cmat);
-//           map->set(xx, yy, zz+1, cc);
-//         }
       }
       else if (zz < height)
       {
-        if (mat->cmaterial->disp.find(TerrainType::Wall) == mat->cmaterial->disp.end())
-          return;
         std::uniform_int_distribution<int> ud2(0, mat->cmaterial->disp[TerrainType::Wall].size() - 1);
+
         mat->symIdx = ud2(myRandomEngine);
         mat->vol = MapCell::MaxVolume;
         mat->anchored = true;
@@ -864,12 +845,12 @@ namespace ADWIF
 
       c.addElement(mat);
 
-      map->set(xx, yy, zz, c);
+      game()->map()->set(xx, yy, zz, c);
     };
 
     // PASS 1 ============================================================================
 
-    for (unsigned int yy = offy; yy < offy + myChunkSizeY; yy++)
+    for (int zz = offz + myChunkSizeZ - 1; zz >= offz; zz--)
     {
       if (myGeneratorAbortFlag)
       {
@@ -878,78 +859,18 @@ namespace ADWIF
         myPriorityFlags[x][y][z+myDepth/2] = false;
         return;
       }
-      if (cooperative && !myPriorityFlags[x][y][z+myDepth/2] && counter++ % 2000 == 0)
+      if (cooperative && !myPriorityFlags[x][y][z+myDepth/2] && counter++ % myChunkSizeZ / 100 == 0)
         game()->engine()->scheduler()->yield();
-      for (unsigned int xx = offx; xx < offx + myChunkSizeX; xx++)
-      {
-        int height = getHeight(xx,yy);
-        for (int zz = offz; zz <= (offz + myChunkSizeZ > height ? height : offz + myChunkSizeZ); zz++)
-          generateCell(xx, yy, zz, height);
-      }
+      for (unsigned int yy = offy; yy < offy + myChunkSizeY; yy++)
+        for (unsigned int xx = offx; xx < offx + myChunkSizeX; xx++)
+        {
+          int height = getHeight(xx,yy);
+          if (height > zz)
+            continue;
+          else
+            generateCell(xx, yy, zz, height);
+        }
     }
-
-    // PASS 2 ============================================================================
-
-//     for (unsigned int yy = offy; yy < offy + myChunkSizeY; yy++)
-//     {
-//       if (cooperative && !myPriorityFlags[x][y][z+myDepth/2] && counter++ % 100 == 0)
-//         game()->engine()->scheduler()->yield();
-//       for (unsigned int xx = offx; xx < offx + myChunkSizeX; xx++)
-//       {
-//         if (myGeneratorAbortFlag)
-//         {
-//           boost::recursive_mutex::scoped_lock guard(myGenerationLock);
-//           myGenerationMap[x][y][z+myDepth/2] = false;
-//           return;
-//         }
-//
-//         int height = getHeight(xx,yy);
-//         for (int zz = offz; zz <= (offz + myChunkSizeZ > height ? height : offz + myChunkSizeZ); zz++)
-//         {
-//           MapCell c(map->get(xx, yy, zz));
-//           if (c.cmaterial && c.cmaterial->liquid)
-//           {
-//             c.visible = true;
-//             map->set(xx, yy, zz, c);
-//             for (int i = -1; i <= 1; i++)
-//               for (int j = -1; j <= 1; j++)
-// //                 for (int k = -1; k <= 1; k++)
-//                 {
-//                   MapCell cc(map->get(xx+i,yy+j,zz/*+k*/));
-//                   if (!cc.visible)
-//                   {
-//                     cc.visible = true;
-//                     map->set(xx+i,yy+j,zz/*+k*/, cc);
-//                   }
-//                 }
-//           }
-//           else if (c.type == TerrainType::Wall)
-//           {
-//             const MapCell & w = map->get(xx-1, yy, zz);
-//             const MapCell & e = map->get(xx+1, yy, zz);
-//             const MapCell & n = map->get(xx, yy-1, zz);
-//             const MapCell & s = map->get(xx, yy+1, zz);
-//
-//             double hw = getHeight(xx-1, yy);
-//             double he = getHeight(xx+1, yy);
-//             double hn = getHeight(xx, yy-1);
-//             double hs = getHeight(xx, yy+1);
-//
-//             if (
-//               ((he < zz || (!e.background && e.type != TerrainType::Wall)) ||
-//                (hw < zz || (!w.background && w.type != TerrainType::Wall)) ||
-//                (hs < zz || (!s.background && s.type != TerrainType::Wall)) ||
-//                (hn < zz || (!n.background && n.type != TerrainType::Wall)) ||
-//                (!e.background && e.cmaterial && e.cmaterial->liquid) ||
-//                (!e.background && w.cmaterial && w.cmaterial->liquid) ||
-//                (!e.background && s.cmaterial && s.cmaterial->liquid) ||
-//                (!e.background && n.cmaterial && n.cmaterial->liquid)))
-//               c.visible = true;
-//             map->set(xx, yy, zz, c);
-//           }
-//         }
-//       }
-//     }
 
     {
       boost::recursive_mutex::scoped_lock guard(myGenerationLock);
@@ -984,13 +905,20 @@ namespace ADWIF
       for (int i = -r; i <= r; i++)
         for (int j = -r; j <= r; j++)
           for (int k = -r; k <= r; k++)
-            if (isGenerated(chunkX+i, chunkY+j, chunkZ+k) == false)
+            if (isGenerated(chunkX+i, chunkY+j, chunkZ+k) == false && !myScheduledFlags[chunkX+i][chunkY+j][chunkZ+k])
               if (!(i == 0 && j == 0 && k == 0))
+              {
+                myScheduledFlags[chunkX+i][chunkY+j][chunkZ+k] = true;
                 game()->engine()->scheduler()->schedule(boost::bind<void>(&MapGenerator::generateOne, this,
                                                         chunkX+i, chunkY+j, chunkZ+k, false, true));
+              }
     }
 
-    generateOne(chunkX, chunkY, chunkZ, false, false);
+    if (!myScheduledFlags[chunkX][chunkY][chunkZ])
+    {
+      myScheduledFlags[chunkX][chunkY][chunkZ] = true;
+      generateOne(chunkX, chunkY, chunkZ, false, false);
+    }
 
     do
     {

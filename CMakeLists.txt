@@ -100,6 +100,7 @@ elseif(ADWIF_RENDERER STREQUAL "tcod")
   set(ADWIF_RENDERER_LIBRARIES ${LIBTCOD_LIBRARIES})
 endif()
 
+option(ADWIF_LOGGING "whether or not to enable logging" ON)
 option(ADWIF_UNICODE "whether or not to use unicode output" ON)
 
 if(ADWIF_UNICODE)

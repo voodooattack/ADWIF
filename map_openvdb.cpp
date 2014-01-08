@@ -54,7 +54,14 @@ namespace ADWIF
       GridType::registerGrid();
       myInitialisedFlag = true;
     }
-    if (!load)
+
+    if (load)
+    {
+      myIndexStream.open((mapPath / "index").native(),
+                         std::ios_base::out | std::ios_base::app);
+      myIndexStream.close();
+    }
+    else
     {
       boost::filesystem::remove_all(myMapPath);
       boost::filesystem::create_directory(myMapPath);
@@ -62,15 +69,11 @@ namespace ADWIF
                          std::ios_base::out | std::ios_base::trunc);
       myIndexStream.close();
     }
-    else
-    {
-      myIndexStream.open((mapPath / "index").native(),
-                         std::ios_base::out | std::ios_base::app);
-      myIndexStream.close();
-    }
 
     myIndexStream.open((mapPath / "index").native(),
-                       std::ios_base::binary | std::ios_base::in | std::ios_base::out);
+                       std::ios_base::binary |
+                       std::ios_base::in |
+                       std::ios_base::out);
 
     myBank.reset(new MapBank(myIndexStream));
     myBackgroundValue = myBank->put(bgValue);
@@ -299,8 +302,9 @@ namespace ADWIF
     }
     else
     {
-      chunk->grid = GridType::create(myBackgroundValue);
-      chunk->grid->setName(chunk->fileName);
+      GridType::Ptr grid = GridType::create(myBackgroundValue);
+      grid->setName(chunk->fileName);
+      chunk->grid = grid;
       myEngine.lock()->log("Map"), "created ", chunk->pos;
     }
     chunk->accessor.reset(new GridType::Accessor(chunk->grid->getAccessor()));

@@ -13,7 +13,6 @@
 #ifndef BOOST_CGL_SCHEDULER_HPP
 #define BOOST_CGL_SCHEDULER_HPP
 
-#include <memory>
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/optional.hpp>
@@ -59,7 +58,7 @@ namespace boost {
         cgl::scheduler * scheduler;
         Handler handler;
         optional<E> result;
-        std::auto_ptr<coro_t> coro;
+        boost::shared_ptr<coro_t> coro;
         typename coro_t::caller_type * ca;
         task(Handler handler, cgl::scheduler * scheduler);
         virtual bool finished() const { return !created() || !*coro; }
@@ -80,7 +79,7 @@ namespace boost {
         typedef void type;
         Handler handler;
         cgl::scheduler * scheduler;
-        std::auto_ptr<coro_t> coro;
+        boost::shared_ptr<coro_t> coro;
         typename coro_t::caller_type * ca;
         task(Handler handler, cgl::scheduler * scheduler);
         virtual bool finished() const { return !created() || !*coro; }
@@ -272,7 +271,8 @@ namespace boost {
       task<Handler,void>::task(Handler handler, cgl::scheduler * scheduler):
       handler(handler), scheduler(scheduler), coro(), ca(0) { }
       template<typename Handler>
-      void task<Handler, void>::create() { scheduler->make_current(this); coro.reset(new coro_t(bind(&task::coroutine, this, _1))); }
+      void task<Handler, void>::create() { scheduler->make_current(this);
+        if (!coro) { coro.reset(new coro_t(bind(&task::coroutine, this, _1))); } }
       template<typename Handler>
       void * task<Handler, void>::enter() { scheduler->make_current(this); coro->operator()(); return 0; }
       template<typename Handler>

@@ -40,6 +40,7 @@ namespace ADWIF
     Fatal
   };
 
+#ifdef ADWIF_LOGGING
   class Log
   {
   public:
@@ -65,6 +66,19 @@ namespace ADWIF
     mutable std::string mySource;
     mutable LogLevel myLevel;
   };
+#else
+  class Log
+  {
+  public:
+    Log(const std::shared_ptr<const class Engine> & engine, const std::string & source, LogLevel level = LogLevel::Info) { }
+    Log(const Log & other) {  }
+    Log& operator= (const Log & other) {  return *this; }
+    ~Log() { }
+    template <typename T>
+    Log& operator, (const T & message) { }
+    void flush() { }
+  };
+#endif
 
   class LogProvider
   {

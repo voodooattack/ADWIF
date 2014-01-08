@@ -73,10 +73,10 @@ namespace ADWIF
 
     myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
                                         myViewOffY + myEngine->renderer()->height() / 2,
-                                        myViewOffZ-1);
+                                        myViewOffZ);
     myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
                                         myViewOffY + myEngine->renderer()->height() / 2,
-                                        myViewOffZ+1, 1);
+                                        myViewOffZ+1);
   }
 
   void MapGenState::exit()
@@ -173,10 +173,10 @@ namespace ADWIF
 
     myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
                                         myViewOffY + myEngine->renderer()->height() / 2,
-                                        myViewOffZ, 1);
+                                        myViewOffZ);
     myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
                                         myViewOffY + myEngine->renderer()->height() / 2,
-                                        myViewOffZ + 1, 1);
+                                        myViewOffZ + 1);
 
   }
 

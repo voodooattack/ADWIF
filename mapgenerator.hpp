@@ -171,7 +171,7 @@ namespace ADWIF
 
     inline int getHeight(double x, double y)
     {
-      return ceil(getHeightReal(x, y));
+      return round(getHeightReal(x, y));
     }
 
     inline double getHeightReal(double x, double y)
@@ -212,6 +212,7 @@ namespace ADWIF
     std::mt19937 myRandomEngine;
     boost::multi_array<boost::tribool, 3> myGenerationMap;
     boost::multi_array<bool, 3> myPriorityFlags;
+    boost::multi_array<bool, 3> myScheduledFlags;
     boost::recursive_mutex myGenerationLock;
     boost::multi_array<BiomeCell, 2> myBiomeMap;
     boost::multi_array<double, 2> myHeights;

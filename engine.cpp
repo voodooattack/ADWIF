@@ -155,6 +155,7 @@ namespace ADWIF
     return myDelay;
   }
 
+#ifdef ADWIF_LOGGING
   void Log::flush() { if (myEngine) myEngine->logMessage(myLevel, mySource, myMessage.str()); myEngine.reset(); }
-
+#endif
 }
