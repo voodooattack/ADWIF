@@ -21,6 +21,7 @@
 #define SCROLLABLEGRAPHICSVIEW_H
 
 #include <QGraphicsView>
+#include <QLineEdit>
 
 namespace ADWIF
 {
@@ -40,13 +41,17 @@ namespace ADWIF
     virtual void mouseReleaseEvent(QMouseEvent *);
     virtual void wheelEvent(QWheelEvent *);
     virtual void resizeEvent(QResizeEvent *);
+  protected slots:
+    virtual void viewChanged(const QRectF &);
+    virtual void textEdited(const QString &);
   signals:
-    void viewChanged(const QRectF &);
-
+    void onViewChanged(const QRectF &);
   private:
     QPoint myLastPos;
     QSizeF myCellSize;
     double myScale;
+    QLineEdit * myLineEditX, * myLineEditY;
+    QValidator * myValidator;
   };
 }
 

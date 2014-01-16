@@ -318,7 +318,7 @@ namespace ADWIF
 
     myGenerator->chunkSizeX(400);
     myGenerator->chunkSizeY(240);
-    myGenerator->chunkSizeZ(4);
+    myGenerator->chunkSizeZ(8);
 
     myGenerator->depth(128);
 
@@ -871,10 +871,10 @@ namespace ADWIF
     else
       biome->background = false;
 
-    if (!value["flat"].empty())
-      biome->flat = value["flat"].asBool();
+    if (!value["aquatic"].empty())
+      biome->aquatic = value["aquatic"].asBool();
     else
-      biome->flat = false;
+      biome->aquatic = false;
 
     std::string u8;
 #ifdef ADWIF_UNICODE
@@ -892,6 +892,9 @@ namespace ADWIF
 
     for (auto const & i : value["materials"])
       biome->materials.push_back(i.asString());
+
+    for (auto const & i : value["liquids"])
+      biome->liquids.push_back(i.asString());
 
     biome->jsonValue = value;
 

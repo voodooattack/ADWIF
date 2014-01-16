@@ -29,6 +29,7 @@
 #include <boost/thread/recursive_mutex.hpp>
 
 #include "scheduler.hpp"
+#include "config.hpp"
 
 namespace ADWIF
 {

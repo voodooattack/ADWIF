@@ -40,7 +40,7 @@
     "name":"Mountain",
     "sym":"^",
     "style":{"fgcolour":"White", "attributes":["Dim"]},
-    "materials":["Rock", "Hills"],
+    "materials":["Rock"],
     "layerStart":0,
     "layerEnd":50,
     "mapColour":"#ff0000"
@@ -49,12 +49,13 @@
     "name":"Sea",
     "sym":"~",
     "style":{"fgcolour":"Blue", "bgcolour":"Blue", "attributes":["Dim"]},
-    "materials":["SaltWater"],
+    "materials":["Sand",  "Rock"],
+    "liquids":["SaltWater"],
     "layerStart":0,
     "layerEnd":-10,
     "mapColour":"#0000ff",
     "background":true,
-    "flat":true
+    "aquatic":true
   },
   {
     "name":"Arctic",

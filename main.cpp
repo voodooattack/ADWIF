@@ -94,7 +94,8 @@ int main(int argc, char ** argv)
   boost::filesystem::create_directory(saveDir);
 
   PhysFS::setWriteDir(writeDir.native());
-  PhysFS::mount(dataDir.native(), "/", false);
+  PhysFS::mount(writeDir.native(), "/", false);
+  PhysFS::mount(dataDir.native(), "/", true);
   PhysFS::mount(dataFile.native(), "/", true);
 
   std::shared_ptr<Renderer> renderer;

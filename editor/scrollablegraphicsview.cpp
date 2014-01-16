@@ -21,6 +21,12 @@
 
 #include <QMouseEvent>
 #include <QGraphicsItem>
+#include <QLineEdit>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+#include <QLayout>
+#include <QIntValidator>
+#include <qmath.h>
 
 namespace ADWIF
 {
@@ -29,6 +35,21 @@ namespace ADWIF
     setDragMode(QGraphicsView::DragMode::ScrollHandDrag);
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    myLineEditX = new QLineEdit(this);
+    myLineEditY = new QLineEdit(this);
+    myValidator = new QIntValidator(this);
+    myLineEditX->setValidator(myValidator);
+    myLineEditY->setValidator(myValidator);
+    QHBoxLayout * hlayout = new QHBoxLayout;
+    hlayout->addWidget(myLineEditX);
+    hlayout->addWidget(myLineEditY);
+    QVBoxLayout * vlayout = new QVBoxLayout(this);
+    vlayout->addItem(hlayout);
+    vlayout->addStretch();
+    setLayout(vlayout);
+    QObject::connect(this, SIGNAL(onViewChanged(QRectF)), this, SLOT(viewChanged(QRectF)));
+    QObject::connect(myLineEditX, SIGNAL(textEdited(QString)), this, SLOT(textEdited(QString)));
+    QObject::connect(myLineEditY, SIGNAL(textEdited(QString)), this, SLOT(textEdited(QString)));
   }
 
   void ScrollableGraphicsView::mousePressEvent(QMouseEvent * e)
@@ -46,7 +67,7 @@ namespace ADWIF
       QPoint diff = myLastPos - e->pos();
       myLastPos = e->pos();
       setSceneRect(sceneRect().translated(diff));
-      emit viewChanged(sceneRect());
+      emit onViewChanged(sceneRect());
     }
   }
 
@@ -56,7 +77,7 @@ namespace ADWIF
     if (e->button() == Qt::LeftButton)
     {
       myLastPos = e->pos();
-      emit viewChanged(sceneRect());
+      emit onViewChanged(sceneRect());
     }
   }
 
@@ -71,7 +92,24 @@ namespace ADWIF
                         (-height() / 2) - myCellSize.height(),
                         width() + myCellSize.width() * 2,
                         height() + myCellSize.height() * 2));
-    emit viewChanged(sceneRect());
+    emit onViewChanged(sceneRect());
   }
+
+  void ScrollableGraphicsView::viewChanged(const QRectF & rect)
+  {
+    myLineEditX->setText(QString::number(qFloor(rect.center().x())));
+    myLineEditY->setText(QString::number(qFloor(rect.center().y())));
+  }
+
+  void ScrollableGraphicsView::textEdited(const QString &)
+  {
+    QLineEdit * edit = dynamic_cast<QLineEdit*>(QObject::sender());
+    if (!edit) return;
+    QRectF rect = sceneRect();
+    rect.moveTo(myLineEditX->text().toDouble() - rect.width() / 2, myLineEditY->text().toDouble() - rect.height() / 2);
+    setSceneRect(rect);
+    emit onViewChanged(sceneRect());
+  }
+
 }
 

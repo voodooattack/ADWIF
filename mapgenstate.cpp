@@ -50,11 +50,15 @@ namespace ADWIF
   {
     myGame->createMap();
 
-    myViewOffX = 170 * myGame->generator()->chunkSizeX() + 600;
-    myViewOffY = 180 * myGame->generator()->chunkSizeY() + 300;
+//     myViewOffX = 170 * myGame->generator()->chunkSizeX() + 600;
+//     myViewOffY = 180 * myGame->generator()->chunkSizeY() + 300;
 
 //     myViewOffX = 171 * myGame->generator()->chunkSizeX();
 //     myViewOffY = 169 * myGame->generator()->chunkSizeY();
+
+    myViewOffX = 67191;
+    myViewOffY = 43495;
+
 
 //     myViewOffX = 67556;
 //     myViewOffY = 63187;
@@ -70,13 +74,15 @@ namespace ADWIF
 
     myViewOffZ = myGame->generator()->getHeight(myViewOffX + myEngine->renderer()->width() / 2,
                                                 myViewOffY + myEngine->renderer()->height() / 2) + 1;
-
+    myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
+                                        myViewOffY + myEngine->renderer()->height() / 2,
+                                        myViewOffZ - 2);
     myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
                                         myViewOffY + myEngine->renderer()->height() / 2,
                                         myViewOffZ);
     myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
                                         myViewOffY + myEngine->renderer()->height() / 2,
-                                        myViewOffZ+1);
+                                        myViewOffZ + 1);
   }
 
   void MapGenState::exit()
@@ -92,18 +98,20 @@ namespace ADWIF
     int chunkZ = myViewOffZ / myGame->generator()->chunkSizeZ();
 
     myEngine->renderer()->clear();
-    myEngine->renderer()->drawRegion(myViewOffX, myViewOffY, myViewOffZ+1, myEngine->renderer()->width(),
+    myEngine->renderer()->drawRegion(myViewOffX, myViewOffY, myViewOffZ, myEngine->renderer()->width(),
                                      myEngine->renderer()->height(), 0, 0, myGame.get(), myGame->map().get());
     myEngine->renderer()->style(White, Black, Style::Bold);
     myEngine->renderer()->drawChar(myEngine->renderer()->width() / 2, myEngine->renderer()->height() / 2, '@');
-    std::string str = boost::str(boost::format("Position %ix%ix%i (%ix%ix%i)") % myViewOffX % myViewOffY % myViewOffZ % chunkX % chunkY % chunkZ);
+    std::string str = boost::str(boost::format("Position %ix%ix%i (%ix%ix%i) Height: %d (%i)")
+    % myViewOffX % myViewOffY % myViewOffZ % chunkX % chunkY % chunkZ %
+      myGame->generator()->getHeightReal(myViewOffX + myEngine->renderer()->width() / 2, myViewOffY + myEngine->renderer()->height() / 2) %
+      myGame->generator()->getHeight(myViewOffX + myEngine->renderer()->width() / 2, myViewOffY + myEngine->renderer()->height() / 2));
     myEngine->renderer()->style(White, Black, Style::Bold);
     myEngine->renderer()->drawText(1,1, str + std::string(myEngine->renderer()->width() - 2 - str.size(),  ' '));
   }
 
   void MapGenState::consume(int key)
   {
-    const MapCell & from = myGame->map()->get(myViewOffX, myViewOffY, myViewOffZ);
     if (key == Key::Escape)
     {
       std::string str = "Saving map, please wait.";
@@ -143,41 +151,51 @@ namespace ADWIF
       myGame->loadMap();
     else if (key == 's')
       myGame->saveMap();
-    else if (key == 'g')
+//     else if (key == 'g')
+//     {
+//       myEngine->input()->setTimeout(0);
+//       for(unsigned int y = 0; y < myGame->generator()->height(); y++)
+//         for(unsigned int x = 0; x < myGame->generator()->width(); x++)
+//           for(int z = -myGame->generator()->depth() / 2; z < myGame->generator()->depth() / 2; z++)
+//           {
+//             std::stringstream ss;
+//             ss << x << "x" << y << "x" << z;
+//             std::string str = "Generating " + ss.str();
+//             myEngine->renderer()->startWindow(1,1,myEngine->renderer()->width() - 2, 1);
+//             myEngine->renderer()->style(White, Black, Style::Bold);
+//             myEngine->renderer()->drawText(0,0, str + std::string(myEngine->renderer()->width() - 2 - str.size(),  ' '));
+//             myEngine->renderer()->refresh();
+//             myEngine->renderer()->endWindow();
+//             myGame->generator()->generateOne(x, y, z);
+//             if (myEngine->input()->key() == Key::Escape)
+//             {
+//               myEngine->input()->setTimeout(-1);
+//               return;
+//             }
+//             //myEngine->sleep(0);
+//           }
+//     }
+    if (key)
     {
-      myEngine->input()->setTimeout(0);
-      for(unsigned int y = 0; y < myGame->generator()->height(); y++)
-        for(unsigned int x = 0; x < myGame->generator()->width(); x++)
-          for(int z = -myGame->generator()->depth() / 2; z < myGame->generator()->depth() / 2; z++)
-          {
-            std::stringstream ss;
-            ss << x << "x" << y << "x" << z;
-            std::string str = "Generating " + ss.str();
-            myEngine->renderer()->startWindow(1,1,myEngine->renderer()->width() - 2, 1);
-            myEngine->renderer()->style(White, Black, Style::Bold);
-            myEngine->renderer()->drawText(0,0, str + std::string(myEngine->renderer()->width() - 2 - str.size(),  ' '));
-            myEngine->renderer()->refresh();
-            myEngine->renderer()->endWindow();
-            myGame->generator()->generateOne(x, y, z);
-            if (myEngine->input()->key() == Key::Escape)
-            {
-              myEngine->input()->setTimeout(-1);
-              return;
-            }
-            //myEngine->sleep(0);
-          }
+      myViewOffZ = myGame->generator()->getHeight(myViewOffX + myEngine->renderer()->width() / 2,
+                                                  myViewOffY + myEngine->renderer()->height() / 2) + 1;
+
+//       myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
+//                                           myViewOffY + myEngine->renderer()->height() / 2,
+//                                           myViewOffZ - 2);
+//
+//       myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
+//                                           myViewOffY + myEngine->renderer()->height() / 2,
+//                                           myViewOffZ - 1);
+
+      myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
+                                          myViewOffY + myEngine->renderer()->height() / 2,
+                                          myViewOffZ);
+
+//       myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
+//                                           myViewOffY + myEngine->renderer()->height() / 2,
+//                                           myViewOffZ + 1);
     }
-
-    myViewOffZ = myGame->generator()->getHeight(myViewOffX + myEngine->renderer()->width() / 2,
-                                                myViewOffY + myEngine->renderer()->height() / 2);
-
-    myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
-                                        myViewOffY + myEngine->renderer()->height() / 2,
-                                        myViewOffZ);
-    myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
-                                        myViewOffY + myEngine->renderer()->height() / 2,
-                                        myViewOffZ + 1);
-
   }
 
   void MapGenState::activate() { }

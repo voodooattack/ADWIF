@@ -113,7 +113,12 @@ namespace ADWIF
       if (!value["falloff"].empty())
         sel->SetEdgeFalloff(value["falloff"].asDouble());
       if (value["bounds"].isArray())
-        sel->SetBounds(value["bounds"][0].asDouble(), value["bounds"][1].asDouble());
+      {
+        if (value["bounds"][0].asDouble() < value["bounds"][1].asDouble())
+          sel->SetBounds(value["bounds"][0].asDouble(), value["bounds"][1].asDouble());
+        else
+          throw ParsingException("Select: Upper bound must be greater than lower bound");
+      }
       m = sel;
     }
     else if (module == "blend")

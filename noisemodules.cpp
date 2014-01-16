@@ -27,20 +27,13 @@ namespace ADWIF
     int xmin = myHeightmap.index_bases()[0], xmax = myHeightmap.shape()[0];
     int ymin = myHeightmap.index_bases()[1], ymax = myHeightmap.shape()[1];
 
-    double offsetx = 0.25, offsety = 0.25;
+    double offsetx = 1.0 / 4.0, offsety = 1.0 / 4.0;
 
     auto clamp = [](int x, int min, int max)
     {
       if (x < min) return min;
       if (x > max) return max;
       return x;
-    };
-
-    auto inRange = [](int x, int min, int max)
-    {
-      if (x < min) return false;
-      if (x > max) return false;
-      return true;
     };
 
     unsigned int id[4][4][2];
@@ -58,7 +51,7 @@ namespace ADWIF
       for (int i = 0; i <= 3; i++)
         m[i][j] = myHeightmap[id[i][j][0]][id[i][j][1]];
 
-    double vx = fmod(x, myCellSizeX) / myCellSizeX, vy = fmod(y, myCellSizeY) / myCellSizeY;
+    double vx = fmod(x, myCellSizeX) / (double)myCellSizeX, vy = fmod(y, myCellSizeY) / (double)myCellSizeY;
     return bicubicInterpolate(m, offsetx + vx, offsety + vy);
   }
 }

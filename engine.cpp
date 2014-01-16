@@ -52,11 +52,11 @@ namespace ADWIF
   int Engine::start()
   {
     log("Engine"), "ADWIF revision ", ADWIF_GIT_VERSION, " starting up.";
-    log("Engine"), " renderer: ", myRenderer->name();
-    log("Engine"), " data archive: ", boost::filesystem::path(dataFile).make_preferred();
-    log("Engine"), " data directory: ", boost::filesystem::path(dataDir).make_preferred();
-    log("Engine"), " write directory: ", boost::filesystem::path(writeDir).make_preferred();
-    log("Engine"), " save directory: ", boost::filesystem::path(saveDir).make_preferred();
+    log("Engine"), "renderer: ", myRenderer->name();
+    log("Engine"), "data archive: ", boost::filesystem::path(dataFile).make_preferred();
+    log("Engine"), "data directory: ", boost::filesystem::path(dataDir).make_preferred();
+    log("Engine"), "write directory: ", boost::filesystem::path(writeDir).make_preferred();
+    log("Engine"), "save directory: ", boost::filesystem::path(saveDir).make_preferred();
 
     renderer()->clear();
     bool screenCheckLast = false;

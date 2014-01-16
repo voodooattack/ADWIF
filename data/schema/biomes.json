@@ -47,11 +47,19 @@
           "pattern": "^\\w+$"
         }
       },
+      "liquids": {
+        "type":"array",
+        "items": {
+          "type":"string",
+          "minSize": 1,
+          "pattern": "^\\w+$"
+          }
+      },
       "layerStart": { "type":"integer" },
       "layerEnd": { "type":"integer" },
       "mapColour": { "type":"string", "pattern":"^#[A-Fa-f0-9]{6}$" },
       "background": { "type":"boolean" },
-      "flat":{ "type":"boolean" }
+      "aquatic":{ "type":"boolean" }
     },
     "required": [ "name", "sym", "style" ]
   }

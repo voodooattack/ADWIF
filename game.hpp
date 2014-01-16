@@ -124,10 +124,11 @@ namespace ADWIF
     int sym;
     palEntry style;
     std::vector<std::string> materials;
+    std::vector<std::string> liquids;
     int layerStart, layerEnd;
     uint32_t mapColour;
     bool background;
-    bool flat;
+    bool aquatic;
 
     Json::Value jsonValue;
 

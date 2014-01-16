@@ -46,7 +46,7 @@ namespace ADWIF
 
     QObject::connect(myUi->buttonRender, SIGNAL(clicked()), this, SLOT(onRenderButtonClicked()));
     QObject::connect(myUi->buttonShowSrc, SIGNAL(clicked()), this, SLOT(onShowSrcButtonClicked()));
-    QObject::connect(myUi->renderView, SIGNAL(viewChanged(QRectF)), this, SLOT(onViewChanged(QRectF)));
+    QObject::connect(myUi->renderView, SIGNAL(onViewChanged(QRectF)), this, SLOT(onViewChanged(QRectF)));
 
     // No OpenGL rendering sadly.. there's bug with OGLWidget and QSplitter in Qt5 so this line will remain commented for now
 //     myUi->renderView->setViewport(new QGLWidget(myUi->renderView));
@@ -111,6 +111,22 @@ namespace ADWIF
       myGraph->module = buildNoiseGraph(graphJson, myGraph->modules, myGraph->defs, heightmap, 0);
     } catch (std::exception & e) {
       QMessageBox::critical(this, "Error", e.what());
+      myGraph.reset();
+      return;
+    } catch (noise::ExceptionInvalidParam & e) {
+      QMessageBox::critical(this, "Error", "Invalid parameter");
+      myGraph.reset();
+      return;
+    } catch (noise::ExceptionNoModule & e) {
+      QMessageBox::critical(this, "Error", "Missing module");
+      myGraph.reset();
+      return;
+    } catch (noise::ExceptionOutOfMemory & e) {
+      QMessageBox::critical(this, "Error", "Out of memory");
+      myGraph.reset();
+      return;
+    } catch (noise::ExceptionUnknown & e) {
+      QMessageBox::critical(this, "Error", "Unknown exception");
       myGraph.reset();
       return;
     }

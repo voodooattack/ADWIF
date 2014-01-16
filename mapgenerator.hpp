@@ -31,15 +31,18 @@
 #include <unordered_map>
 #include <memory>
 #include <random>
+#include <utility>
 
 #include <boost/polygon/polygon.hpp>
 #include <boost/multi_array.hpp>
 #include <boost/polygon/gtl.hpp>
 
-#include <boost/serialization/shared_ptr.hpp>
-#include <boost/serialization/string.hpp>
+#include <boost/geometry/geometries/point.hpp>
+#include <boost/geometry/geometries/box.hpp>
+#include <boost/geometry/index/rtree.hpp>
+
 #include <boost/atomic.hpp>
-#include <boost/thread/recursive_mutex.hpp>
+#include <boost/thread/shared_mutex.hpp>
 
 #include <boost/logic/tribool.hpp>
 
@@ -56,16 +59,22 @@ namespace ADWIF
 {
   class Engine;
   class Game;
+  class GenerateTerrainTask;
 
-  typedef boost::polygon::polygon_with_holes_data<double> polygon;
-  typedef boost::polygon::polygon_traits<polygon>::point_type point;
+  typedef boost::polygon::polygon_with_holes_data<double> Polygon;
+  typedef boost::polygon::polygon_traits<Polygon>::point_type Point2D;
+
+  typedef boost::geometry::model::point<int, 3, boost::geometry::cs::cartesian> Point3D;
+  typedef boost::geometry::model::box<Point3D> Box3D;
+  typedef std::pair<Box3D, std::shared_ptr<GenerateTerrainTask>> SIVal;
+  typedef boost::geometry::index::rtree<SIVal, boost::geometry::index::quadratic<16> > SpatialIndex;
 
   struct BiomeCell
   {
     std::string name;
     int x, y;
     double height;
-    bool flat;
+    bool aquatic;
 
     template<class Archive>
     void serialize(Archive & ar, const unsigned int version)
@@ -74,12 +83,12 @@ namespace ADWIF
       ar & x;
       ar & y;
       ar & height;
-      ar & flat;
+      ar & aquatic;
     }
 
     bool operator== (const BiomeCell & other) const
     {
-      return x == other.x && y == other.y && height == other.height && name == other.name && flat == other.flat;
+      return x == other.x && y == other.y && height == other.height && name == other.name && aquatic == other.aquatic;
     }
   };
 
@@ -88,8 +97,8 @@ namespace ADWIF
     std::string biome;
     std::string name;
     std::string desc;
-    point centroid;
-    polygon poly;
+    Point2D centroid;
+    Polygon poly;
     double area;
     bool infinite;
 
@@ -130,10 +139,15 @@ namespace ADWIF
     int chunkSizeZ() const { return myChunkSizeZ; }
     void chunkSizeZ( int size) { myChunkSizeZ = size; }
 
+    std::mt19937 & random() { return myRandomEngine; }
+
     int height() const { return myHeight; }
     int width() const { return myWidth; }
     int depth() const { return myDepth; }
     void depth( int depth) { myDepth = depth; }
+
+    const boost::multi_array<BiomeCell, 2> & biomeMap() const { return myBiomeMap; }
+    boost::multi_array<BiomeCell, 2> & biomeMap() { return myBiomeMap; }
 
     const std::vector<Region> & regions() const { return myRegions; }
     std::vector<Region> & regions() { return myRegions; }
@@ -141,9 +155,7 @@ namespace ADWIF
     int preprocessingProgress() const { return myMapPreprocessingProgress.load(); }
 
     void init();
-    void generateAll();
     void generateAround( int x,  int y, int z = 0,  int radius = 1,  int radiusZ = 1);
-    void generateOne( int x,  int y, int z, bool regenerate = false, bool cooperative = false);
 
     template<class Archive>
     void serialize(Archive & ar, const unsigned int version)
@@ -169,30 +181,34 @@ namespace ADWIF
 
     void abort();
 
-    inline int getHeight(double x, double y)
+    inline int getHeight(double x, double y, double z = 0)
     {
-      return round(getHeightReal(x, y));
+      return round(getHeightReal(x, y, z));
     }
 
-    inline double getHeightReal(double x, double y)
+    inline double getHeightReal(double x, double y, double z = 0)
     {
-      return myHeightSource->GetValue(x, y, 0) * (double)myChunkSizeZ * ((double)myDepth / 2.0);
+      return myHeightSource->GetValue(x, y, z) * (double)myChunkSizeZ * ((double)myDepth / 2.0);
     }
 
   private:
     bool generateBiomeMap();
 
+  public:
     boost::logic::tribool isGenerated(int x, int y, int z)
     {
-      boost::recursive_mutex::scoped_lock guard(myGenerationLock);
+      boost::upgrade_lock<boost::shared_mutex> guard(myGenerationLock);
       return myGenerationMap[x][y][z+myDepth/2];
     }
 
     void setGenerated(int x, int y, int z, const boost::logic::tribool & g)
     {
-      boost::recursive_mutex::scoped_lock guard(myGenerationLock);
+      boost::upgrade_lock<boost::shared_mutex> guard(myGenerationLock);
+      boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
       myGenerationMap[x][y][z+myDepth/2] = g;
     }
+
+    void notifyComplete(const std::shared_ptr<GenerateTerrainTask> & task);
 
   private:
 
@@ -211,20 +227,17 @@ namespace ADWIF
     std::unordered_map<uint32_t, std::string> myColourIndex;
     std::mt19937 myRandomEngine;
     boost::multi_array<boost::tribool, 3> myGenerationMap;
-    boost::multi_array<bool, 3> myPriorityFlags;
-    boost::multi_array<bool, 3> myScheduledFlags;
-    boost::recursive_mutex myGenerationLock;
+    boost::shared_mutex myGenerationLock;
     boost::multi_array<BiomeCell, 2> myBiomeMap;
     boost::multi_array<double, 2> myHeights;
     std::vector<Region> myRegions;
     int myHeight, myWidth, myDepth;
     unsigned int mySeed;
-    boost::atomic_size_t myGeneratorCount;
-    boost::atomic_bool myGeneratorAbortFlag;
     int myLastChunkX, myLastChunkY, myLastChunkZ;
     std::vector<std::shared_ptr<noise::module::Module>> myNoiseModules;
     std::map<std::string, std::shared_ptr<noise::module::Module>> myNoiseModuleDefs;
     std::shared_ptr<noise::module::Module> myHeightSource;
+    SpatialIndex myIndex;
     boost::atomic_int myMapPreprocessingProgress;
     bool myInitialisedFlag;
   };

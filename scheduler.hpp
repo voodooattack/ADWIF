@@ -23,6 +23,7 @@
 #include <boost/coroutine/all.hpp>
 #include <boost/lockfree/queue.hpp>
 #include <boost/utility/result_of.hpp>
+#include <boost/atomic.hpp>
 #include <boost/assert.hpp>
 
 namespace boost {
@@ -118,6 +119,7 @@ namespace boost {
       void schedule(CompletionHandler task)
       {
         tasks.push(new detail::task<CompletionHandler, typename result_of<CompletionHandler(void)>::type>(task, this));
+        count++;
       }
 
       template<typename CompletionHandler>
@@ -147,21 +149,24 @@ namespace boost {
       void yield()
       {
         BOOST_ASSERT_MSG(current.get(), "call to yield outside of a scheduler task");
-        current->yield((const void *)0);
+        if (count)
+          current->yield((const void *)0);
       }
 
       template<typename T>
       void yield(T& t)
       {
         BOOST_ASSERT_MSG(current.get(), "call to yield outside of a scheduler task");
-        current->yield(&t);
+        if (count)
+          current->yield(&t);
       }
 
       template<typename T>
       void yield(const T& t)
       {
         BOOST_ASSERT_MSG(current.get(), "call to yield outside of a scheduler task");
-        current->yield(&t);
+        if (count)
+          current->yield(&t);
       }
 
       void stop()
@@ -199,13 +204,17 @@ namespace boost {
         detail::task_base * task = 0;
         if (tasks.pop(task))
         {
+          count--;
           current.reset(task);
           if (current.get() && !current->created())
             current->create();
           if (current.get() && !current->finished())
             current->enter();
           if (current.get() && !current->finished())
+          {
             tasks.push(current.release());
+            count++;
+          }
           else
             current.reset();
           return true;
@@ -220,7 +229,7 @@ namespace boost {
         {
           if (process())
             boost::this_thread::yield();
-          else if (!service->poll_one())
+          if (!service->poll_one())
             boost::this_thread::sleep_for(boost::chrono::microseconds(200));
         }
       }
@@ -246,6 +255,7 @@ namespace boost {
       std::auto_ptr<boost::thread_group> thread_group_;
       thread_specific_ptr<detail::task_base> current;
       lockfree::queue<detail::task_base*> tasks;
+      atomic_uint count;
     };
 
     namespace detail
