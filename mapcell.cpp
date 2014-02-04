@@ -24,5 +24,5 @@
 // #include <boost/archive/polymorphic_binary_iarchive.hpp>
 // #include <boost/archive/polymorphic_binary_oarchive.hpp>
 
-BOOST_CLASS_EXPORT_IMPLEMENT(ADWIF::Element)
-BOOST_CLASS_EXPORT_IMPLEMENT(ADWIF::MaterialElement)
+BOOST_CLASS_EXPORT_IMPLEMENT(ADWIF::MapElement)
+BOOST_CLASS_EXPORT_IMPLEMENT(ADWIF::MaterialMapElement)

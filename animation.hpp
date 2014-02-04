@@ -26,13 +26,6 @@
 
 namespace ADWIF
 {
-  struct palEntry
-  {
-    ADWIF::Colour bg;
-    ADWIF::Colour fg;
-    int style;
-  };
-
   struct FrameLine
   {
     std::string geometry;

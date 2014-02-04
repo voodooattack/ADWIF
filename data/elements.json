@@ -1,0 +1,145 @@
+[
+  {
+    "name":"Lava",
+    "disp":
+    {
+      "Floor": [{ "sym":"~", "usym":"≈" }],
+      "Wall":  [{ "sym":"~", "usym":"≈", "style":{ "fgcolour":"Red", "bgcolour":"Yellow", "attributes":["Bold"] }}],
+      "RampU": [{ "sym":"^", "usym":"▴" }],
+      "RampD": [{ "sym":"^", "usym":"▾" }]
+    },
+    "style": { "fgcolour":"Yellow", "bgcolour":"Red" },
+    "state":"Liquid"
+  },
+  {
+    "name":"Sand",
+    "disp":
+    {
+      "Floor": [{ "sym":"," }, { "sym":"." }, { "sym":"`" }],
+      "Wall":  [{ "sym":"~", "usym":"░", "style":{ "fgcolour":"White", "bgcolour":"Yellow" }}],
+      "RampU": [{ "sym":"^", "usym":"▴" }],
+      "RampD": [{ "sym":"v", "usym":"▾" }]
+    },
+    "style":{"fgcolour":"Yellow", "attributes":["Bold"] },
+    "state":"Solid"
+  },
+  {
+    "name":"Obsidian",
+    "dispName":"Dragon-glass",
+    "disp":
+    {
+      "Floor": [{ "sym":"," }, { "sym":"." }, { "sym":"`" }],
+      "Wall":  [{ "sym":"#", "usym":"░", "style":{ "fgcolour":"Black", "bgcolour":"Black", "attributes":["Bold"] }}],
+      "RampU": [{ "sym":"^", "usym":"▴" }],
+      "RampD": [{ "sym":"v", "usym":"▾" }]
+    },
+    "style":{"fgcolour":"Black", "attributes":["Bold"] },
+    "state":"Solid"
+  },
+  {
+    "name":"Smoke",
+    "disp":{
+      "Floor": [{ "sym":"*" }, { "sym":"+" }, { "sym":"`" }, { "sym":"," }, { "sym":"~" }],
+      "Wall":  [{ "sym":"#", "usym":"░", "style":{ "fgcolour":"White", "bgcolour":"White", "attributes":["Bold"] }}],
+      "RampU": [{ "sym":"^", "usym":"▴" }],
+      "RampD": [{ "sym":"v", "usym":"▾" }]
+      },
+    "style":{ "fgcolour":"White", "attributes":["Bold"] },
+    "state":"Gas"
+  },
+  {
+    "name":"Rock",
+    "disp":{
+      "Floor": [{ "sym":"," }, { "sym":"." }, { "sym":"`" }],
+      "Wall":  [{ "sym":" ", "usym":"░", "style":{ "bgcolour":"White" }}],
+      "RampU": [{ "sym":"^", "usym":"▴" }],
+      "RampD": [{ "sym":"v", "usym":"▾" }]
+      },
+    "style":{"fgcolour":"White" },
+    "state":"Solid"
+  },
+  {
+    "name":"Water",
+    "disp":
+    {
+      "Floor": [{ "sym":"~", "usym":"≈"}],
+      "Wall":  [{ "sym":"~", "usym":"≈", "style":{ "bgcolour":"Blue", "attributes":["Bold"] }}],
+      "RampU": [{ "sym":"^", "usym":"▴" }],
+      "RampD": [{ "sym":"^", "usym":"▾" }]
+    },
+    "style": { "fgcolour":"White", "bgcolour":"Blue" },
+    "state":"Liquid"
+  },
+  {
+    "name": "SaltWater",
+    "disp":{
+      "Floor": [{ "sym":"~", "usym":"≈"}],
+      "Wall":  [{ "sym":"~", "usym":"≈", "style":{ "fgcolour":"White", "bgcolour":"Blue" }}],
+      "RampU": [{ "sym":"^", "usym":"▴", "style":{ "attributes":["Bold"] }}],
+      "RampD": [{ "sym":"v", "usym":"▾", "style":{ "attributes":["Bold"] }}]
+      },
+    "style": {"fgcolour":"Blue" },
+    "state":"Liquid"
+  },
+  {
+    "name":"Ice",
+    "disp":{
+      "Floor": [{ "sym":"." }, { "sym":"," }, { "sym":"`" }, { "sym":";" }],
+      "Wall":  [{ "sym":"#", "usym":"░", "style":{ "fgcolour":"Cyan", "bgcolour":"Cyan", "attributes":["Bold"] }}],
+      "RampU": [{ "sym":"^", "usym":"▴" }],
+      "RampD": [{ "sym":"v", "usym":"▾" }]
+      },
+    "style":{"fgcolour":"Cyan" },
+    "state":"Solid"
+  },
+  {
+    "name":"Snow",
+    "disp":{
+      "Floor":
+      [
+        { "sym":"." }, { "sym":"," }, { "sym":"`" }, { "sym":";" },
+        { "sym":",", "style":{"attributes":["Bold"] } },
+        { "sym":".", "style":{"attributes":["Bold"] } },
+        { "sym":"`", "style":{"attributes":["Bold"] } }
+      ],
+      "Wall":  [{ "sym":" ", "usym":"░", "style":{ "fgcolour":"Black", "bgcolour":"White" }, "attributes":["Bold"] }],
+      "RampU": [{ "sym":"^", "usym":"▴" }],
+      "RampD": [{ "sym":"v", "usym":"▾" }]
+    },
+    "style":{"fgcolour":"White", "attributes":["Normal"] },
+    "state":"Solid"
+  },
+  {
+    "name":"Steam",
+    "disp":{
+      "Floor": [{ "sym":"*" }, { "sym":"+" }, { "sym":"`" }, { "sym":"," }, { "sym":"~" }],
+      "Wall":  [{ "sym":"~", "usym":"°", "style":{ "fgcolour":"White", "bgcolour":"White", "attributes":["Bold"] }}],
+      "RampU": [{ "sym":"^", "usym":"▴" }],
+      "RampD": [{ "sym":"v", "usym":"▾" }]
+    },
+    "style":{ "bgcolour":"White", "fgcolour":"White", "attributes":["Bold"]},
+    "state":"Gas"
+  },
+  {
+    "name":"Dirt",
+    "disp":{
+      "Floor": [{ "sym":"." }, { "sym":"," }, { "sym":"`" }, { "sym":";" }, { "sym":":" } ],
+      "Wall":  [{ "sym":" ", "usym":"░", "style":{ "fgcolour":"Yellow", "bgcolour":"Yellow", "attributes":["Bold"] }}],
+      "RampU": [{ "sym":"^", "usym":"▴" }],
+      "RampD": [{ "sym":"v", "usym":"▾" }]
+    },
+    "style":{"fgcolour":"Yellow" },
+    "state":"Solid"
+  },
+  {
+    "name":"Mud",
+    "disp":{
+      "Floor": [{ "sym":"." }, { "sym":"," }, { "sym":"`" }, { "sym":";" }, { "sym":":" } ],
+      "Wall":  [{ "sym":" ", "usym":"░", "style":{ "fgcolour":"Yellow", "bgcolour":"Yellow" }}],
+      "RampU": [{ "sym":"^", "usym":"▴" }],
+      "RampD": [{ "sym":"v", "usym":"▾" }]
+      },
+    "style":{"fgcolour":"Yellow" },
+    "state":"Solid"
+  }
+]

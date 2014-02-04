@@ -126,9 +126,9 @@ namespace ADWIF
         return;
       }
 
-      Element * e = nullptr;
+      MapElement * e = nullptr;
 
-      for(Element * el : c.elements())
+      for(MapElement * el : c.elements())
       {
         if (!e || (!el->isMaterial() && !el->isStructure() && (e->isMaterial() || e->isStructure())))
           e = el;
@@ -146,8 +146,8 @@ namespace ADWIF
       {
         if (e->isMaterial())
         {
-          const MaterialElement * me = dynamic_cast<MaterialElement*>(e);
-          const Material * mat = me->cmaterial;
+          MaterialMapElement * me = dynamic_cast<MaterialMapElement*>(e);
+          Material * mat = me->cmaterial;
 
           if (!mat)
           {
@@ -168,8 +168,8 @@ namespace ADWIF
 
           if (type != TerrainType::Hole)
           {
-            auto dit = mat->disp.find(type);
-            if (dit == mat->disp.end())
+            auto dit = game->elements().find(me->element)->second->disp.find(type);
+            if (dit == game->elements().find(me->element)->second->disp.end())
             {
 //               throw std::runtime_error("terrain type '" + terrainTypeStr(type) + "' undefined in material '" + mat->name + "'");
               style(Colour::Yellow, Colour::Red, Style::Bold);
@@ -177,7 +177,7 @@ namespace ADWIF
             }
             else
             {
-              const Material::dispEntry & disp = dit->second[me->symIdx < dit->second.size() ? me->symIdx : dit->second.size() - 1];
+              const dispEntry & disp = dit->second[me->symIdx < dit->second.size() ? me->symIdx : dit->second.size() - 1];
               style(disp.style.fg, disp.style.bg, overrideStyle == -1 ? disp.style.style : overrideStyle);
               drawChar(x, y, disp.sym);
             }

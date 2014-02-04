@@ -55,6 +55,19 @@ namespace ADWIF
     extern const int AltCharSet;
   };
 
+  struct palEntry
+  {
+    ADWIF::Colour bg;
+    ADWIF::Colour fg;
+    int style;
+  };
+
+  struct dispEntry
+  {
+    int sym;
+    palEntry style;
+  };
+
   class Renderer
   {
   public:

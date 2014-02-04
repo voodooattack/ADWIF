@@ -18,7 +18,6 @@
  */
 
 #include "curveeditor.hpp"
-#include <mapgenerator.hpp>
 
 #include <QMouseEvent>
 #include <QPainter>

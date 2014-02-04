@@ -44,6 +44,7 @@ namespace ADWIF
   class Profession;
   class Faction;
   class Race;
+  class Foliage;
 
   class Skill
   {
@@ -98,19 +99,28 @@ namespace ADWIF
     static Race * parse(const Json::Value & value);
   };
 
+  class Element
+  {
+  public:
+    std::string name;
+    std::string dispName;
+    std::string desc;
+    std::unordered_map<TerrainType, std::vector<dispEntry>, std::hash<int> > disp;
+    MaterialState state;
+    palEntry style;
+
+    Json::Value jsonValue;
+
+    static Element * parse(const Json::Value & value);
+  };
+
   class Material
   {
   public:
-    struct dispEntry
-    {
-      int sym;
-      palEntry style;
-    };
     std::string name;
+    std::string dispName;
     std::string desc;
-    std::unordered_map<TerrainType, std::vector<dispEntry>, std::hash<uint8_t> > disp;
-    palEntry style;
-    bool liquid;
+    std::unordered_map<MaterialState, std::unordered_set<std::string>, std::hash<int> > states;
 
     Json::Value jsonValue;
 
@@ -121,8 +131,7 @@ namespace ADWIF
   {
   public:
     std::string name, desc;
-    int sym;
-    palEntry style;
+    dispEntry disp;
     std::vector<std::string> materials;
     std::vector<std::string> liquids;
     int layerStart, layerEnd;
@@ -133,6 +142,16 @@ namespace ADWIF
     Json::Value jsonValue;
 
     static Biome * parse(const Json::Value & value);
+  };
+
+  class Foliage
+  {
+  public:
+    std::string name, desc;
+    dispEntry disp;
+    bool grow;
+    std::vector<std::string> soil;
+    std::vector<std::string> needs;
   };
 
   class Game: public std::enable_shared_from_this<Game>
@@ -174,6 +193,7 @@ namespace ADWIF
     std::map<std::string, Profession *> & professions() { return myProfessions; }
     std::map<std::string, Skill *> & skills() { return mySkills; }
     std::map<std::string, Faction *> & factions() { return myFactions; }
+    std::map<std::string, Element *> & elements() { return myElements; }
     std::map<std::string, Material *> & materials() { return myMaterials; }
     std::map<std::string, Biome *> & biomes() { return myBiomes; }
 
@@ -181,6 +201,7 @@ namespace ADWIF
     const std::map<std::string, Profession *> & professions() const { return myProfessions; }
     const std::map<std::string, Skill *> & skills() const { return mySkills; }
     const std::map<std::string, Faction *> & factions() const { return myFactions; }
+    const std::map<std::string, Element *> & elements() const { return myElements; }
     const std::map<std::string, Material *> & materials() const { return myMaterials; }
     const std::map<std::string, Biome *> & biomes() const { return myBiomes; }
 
@@ -190,8 +211,9 @@ namespace ADWIF
     void loadProfessions(const Json::Value & professions);
     void loadFactions(const Json::Value & factions);
     void loadRaces(const Json::Value & races);
+    void loadElements(const Json::Value & elements);
     void loadMaterials(const Json::Value & materials);
-    void loadBiomes(Json::Value biomes);
+    void loadBiomes(const Json::Value biomes);
 
     void sanityCheck();
 
@@ -204,6 +226,7 @@ namespace ADWIF
     std::map<std::string, Profession *> myProfessions;
     std::map<std::string, Skill *> mySkills;
     std::map<std::string, Faction *> myFactions;
+    std::map<std::string, Element *> myElements;
     std::map<std::string, Material *> myMaterials;
     std::map<std::string, Biome *> myBiomes;
 

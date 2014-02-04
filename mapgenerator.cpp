@@ -117,110 +117,134 @@ namespace ADWIF
       generator()->notifyComplete(shared_from_this());
     }
 
-    Material * getMaterial(int x, int y, int z, int h)
+    std::pair<Material*,MaterialState> getMaterial(int x, int y, int z, int height, Biome * biome)
     {
-      Biome * biome = generator()->game()->biomes()[
-        generator()->biomeMap()[x / generator()->chunkSizeX()][y / generator()->chunkSizeY()].name
-      ];
-
       std::vector<std::string> possible;
       std::vector<double> probabilities;
+      MaterialState state;
 
-      if (biome->aquatic && z <= 0 && z > h)
+      if (biome->aquatic && z <= 0 && z > height)
+      {
+        state = MaterialState::Liquid;
         possible.assign(biome->liquids.begin(), biome->liquids.end());
+      }
       else
+      {
+        state = MaterialState::Solid;
         possible.assign(biome->materials.begin(), biome->materials.end());
+      }
 
       probabilities.assign(possible.size(), 1.0);
 
       std::discrete_distribution<int> dd(probabilities.begin(), probabilities.end());
 
-      return generator()->game()->materials()[possible[dd(generator()->random())]];
+      return std::make_pair(generator()->game()->materials()[possible[dd(generator()->random())]], state);
     }
 
-    void generateCell(int xx, int yy, int zz, int height)
+    void generateCell(int x, int y, int z, int height)
     {
-      MapCell c(generator()->game()->map()->get(xx, yy, zz));
+      MapCell c(generator()->game()->map()->get(x, y, z));
 
       if (c.generated() && !myRegenFlag)
         return;
 
+      Biome * biome = generator()->game()->biomes()
+      [
+        generator()->biomeMap()[x / generator()->chunkSizeX()][y / generator()->chunkSizeY()].name
+      ];
+
       c.clear();
       c.generated(true);
 
-      MaterialElement * mat = nullptr;
-      Material * m = getMaterial(xx, yy, zz, height);
+      MaterialMapElement * mat = nullptr;
+      std::pair<Material*,MaterialState> m = getMaterial(x, y, z, height, biome);
 
-      if (zz <= 0 && zz > height)
+      if (biome->aquatic && z <= 0 && z > height)
       {
-        if (m->liquid)
+        if (m.second == MaterialState::Liquid)
         {
-          mat = new MaterialElement;
+          mat = new MaterialMapElement;
 
-          mat->cmaterial = m;
+          mat->cmaterial = m.first;
           mat->material = mat->cmaterial->name;
+          mat->state = m.second;
+          auto elem = mat->cmaterial->states[mat->state].begin();
+          std::advance(elem, std::uniform_int_distribution<int>(0,
+            mat->cmaterial->states[mat->state].size() - 1)(generator()->random()));
+          mat->element = *elem;
 
-          std::uniform_int_distribution<int> ud2(0, mat->cmaterial->disp[TerrainType::Wall].size() - 1);
+          std::uniform_int_distribution<int> udtype(0,
+            generator()->game()->elements()[mat->element]->disp[TerrainType::Wall].size() - 1);
 
-          mat->symIdx = ud2(generator()->random());
+          mat->symIdx = udtype(generator()->random());
           mat->vol = MapCell::MaxVolume;
           mat->anchored = true;
-          mat->alignment = false;
           mat->state = MaterialState::Liquid;
 
           c.seen(true);
         }
       }
-      else if (zz == height)
+      else if (z == height)
       {
-        mat = new MaterialElement;
+        mat = new MaterialMapElement;
 
-        mat->cmaterial = m;
+        mat->cmaterial = m.first;
         mat->material = mat->cmaterial->name;
+        mat->state = m.second;
+        auto elem = mat->cmaterial->states[mat->state].begin();
+        std::advance(elem, std::uniform_int_distribution<int>(0,
+          mat->cmaterial->states[mat->state].size() - 1)(generator()->random()));
+        mat->element = *elem;
 
-        double h = generator()->getHeightReal(xx,yy);
+        double h = generator()->getHeightReal(x,y);
         double vol = (h - double(height));
         vol = ((int)round(vol * 100) / 100.0);
 
         c.seen(true);
 
-        std::uniform_int_distribution<int> ud2(0, mat->cmaterial->disp[TerrainType::Floor].size() - 1);
-        mat->symIdx = ud2(generator()->random());
+        std::uniform_int_distribution<int> udtype(0,
+          generator()->game()->elements()[mat->element]->disp[TerrainType::Floor].size() - 1);
+
+        mat->symIdx = udtype(generator()->random());
         mat->vol = vol * MapCell::MaxVolume;
         if (mat->vol <= 0)
           mat->vol = 1;
         mat->anchored = true;
-        mat->alignment = false;
         mat->state = MaterialState::Solid;
       }
-      else if (zz < height)
+      else if (z < height)
       {
-        mat = new MaterialElement;
+        mat = new MaterialMapElement;
 
-        mat->cmaterial = m;
+        mat->cmaterial = m.first;
         mat->material = mat->cmaterial->name;
+        mat->state = m.second;
+        auto elem = mat->cmaterial->states[mat->state].begin();
+        std::advance(elem, std::uniform_int_distribution<int>(0,
+          mat->cmaterial->states[mat->state].size() - 1)(generator()->random()));
+        mat->element = *elem;
 
-        std::uniform_int_distribution<int> ud2(0, mat->cmaterial->disp[TerrainType::Wall].size() - 1);
+        std::uniform_int_distribution<int> udtype(0,
+          generator()->game()->elements()[mat->element]->disp[TerrainType::Wall].size() - 1);
 
-        mat->symIdx = ud2(generator()->random());
+        mat->symIdx = udtype(generator()->random());
         mat->vol = MapCell::MaxVolume;
         mat->anchored = true;
-        mat->alignment = false;
         mat->state = MaterialState::Solid;
 
         c.seen(false);
 
-        if (generator()->getHeight(xx-1, yy) <= zz   || generator()->getHeight(xx+1, yy) <= zz ||
-            generator()->getHeight(xx, yy-1) <= zz   || generator()->getHeight(xx, yy+1) <= zz ||
-            generator()->getHeight(xx-1, yy-1) <= zz || generator()->getHeight(xx+1, yy+1) <= zz ||
-            generator()->getHeight(xx+1, yy-1) <= zz || generator()->getHeight(xx-1, yy+1) <= zz)
+        if (generator()->getHeight(x-1, y)   <= z || generator()->getHeight(x+1, y)   <= z ||
+            generator()->getHeight(x, y-1)   <= z || generator()->getHeight(x, y+1)   <= z ||
+            generator()->getHeight(x-1, y-1) <= z || generator()->getHeight(x+1, y+1) <= z ||
+            generator()->getHeight(x+1, y-1) <= z || generator()->getHeight(x-1, y+1) <= z)
           c.seen(true);
       }
 
       if (mat)
         c.addElement(mat);
 
-      generator()->game()->map()->set(xx, yy, zz, c);
+      generator()->game()->map()->set(x, y, z, c);
     }
 
     bool done() const { return myDoneFlag.load(); }

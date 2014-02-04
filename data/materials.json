@@ -1,85 +1,38 @@
 [
   {
     "name":"Dirt",
-    "disp":{
-      "Floor": [{ "sym":"." }, { "sym":"," }, { "sym":"`" }, { "sym":";" }, { "sym":":" } ],
-      "Wall":  [{ "sym":" ", "usym":"░", "style":{ "fgcolour":"Yellow", "bgcolour":"Yellow", "attributes":["Bold"] }}],
-      "RampU": [{ "sym":"^", "usym":"▴" }],
-      "RampD": [{ "sym":"v", "usym":"▾" }]
-    },
-    "style":{"fgcolour":"Yellow" }
-  },
-  {
-    "name":"Snow",
-    "disp":{
-      "Floor": [{ "sym":"." }, { "sym":"," }, { "sym":"`" }, { "sym":";" },
-                { "sym":",", "style":{"attributes":["Bold"] } },
-                { "sym":".", "style":{"attributes":["Bold"] } },
-                { "sym":"`", "style":{"attributes":["Bold"] } },
-                { "sym":",", "style":{"attributes":["Normal"] } },
-                { "sym":".", "style":{"attributes":["Normal"] } },
-                { "sym":"`", "style":{"attributes":["Normal"] } }
-      ],
-      "Wall":  [{ "sym":" ", "usym":"░", "style":{ "fgcolour":"Black", "bgcolour":"White" }, "attributes":["Bold"] }],
-      "RampU": [{ "sym":"^", "usym":"▴" }],
-      "RampD": [{ "sym":"v", "usym":"▾" }]
-    },
-    "style":{"fgcolour":"White", "attributes":["Normal"] },
-    "meltTo":"Water"
-  },
-  {
-    "name":"Ice",
-    "disp":{
-      "Floor": [{ "sym":"." }, { "sym":"," }, { "sym":"`" }, { "sym":";" }],
-      "Wall":  [{ "sym":"#", "usym":"░", "style":{ "fgcolour":"Cyan", "bgcolour":"Cyan", "attributes":["Bold"] }}],
-      "RampU": [{ "sym":"^", "usym":"▴" }],
-      "RampD": [{ "sym":"v", "usym":"▾" }]
-    },
-    "style":{"fgcolour":"Cyan" },
-    "meltTo":"Water"
+    "states":
+    {
+      "liquid": [ "Lava" ],
+      "solid": [ "Dirt", "Mud" ],
+      "gas": [ "Smoke" ]
+    }
   },
   {
     "name":"Sand",
-    "disp":{
-      "Floor": [{ "sym":"," }, { "sym":"." }, { "sym":"`" }],
-      "Wall":  [{ "sym":"~", "usym":"░", "style":{ "fgcolour":"White", "bgcolour":"Yellow" }}],
-      "RampU": [{ "sym":"^", "usym":"▴" }],
-      "RampD": [{ "sym":"v", "usym":"▾" }]
-    },
-    "style":{"fgcolour":"Yellow", "attributes":["Bold"] }
+    "states":
+    {
+      "liquid": [ "Lava" ],
+      "solid": [ "Sand", "Obsidian" ],
+      "gas": [ "Smoke" ]
+    }
   },
   {
     "name": "Rock",
-    "disp":{
-      "Floor": [{ "sym":"," }, { "sym":"." }, { "sym":"`" }],
-      "Wall":  [{ "sym":" ", "usym":"░", "style":{ "bgcolour":"White" }}],
-      "RampU": [{ "sym":"^", "usym":"▴" }],
-      "RampD": [{ "sym":"v", "usym":"▾" }]
-    },
-    "style":{"fgcolour":"White" }
+    "states":
+    {
+      "liquid": [ "Lava" ],
+      "solid": [ "Rock" ],
+      "gas": [ "Smoke" ]
+    }
   },
   {
     "name": "Water",
-    "disp":{
-      "Floor": [{ "sym":"~", "usym":"≈"}],
-      "Wall":  [{ "sym":"~", "usym":"≈", "style":{ "bgcolour":"Blue", "attributes":["Bold"] }}],
-      "RampU": [{ "sym":"^", "usym":"▴" }],
-      "RampD": [{ "sym":"^", "usym":"▾" }]
-    },
-    "style": {"fgcolour":"White", "bgcolour":"Blue" },
-    "liquid":true,
-    "freezeTo":"Ice"
-  },
-  {
-    "name": "SaltWater",
-    "disp":{
-      "Floor": [{ "sym":"~", "usym":"≈"}],
-      "Wall":  [{ "sym":"~", "usym":"≈", "style":{ "fgcolour":"White", "bgcolour":"Blue" }}],
-      "RampU": [{ "sym":"^", "usym":"▴", "style":{ "attributes":["Bold"] }}],
-      "RampD": [{ "sym":"v", "usym":"▾", "style":{ "attributes":["Bold"] }}]
-    },
-    "style": {"fgcolour":"Blue" },
-    "liquid": true,
-    "background":true
+    "states":
+    {
+      "liquid": [ "Water" ],
+      "solid": [ "Ice",  "Snow" ],
+      "gas": [ "Steam" ]
+    }
   }
 ]

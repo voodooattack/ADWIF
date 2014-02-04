@@ -58,7 +58,7 @@ namespace ADWIF
 {
 
   Game::Game(const std::shared_ptr<ADWIF::Engine> & engine): myEngine(engine), myPlayer(nullptr),
-    myMap(nullptr), myRaces(), myProfessions(), mySkills(), myFactions(), myMaterials(), myBiomes()
+    myMap(nullptr), myRaces(), myProfessions(), mySkills(), myFactions(), myElements(), myBiomes()
   {
   }
 
@@ -118,6 +118,12 @@ namespace ADWIF
       return;
     }
 
+    if (!PhysFS::exists("elements.json"))
+    {
+      engine()->log("Game", LogLevel::Fatal), "could not locate 'elements.json'";
+      return;
+    }
+
     if (!PhysFS::exists("materials.json"))
     {
       engine()->log("Game", LogLevel::Fatal), "could not locate 'materials.json'";
@@ -126,7 +132,7 @@ namespace ADWIF
 
     PhysFS::ifstream fraces("/races.json"), fprofessions("/professions.json"),
       fskills("/skills.json"), ffactions("/factions.json"),
-      fbiomes("/biomes.json"), fmaterials("/materials.json");
+      fbiomes("/biomes.json"), felements("/elements.json"), fmaterials("/materials.json");
 
     if (!fraces)
     {
@@ -158,13 +164,19 @@ namespace ADWIF
       return;
     }
 
+    if (!felements)
+    {
+      engine()->log("Game", LogLevel::Fatal), "could not open 'elements.json'";
+      return;
+    }
+
     if (!fmaterials)
     {
       engine()->log("Game", LogLevel::Fatal), "could not open 'materials.json'";
       return;
     }
 
-    Json::Value races, professions, skills, factions, biomes, materials;
+    Json::Value races, professions, skills, factions, biomes, elements, materials;
     Json::Reader reader;
 
     try
@@ -234,6 +246,22 @@ namespace ADWIF
         return;
       }
 
+      // Read elements **********************************************************************************
+
+      if (!reader.parse(felements, elements))
+      {
+        engine()->log("Game", LogLevel::Fatal), "error parsing 'elements.json':\n" + reader.getFormattedErrorMessages();
+        return;
+      }
+
+      loadElements(elements);
+
+      if (myElements.empty())
+      {
+        engine()->log("Game", LogLevel::Fatal), "error parsing 'elements.json': no material information found";
+        return;
+      }
+
       // Read materials **********************************************************************************
 
       if (!reader.parse(fmaterials, materials))
@@ -286,6 +314,8 @@ namespace ADWIF
       delete i.second;
     for (auto & i : myBiomes)
       delete i.second;
+    for (auto & i : myElements)
+      delete i.second;
     for (auto & i : myMaterials)
       delete i.second;
     myRaces.clear();
@@ -293,6 +323,7 @@ namespace ADWIF
     myFactions.clear();
     mySkills.clear();
     myBiomes.clear();
+    myElements.clear();
     myMaterials.clear();
   }
 
@@ -515,10 +546,10 @@ namespace ADWIF
     }
   }
 
-  void Game::loadMaterials(const Json::Value & materials)
+  void Game::loadElements(const Json::Value & elements)
   {
-    Material * air = new Material;
-    Material::dispEntry airDisp = {' ', { Cyan, Cyan, Style::Dim }};
+    Element * air = new Element;
+    dispEntry airDisp = {' ', { Cyan, Cyan, Style::Dim }};
 
     air->disp[TerrainType::Floor] = { airDisp };
     air->disp[TerrainType::Wall] = { airDisp };
@@ -528,8 +559,45 @@ namespace ADWIF
     air->style = { Cyan, Cyan, Style::Dim };
     air->desc = "Air";
 
-    myMaterials.insert({"Air", air});
+    myElements.insert({"Air", air});
 
+    const std::string errorMessage = "error parsing 'elements.json': ";
+
+    PhysFS::ifstream felements("/schema/elements.json");
+    Json::Reader reader;
+    Json::Value schema;
+
+    if (!reader.parse(felements, schema))
+    {
+      engine()->log("Game", LogLevel::Fatal), "error parsing schema 'schema/elements.json':\n" +
+        reader.getFormattedErrorMessages();
+      return;
+    }
+
+    validateJsonSchema(schema, "/elements.json", elements);
+
+    try
+    {
+      for (auto value : elements)
+      {
+        Element * element = Element::parse(value);
+        if (myElements.find(element->name) != myElements.end())
+        {
+          delete element;
+          throw ParsingException("Element '" + element->name + "' is already defined");
+        }
+        else
+          myElements.insert( {element->name, element});
+      }
+    }
+    catch (std::runtime_error & e)
+    {
+      throw ParsingException(errorMessage + e.what());
+    }
+  }
+
+  void Game::loadMaterials(const Json::Value & materials)
+  {
     const std::string errorMessage = "error parsing 'materials.json': ";
 
     PhysFS::ifstream fmaterials("/schema/materials.json");
@@ -538,8 +606,7 @@ namespace ADWIF
 
     if (!reader.parse(fmaterials, schema))
     {
-      engine()->log("Game", LogLevel::Fatal), "error parsing schema 'schema/materials.json':\n" +
-        reader.getFormattedErrorMessages();
+      engine()->log("Game", LogLevel::Fatal), "error parsing schema 'schema/materials.json':\n" + reader.getFormattedErrorMessages();
       return;
     }
 
@@ -565,7 +632,7 @@ namespace ADWIF
     }
   }
 
-  void Game::loadBiomes(Json::Value biomes)
+  void Game::loadBiomes(const Json::Value biomes)
   {
 
     const std::string errorMessage = "error parsing 'biomes.json': ";
@@ -620,6 +687,11 @@ namespace ADWIF
       for (auto const & f : r.second->factions)
         if (myFactions.find(f) == myFactions.end())
           throw ParsingException("faction '" + f + "' for race '" + r.second->name + "' not found");
+   for (auto const & m : myMaterials)
+     for (auto const & s: m.second->states)
+       for (auto const & e : s.second)
+         if (myElements.find(e) == myElements.end())
+           throw ParsingException("element '" + e + "' for material '" + m.second->name + "' not found");
   }
 
   Skill * Skill::parse(const Json::Value & value)
@@ -791,23 +863,28 @@ namespace ADWIF
     return race;
   }
 
-  Material * Material::parse(const Json::Value & value)
+  Element * Element::parse(const Json::Value & value)
   {
     std::string name = value["name"].asString();
 
     if (trim(name).empty())
       throw ParsingException("attribute 'name' undefined or empty\n" + value.toStyledString());
 
-    Material * material = new Material;
+    Element * element = new Element;
 
-    material->name = name;
-    material->style = jsonToPalEntry(value["style"]);
+    element->name = name;
+    element->style = jsonToPalEntry(value["style"]);
 
     if (!value["description"].empty())
-      material->desc = value["description"].asString();
+      element->desc = value["description"].asString();
 
-    if (!value["liquid"].empty())
-      material->liquid = value["liquid"].asBool();
+    if (!value["dispName"].empty())
+      element->dispName = value["dispName"].asString();
+
+    if (!value["state"].empty())
+      element->state = strMaterialState(value["state"].asString());
+    else
+      element->state = MaterialState::Solid;
 
     for (auto const & i : value["disp"].getMemberNames())
     {
@@ -827,11 +904,38 @@ namespace ADWIF
         if (o["sym"].empty()) continue;
         int codePoint = o["sym"].asString()[0];
 #endif
-        material->disp[strTerrainType(i)].push_back({codePoint, jsonToPalEntry(o["style"], material->style)});
+        element->disp[strTerrainType(i)].push_back({codePoint, jsonToPalEntry(o["style"], element->style)});
       }
     }
 
-    material->jsonValue = value;
+    element->jsonValue = value;
+
+    return element;
+  }
+
+  Material * Material::parse(const Json::Value & value)
+  {
+    std::string name = value["name"].asString();
+
+    if (trim(name).empty())
+      throw ParsingException("attribute 'name' undefined or empty\n" + value.toStyledString());
+
+    Material * material = new Material;
+
+    material->name = name;
+
+    if (!value["description"].empty())
+      material->desc = value["description"].asString();
+
+    if (!value["dispName"].empty())
+      material->dispName = value["dispName"].asString();
+
+    for (auto const & i : value["states"]["solid"])
+      material->states[MaterialState::Solid].insert(i.asString());
+    for (auto const & i : value["states"]["liquid"])
+      material->states[MaterialState::Liquid].insert(i.asString());
+    for (auto const & i : value["states"]["gas"])
+      material->states[MaterialState::Gas].insert(i.asString());
 
     return material;
   }
@@ -846,7 +950,7 @@ namespace ADWIF
     Biome * biome = new Biome;
 
     biome->name = name;
-    biome->style = jsonToPalEntry(value["style"]);
+    biome->disp.style = jsonToPalEntry(value["style"]);
 
     if (!value["description"].empty())
       biome->desc = value["description"].asString();
@@ -884,10 +988,10 @@ namespace ADWIF
       u8 = value["usym"].asString();
     std::u32string codePoint;
     utf8::utf8to32(u8.begin(), u8.end(), codePoint.begin());
-    biome->sym = codePoint[0];
+    biome->disp.sym = codePoint[0];
 #else
     u8 = value["sym"].asString();
-    biome->sym = u8[0];
+    biome->disp.sym = u8[0];
 #endif
 
     for (auto const & i : value["materials"])
@@ -900,6 +1004,7 @@ namespace ADWIF
 
     return biome;
   }
+
 }
 
 

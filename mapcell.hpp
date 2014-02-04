@@ -77,20 +77,6 @@ namespace ADWIF
     else return TerrainType::Hole;
   }
 
-  enum Structure : uint8_t
-  {
-    None,
-    SWall,
-    Door,
-    Window,
-    Fence,
-    Girder,
-    Stairs,
-    StairsU,
-    StairsD,
-    StairsUD,
-  };
-
   enum MaterialState
   {
     Solid,
@@ -98,10 +84,31 @@ namespace ADWIF
     Gas
   };
 
-  class Element
+  inline std::string materialStateStr(MaterialState state)
+  {
+    switch(state)
+    {
+      case MaterialState::Solid: return "Solid";
+      case MaterialState::Liquid: return "Liquid";
+      case MaterialState::Gas: return "Gas";
+    }
+    return "Unknown";
+  }
+
+  inline MaterialState strMaterialState(const std::string & state)
+  {
+    std::string t;
+    std::transform(state.begin(), state.end(), std::back_inserter(t), &tolower);
+    if (t == "solid") return MaterialState::Solid;
+    else if (t == "liquid") return MaterialState::Liquid;
+    else if (t == "gas") return MaterialState::Gas;
+    else return MaterialState::Solid;
+  }
+
+  class MapElement
   {
   public:
-    virtual ~Element() { }
+    virtual ~MapElement() { }
 
     virtual int volume() const = 0;
     virtual int weight() const = 0;
@@ -114,7 +121,7 @@ namespace ADWIF
     virtual bool isStructure() const = 0;
     virtual bool isAnchored() const = 0;
 
-    virtual Element * clone() const = 0;
+    virtual MapElement * clone() const = 0;
 
   private:
     template<class Archive>
@@ -174,8 +181,8 @@ namespace ADWIF
       return *this;
     }
 
-    const std::vector<Element*> & elements() const { return myElements; }
-    std::vector<Element*> & elements() { return myElements; }
+    const std::vector<MapElement*> & elements() const { return myElements; }
+    std::vector<MapElement*> & elements() { return myElements; }
 
 //     const std::map<std::string, Meta> meta() const { return myMeta; }
 //     std::map<std::string, Meta> meta() { return myMeta; }
@@ -194,7 +201,7 @@ namespace ADWIF
 
     int used() const { return myVolume; }
     int calcUsed() const { return std::accumulate(myElements.begin(), myElements.end(), 0,
-      [](int d, const Element * e) -> int { return d + e->volume(); }); }
+      [](int d, const MapElement * e) -> int { return d + e->volume(); }); }
     int free() const { return MaxVolume - myVolume; }
 
     void clear()
@@ -210,14 +217,14 @@ namespace ADWIF
       myCachedHash = calcHash();
     }
 
-    bool addElement(Element * e) {
+    bool addElement(MapElement * e) {
       bool r = addElementFast(e);
       if (r)
         calcHash();
       return r;
     }
 
-    bool addElementFast(Element * e) {
+    bool addElementFast(MapElement * e) {
       if (e->volume() > free())
         return false;
       myElements.push_back(e);
@@ -225,13 +232,13 @@ namespace ADWIF
       return true;
     }
 
-    void removeElement(Element * e)
+    void removeElement(MapElement * e)
     {
       removeElementFast(e);
       calcHash();
     }
 
-    void removeElementFast(Element * e)
+    void removeElementFast(MapElement * e)
     {
       myElements.erase(std::find(myElements.begin(), myElements.end(), e), myElements.end());
       myVolume -= e->volume();
@@ -255,7 +262,7 @@ namespace ADWIF
     static constexpr int MaxVolume = 1000000000; // mm³
 
   protected:
-    std::vector<Element*> myElements;
+    std::vector<MapElement*> myElements;
 //     std::map<std::string, Meta> myMeta;
     bool myGeneratedFlag;
     bool mySeenFlag;
@@ -283,23 +290,23 @@ namespace ADWIF
 
 //   BOOST_CLASS_VERSION(MapCell, 1)
 
-  class MaterialElement: public Element
+  class MaterialMapElement: public MapElement
   {
   public:
-    MaterialElement(): material(), vol(0), wgt(0), symIdx(0), state(MaterialState::Solid),
-                       anchored(false), alignment(false), cmaterial(nullptr) { }
-    virtual ~MaterialElement() { }
+    MaterialMapElement(): material(), vol(0), wgt(0), symIdx(0), state(MaterialState::Solid),
+                       anchored(false), cmaterial(nullptr) { }
+    virtual ~MaterialMapElement() { }
 
     std::string material;
+    std::string element;
     int vol;
     int wgt;
     unsigned char symIdx;
     MaterialState state;
     bool anchored;
-    bool alignment;
 
     // cached lookups
-    mutable struct Material * cmaterial;
+    mutable class Material * cmaterial;
 
     virtual int volume() const { return vol; }
     virtual int weight() const { return wgt; }
@@ -307,6 +314,7 @@ namespace ADWIF
     virtual uint64_t hash() const {
       uint64_t h = 0;
       boost::hash_combine(h, material);
+      boost::hash_combine(h, element);
       boost::hash_combine(h, vol);
       boost::hash_combine(h, wgt);
       boost::hash_combine(h, symIdx);
@@ -321,26 +329,25 @@ namespace ADWIF
     virtual bool isStructure() const { return false; }
     virtual bool isAnchored() const { return anchored; }
 
-    virtual Element * clone() const { return new MaterialElement(*this); }
+    virtual MapElement * clone() const { return new MaterialMapElement(*this); }
 
   private:
     template<class Archive>
     void serialize(Archive & ar, const unsigned int version)
     {
-      ar & BOOST_SERIALIZATION_BASE_OBJECT_NVP(Element);
+      ar & BOOST_SERIALIZATION_BASE_OBJECT_NVP(MapElement);
       ar & material;
       ar & vol;
       ar & wgt;
       ar & symIdx;
       ar & state;
       ar & anchored;
-      ar & alignment;
     }
     friend class boost::serialization::access;
   };
 }
 
-BOOST_CLASS_EXPORT_KEY(ADWIF::Element)
-BOOST_CLASS_EXPORT_KEY(ADWIF::MaterialElement)
+BOOST_CLASS_EXPORT_KEY(ADWIF::MapElement)
+BOOST_CLASS_EXPORT_KEY(ADWIF::MaterialMapElement)
 
 #endif // MAPCELL_H

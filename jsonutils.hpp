@@ -40,9 +40,9 @@ namespace ADWIF
   void validateJsonSchema(const Json::Value & schema, const std::string & key,
                       const Json::Value & value) throw(ParsingException);
 
-  Json::Value palEntryToJson(const palEntry & entry);
   Json::Value paletteToJson(const std::vector<palEntry> & palette);
 
+  Json::Value palEntryToJson(const palEntry & entry);
   palEntry jsonToPalEntry(const Json::Value & value, const palEntry & def = palEntry());
 }
 

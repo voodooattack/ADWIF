@@ -183,7 +183,7 @@ namespace ADWIF
 
     inline int getHeight(double x, double y, double z = 0)
     {
-      return round(getHeightReal(x, y, z));
+      return ceil(getHeightReal(x, y, z));
     }
 
     inline double getHeightReal(double x, double y, double z = 0)

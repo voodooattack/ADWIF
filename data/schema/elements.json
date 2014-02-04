@@ -1,0 +1,90 @@
+{
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "minSize": 1,
+        "pattern": "^\\w+$"
+      },
+      "description": {
+        "type": "string"
+      },
+      "style": {
+        "type": "object",
+        "properties": {
+          "fgcolour": {
+            "type":"string",
+            "oneOf": ["Default", "Black", "Red", "Green", "Yellow", "Blue", "Magenta", "Cyan", "White"],
+            "caseSensetive":false
+          },
+          "bgcolour": {
+            "type":"string",
+            "oneOf": ["Default", "Black", "Red", "Green", "Yellow", "Blue", "Magenta", "Cyan", "White"],
+            "caseSensetive":false
+          },
+          "attributes": {
+            "type":"array",
+            "items":{
+              "type":"string",
+              "oneOf": ["Normal", "Bold", "Dim", "Dark", "Underline", "StandOut", "AltCharSet"],
+              "caseSensetive":false
+            }
+          }
+        }
+      },
+      "disp": {
+        "type": "object",
+        "pattern":"^.*$",
+        "property": {
+          "type":"array",
+          "nullable":true,
+          "items": {
+            "type":"object",
+            "properties": {
+              "sym": {
+                "type": "string",
+                "minSize": 1,
+                "maxSize": 1
+              },
+              "usym": {
+                "type": "string",
+                "minSize": 1,
+                "maxSize": 1
+              },
+              "style": {
+                "type": "object",
+                "properties": {
+                  "fgcolour": {
+                    "type":"string",
+                    "oneOf": ["Default", "Black", "Red", "Green", "Yellow", "Blue", "Magenta", "Cyan", "White"],
+                    "caseSensetive":false
+                  },
+                  "bgcolour": {
+                    "type":"string",
+                    "oneOf": ["Default", "Black", "Red", "Green", "Yellow", "Blue", "Magenta", "Cyan", "White"],
+                    "caseSensetive":false
+                  },
+                  "attributes": {
+                    "type":"array",
+                    "items":{
+                      "type":"string",
+                      "oneOf": ["Normal", "Bold", "Dim", "Dark", "Underline", "StandOut", "AltCharSet"],
+                      "caseSensetive":false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "state":{
+        "type":"string",
+        "oneOf":["Liquid", "Solid", "Gas"]
+      }
+    },
+    "required": [ "name", "disp", "style" ]
+  }
+}
