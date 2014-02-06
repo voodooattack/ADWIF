@@ -34,5 +34,14 @@
       "solid": [ "Ice",  "Snow" ],
       "gas": [ "Steam" ]
     }
+  },
+  {
+    "name": "SaltWater",
+    "states":
+    {
+      "liquid": [ "Water" ],
+      "solid": [ "Ice" ],
+      "gas": [ "Steam" ]
+    }
   }
 ]

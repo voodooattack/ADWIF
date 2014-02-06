@@ -937,6 +937,8 @@ namespace ADWIF
     for (auto const & i : value["states"]["gas"])
       material->states[MaterialState::Gas].insert(i.asString());
 
+    material->jsonValue = value;
+
     return material;
   }
 

@@ -293,7 +293,7 @@ namespace ADWIF
   class MaterialMapElement: public MapElement
   {
   public:
-    MaterialMapElement(): material(), vol(0), wgt(0), symIdx(0), state(MaterialState::Solid),
+    MaterialMapElement(): material(), element(), vol(0), wgt(0), symIdx(0), state(MaterialState::Solid),
                        anchored(false), cmaterial(nullptr) { }
     virtual ~MaterialMapElement() { }
 
@@ -337,6 +337,7 @@ namespace ADWIF
     {
       ar & BOOST_SERIALIZATION_BASE_OBJECT_NVP(MapElement);
       ar & material;
+      ar & element;
       ar & vol;
       ar & wgt;
       ar & symIdx;

@@ -138,7 +138,9 @@ namespace ADWIF
 
       std::discrete_distribution<int> dd(probabilities.begin(), probabilities.end());
 
-      return std::make_pair(generator()->game()->materials()[possible[dd(generator()->random())]], state);
+      std::string material = possible[dd(generator()->random())];
+
+      return std::make_pair(generator()->game()->materials()[material], state);
     }
 
     void generateCell(int x, int y, int z, int height)
@@ -168,19 +170,19 @@ namespace ADWIF
           mat->cmaterial = m.first;
           mat->material = mat->cmaterial->name;
           mat->state = m.second;
+
           auto elem = mat->cmaterial->states[mat->state].begin();
+
           std::advance(elem, std::uniform_int_distribution<int>(0,
             mat->cmaterial->states[mat->state].size() - 1)(generator()->random()));
+
           mat->element = *elem;
-
-          std::uniform_int_distribution<int> udtype(0,
-            generator()->game()->elements()[mat->element]->disp[TerrainType::Wall].size() - 1);
-
-          mat->symIdx = udtype(generator()->random());
+          mat->symIdx = std::uniform_int_distribution<int> (0,
+            generator()->game()->elements()[mat->element]->disp[TerrainType::Wall].size() - 1)(generator()->random());
           mat->vol = MapCell::MaxVolume;
           mat->anchored = true;
           mat->state = MaterialState::Liquid;
-
+          
           c.seen(true);
         }
       }
@@ -198,19 +200,19 @@ namespace ADWIF
 
         double h = generator()->getHeightReal(x,y);
         double vol = (h - double(height));
+
         vol = ((int)round(vol * 100) / 100.0);
-
-        c.seen(true);
-
-        std::uniform_int_distribution<int> udtype(0,
-          generator()->game()->elements()[mat->element]->disp[TerrainType::Floor].size() - 1);
-
-        mat->symIdx = udtype(generator()->random());
+        mat->symIdx = std::uniform_int_distribution<int> (0,
+          generator()->game()->elements()[mat->element]->disp[TerrainType::Floor].size() - 1)(generator()->random());
         mat->vol = vol * MapCell::MaxVolume;
+
         if (mat->vol <= 0)
           mat->vol = 1;
+
         mat->anchored = true;
         mat->state = MaterialState::Solid;
+
+        c.seen(true);
       }
       else if (z < height)
       {
@@ -223,11 +225,8 @@ namespace ADWIF
         std::advance(elem, std::uniform_int_distribution<int>(0,
           mat->cmaterial->states[mat->state].size() - 1)(generator()->random()));
         mat->element = *elem;
-
-        std::uniform_int_distribution<int> udtype(0,
-          generator()->game()->elements()[mat->element]->disp[TerrainType::Wall].size() - 1);
-
-        mat->symIdx = udtype(generator()->random());
+        mat->symIdx = std::uniform_int_distribution<int> (0,
+          generator()->game()->elements()[mat->element]->disp[TerrainType::Wall].size() - 1)(generator()->random());
         mat->vol = MapCell::MaxVolume;
         mat->anchored = true;
         mat->state = MaterialState::Solid;

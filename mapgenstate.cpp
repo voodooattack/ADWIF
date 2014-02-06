@@ -98,7 +98,7 @@ namespace ADWIF
     int chunkZ = myViewOffZ / myGame->generator()->chunkSizeZ();
 
     myEngine->renderer()->clear();
-    myEngine->renderer()->drawRegion(myViewOffX, myViewOffY, myViewOffZ, myEngine->renderer()->width(),
+    myEngine->renderer()->drawRegion(myViewOffX, myViewOffY, myViewOffZ+1, myEngine->renderer()->width(),
                                      myEngine->renderer()->height(), 0, 0, myGame.get(), myGame->map().get());
     myEngine->renderer()->style(White, Black, Style::Bold);
     myEngine->renderer()->drawChar(myEngine->renderer()->width() / 2, myEngine->renderer()->height() / 2, '@');
@@ -178,7 +178,7 @@ namespace ADWIF
     if (key)
     {
       myViewOffZ = myGame->generator()->getHeight(myViewOffX + myEngine->renderer()->width() / 2,
-                                                  myViewOffY + myEngine->renderer()->height() / 2) + 1;
+                                                  myViewOffY + myEngine->renderer()->height() / 2);
 
 //       myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
 //                                           myViewOffY + myEngine->renderer()->height() / 2,
