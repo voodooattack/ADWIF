@@ -113,7 +113,7 @@ find_package(JsonCpp REQUIRED)
 find_package(FreeImage REQUIRED)
 find_package(Noise REQUIRED)
 #find_package(Eigen3 REQUIRED)
-find_package(Boost 1.54.0 COMPONENTS serialization coroutine context filesystem system iostreams regex program_options thread chrono REQUIRED)
+find_package(Boost 1.55.0 COMPONENTS serialization coroutine context filesystem system iostreams regex program_options thread chrono REQUIRED)
 find_package(Threads REQUIRED)
 
 option(ADWIF_BUILD_EDITOR "whether or not to build the game editor" OFF)

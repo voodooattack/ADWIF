@@ -13,6 +13,8 @@
 #ifndef BOOST_CGL_SCHEDULER_HPP
 #define BOOST_CGL_SCHEDULER_HPP
 
+#define BOOST_COROUTINES_V1
+
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/optional.hpp>

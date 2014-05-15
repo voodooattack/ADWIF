@@ -35,7 +35,7 @@
 #include <boost/thread.hpp>
 #include <boost/thread/condition_variable.hpp>
 
-namespace ovdb = openvdb::v1_1;
+namespace ovdb = openvdb::v2_1;
 
 typedef ovdb::Vec3i Vec3Type;
 

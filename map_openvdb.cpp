@@ -329,7 +329,7 @@ namespace ADWIF
       ovdb::io::Stream ss;
       ss.setCompressionEnabled(false);
       ovdb::GridPtrVec vc = { chunk->grid };
-      ss.write(os, vc);
+      ovdb::io::Stream(os).write(vc);
     } else
       myEngine.lock()->log("Map"), "unloading ", chunk->pos;
     chunk->accessor.reset();
