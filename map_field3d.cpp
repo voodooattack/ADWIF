@@ -80,7 +80,7 @@ namespace ADWIF
 
   MapImpl::~MapImpl() { }
 
-  const MapCell MapImpl::get(int x, int y, int z) const
+  const MapCell & MapImpl::get(int x, int y, int z) const
   {
     std::shared_ptr<Chunk> chunk = getChunk(x, y, z);
     boost::upgrade_lock<boost::shared_mutex> guard(chunk->lock);

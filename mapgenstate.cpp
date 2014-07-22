@@ -72,8 +72,8 @@ namespace ADWIF
 //     myViewOffX = 0;
 //     myViewOffY = 0;
 
-    myViewOffZ = myGame->generator()->getHeight(myViewOffX + myEngine->renderer()->width() / 2,
-                                                myViewOffY + myEngine->renderer()->height() / 2) + 1;
+//     myViewOffZ = myGame->generator()->getHeight(myViewOffX + myEngine->renderer()->width() / 2,
+//                                                 myViewOffY + myEngine->renderer()->height() / 2) + 1;
     myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
                                         myViewOffY + myEngine->renderer()->height() / 2,
                                         myViewOffZ - 2);
@@ -178,7 +178,7 @@ namespace ADWIF
     if (key)
     {
       myViewOffZ = myGame->generator()->getHeight(myViewOffX + myEngine->renderer()->width() / 2,
-                                                  myViewOffY + myEngine->renderer()->height() / 2);
+                                                  myViewOffY + myEngine->renderer()->height() / 2) - 1;
 
 //       myGame->generator()->generateAround(myViewOffX + myEngine->renderer()->width() / 2,
 //                                           myViewOffY + myEngine->renderer()->height() / 2,

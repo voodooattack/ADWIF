@@ -48,8 +48,6 @@ namespace ADWIF
     QObject::connect(myUi->buttonShowSrc, SIGNAL(clicked()), this, SLOT(onShowSrcButtonClicked()));
     QObject::connect(myUi->renderView, SIGNAL(onViewChanged(QRectF)), this, SLOT(onViewChanged(QRectF)));
 
-    // No OpenGL rendering sadly.. there's bug with OGLWidget and QSplitter in Qt5 so this line will remain commented for now
-//     myUi->renderView->setViewport(new QGLWidget(myUi->renderView));
     myUi->renderView->setCellSize(myCellSize);
     myUi->renderView->setScene(new QGraphicsScene(myUi->renderView));
     myUi->renderView->setRenderHints(QPainter::RenderHint::SmoothPixmapTransform);
@@ -183,10 +181,10 @@ namespace ADWIF
 
     for (double y = trect.top() - fmod(trect.top(), myCellSize.height());
          y < trect.bottom() + myCellSize.height() - fmod(trect.bottom(), myCellSize.height());
-            y += myCellSize.height())
+         y += myCellSize.height())
       for (double x = trect.left() - fmod(trect.left(), myCellSize.width());
            x < trect.right() + myCellSize.width() - fmod(trect.right(), myCellSize.width());
-              x += myCellSize.width())
+           x += myCellSize.width())
       {
         QRectF r(x,y,myCellSize.width(), myCellSize.height());
         generateRect(r);
@@ -195,10 +193,13 @@ namespace ADWIF
 
   void HeightMapEditor::generateRect(const QRectF & rect)
   {
+
     QRegion region(rect.toRect(), QRegion::RegionType::Rectangle);
 
     for (QGraphicsItem * i : myUi->renderView->scene()->items())
-      region -= i->boundingRegion(myUi->renderView->transform().inverted());
+      region -= i->boundingRegion(i->sceneTransform());
+
+    if (region.isEmpty()) return;
 
     {
       boost::recursive_mutex::scoped_lock guard(myMutex);

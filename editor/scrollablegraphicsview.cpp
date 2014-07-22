@@ -27,11 +27,13 @@
 #include <QLayout>
 #include <QIntValidator>
 #include <qmath.h>
+#include <QGLWidget>
 
 namespace ADWIF
 {
   ScrollableGraphicsView::ScrollableGraphicsView(QWidget * parent): QGraphicsView(parent), myCellSize(200,200)
   {
+    setViewport(new QGLWidget(this));
     setDragMode(QGraphicsView::DragMode::ScrollHandDrag);
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);

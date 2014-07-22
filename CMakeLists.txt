@@ -57,10 +57,10 @@ endif()
 
 #execute_process(COMMAND make -C ${V8_ROOT} -f ${V8_ROOT}/Makefile i18nsupport=off werror=no native)
 
-set(ADWIF_MAP_ENGINE "OpenVDB" CACHE STRING
-  "Select a mapping backend, valid values are 'OpenVDB' and 'Field3D'")
+set(ADWIF_MAP_ENGINE "Custom" CACHE STRING
+  "Select a mapping backend, valid values are 'OpenVDB', 'Field3D', or 'Custom'")
 set_property(CACHE ADWIF_MAP_ENGINE PROPERTY STRINGS
-  "OpenVDB" "Field3D")
+  "OpenVDB" "Field3D" "Custom")
 
 if(ADWIF_MAP_ENGINE STREQUAL "OpenVDB")
   find_package(OpenVDB REQUIRED)
@@ -76,6 +76,9 @@ elseif(ADWIF_MAP_ENGINE STREQUAL "Field3D")
   set(ADWIF_SOURCES ${ADWIF_SOURCES} map_field3d.cpp mapbank.cpp)
   set(ADWIF_MAP_INCLUDES ${FIELD3D_INCLUDE_DIRS} ${ILMBASE_INCLUDE_DIRS} ${HDF5_INCLUDE_DIRS})
   set(ADWIF_MAP_LIBRARIES ${FIELD3D_LIBRARIES} ${HDF5_LIBRARIES})
+elseif(ADWIF_MAP_ENGINE STREQUAL "Custom")
+  find_package(TBB)
+  set(ADWIF_SOURCES ${ADWIF_SOURCES} map_custom.cpp mapbank.cpp)
 endif()
 
 set(ADWIF_RENDERER "curses" CACHE STRING
@@ -164,8 +167,8 @@ if (ADWIF_BUILD_EDITOR)
 endif()
 
 target_link_libraries(adwif ${EDITOR_LIBRARIES} ${ADWIF_RENDERER_LIBRARIES} ${ADWIF_MAP_LIBRARIES} ${PHYSFS_LIBRARY}
-                      ${V8_LIBRARIES} ${Boost_LIBRARIES} ${FREEIMAGE_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${JSONCPP_LIBRARIES}
-                      ${NOISE_LIBRARY} physfs++)
+                      ${V8_LIBRARIES} ${Boost_LIBRARIES} ${TBB_LIBRARIES} ${FREEIMAGE_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT}
+                      ${JSONCPP_LIBRARIES} ${NOISE_LIBRARY} physfs++)
 
 #add_custom_command(TARGET adwif POST_BUILD COMMENT
 #                     COMMAND ${CMAKE_COMMAND} -E copy_directory

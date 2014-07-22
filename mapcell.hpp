@@ -140,7 +140,7 @@ namespace ADWIF
       myGeneratedFlag(false), mySeenFlag(false),
       myVolume(0), myTemp(294.15), myPressure(101325),
       myCachedHash(0)  { clear(); }
-    explicit MapCell(const MapCell & other)
+    MapCell(const MapCell & other)
     {
       clear();
       for (auto i : other.myElements)

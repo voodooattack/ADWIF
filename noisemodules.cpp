@@ -27,7 +27,7 @@ namespace ADWIF
     int xmin = myHeightmap.index_bases()[0], xmax = myHeightmap.shape()[0];
     int ymin = myHeightmap.index_bases()[1], ymax = myHeightmap.shape()[1];
 
-    constexpr double offsetx = 0.25, offsety = 0.25;
+    constexpr double offsetx = 0.0, offsety = 0.0;
 
     auto clamp = [](int x, int min, int max)
     {

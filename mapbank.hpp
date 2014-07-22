@@ -27,6 +27,7 @@
 #include <unordered_map>
 
 #include <boost/thread/shared_mutex.hpp>
+#include <tbb/concurrent_unordered_map.h>
 
 namespace ADWIF
 {
@@ -49,8 +50,8 @@ namespace ADWIF
   private:
     std::iostream & myStream;
     boost::shared_mutex myMutex;
-    std::unordered_map<uint64_t, MapCell> myCache;
-    std::unordered_map<uint64_t, time_point> myAccessTimes;
+    tbb::interface5::concurrent_unordered_map<uint64_t, MapCell> myCache;
+    tbb::interface5::concurrent_unordered_map<uint64_t, time_point> myAccessTimes;
     clock_type myClock;
   };
 }

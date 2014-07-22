@@ -96,7 +96,7 @@ namespace ADWIF
     std::string getChunkName(const Vec3Type & v) const;
     std::shared_ptr<Chunk> & getChunk(int x, int y, int z) const;
 
-    void loadChunk(std::shared_ptr<Chunk> & chunk, boost::upgrade_lock<boost::shared_mutex> & guard) const;
+    void loadChunk(std::shared_ptr<Chunk> & chunk) const;
     void saveChunk(std::shared_ptr<Chunk> & chunk) const;
 
     void pruneTask();

@@ -38,14 +38,18 @@ namespace ADWIF
 
   const MapCell & MapBank::get(uint64_t hash)
   {
-    boost::upgrade_lock<boost::shared_mutex> guard(myMutex);
+//     boost::upgrade_lock<boost::shared_mutex> guard(myMutex);
     auto cell = myCache.find(hash);
     if (cell == myCache.end())
     {
-      boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
+//       boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
       myCache[hash] = loadCell(hash);
     }
-    myAccessTimes[hash] = myClock.now();
+    if (myAccessTimes[hash] != myClock.now())
+    {
+//       boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
+      myAccessTimes[hash] = myClock.now();
+    }
     if (myCache.size() > 1024 * 1024)
       prune();
     return myCache[hash];
@@ -53,8 +57,7 @@ namespace ADWIF
 
   void MapBank::prune(bool pruneAll)
   {
-    boost::upgrade_lock<boost::shared_mutex> guard(myMutex);
-    boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
+//     boost::unique_lock<boost::shared_mutex> guard(myMutex);
     std::unordered_map<uint64_t, MapCell> toStore;
     auto i = myAccessTimes.begin();
     while (i != myAccessTimes.end())
@@ -63,8 +66,8 @@ namespace ADWIF
       {
         auto item = myCache.find(i->first);
         toStore.insert({item->first, item->second});
-        myCache.erase(myCache.find(i->first));
-        i = myAccessTimes.erase(i);
+        myCache.unsafe_erase(myCache.find(i->first));
+        i = myAccessTimes.unsafe_erase(i);
       } else ++i;
     }
     myStream.clear();
@@ -100,6 +103,7 @@ namespace ADWIF
 
   MapCell MapBank::loadCell(uint64_t hash)
   {
+    boost::unique_lock<boost::shared_mutex> guard(myMutex);
     myStream.clear();
     myStream.seekg(0, std::ios_base::beg);
 
@@ -135,12 +139,14 @@ namespace ADWIF
 
   uint64_t MapBank::put(const MapCell & cell)
   {
-    boost::upgrade_lock<boost::shared_mutex> guard(myMutex);
-    boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
     uint64_t hash = cell.hash();
-    myAccessTimes[hash] = myClock.now();
+//     boost::upgrade_lock<boost::shared_mutex> guard(myMutex);
     if (myCache.find(hash) == myCache.end())
+    {
+//       boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
+      myAccessTimes[hash] = myClock.now();
       myCache[hash] = cell;
+    }
     return hash;
   }
 }

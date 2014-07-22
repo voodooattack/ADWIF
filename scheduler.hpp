@@ -13,7 +13,7 @@
 #ifndef BOOST_CGL_SCHEDULER_HPP
 #define BOOST_CGL_SCHEDULER_HPP
 
-#define BOOST_COROUTINES_V1
+// #define BOOST_COROUTINES_V1
 
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
@@ -51,18 +51,18 @@ namespace boost {
         virtual void yield(const void * v) = 0;
       };
 
-      template<typename Handler, class E>
+      template<typename Handler>
       struct task: public task_base
       {
         friend class boost::cgl::scheduler;
       private:
-        typedef coroutines::coroutine<E(void)> coro_t;
-        typedef E type;
+        typedef coroutines::coroutine<void> coro_t;
+        typedef coroutines::coroutine<void>::push_type push_type;
+        typedef coroutines::coroutine<void>::pull_type pull_type;
         cgl::scheduler * scheduler;
         Handler handler;
-        optional<E> result;
-        boost::shared_ptr<coro_t> coro;
-        typename coro_t::caller_type * ca;
+        boost::shared_ptr<push_type> coro;
+        pull_type * ca;
         task(Handler handler, cgl::scheduler * scheduler);
         virtual bool finished() const { return !created() || !*coro; }
         virtual bool created() const { return coro.get(); }
@@ -70,28 +70,7 @@ namespace boost {
         virtual void * enter();
         virtual void yield(void *);
         virtual void yield(const void *);
-        E coroutine(typename coro_t::caller_type & ca);
-      };
-
-      template<typename Handler>
-      struct task<Handler, void>: public task_base
-      {
-        friend class boost::cgl::scheduler;
-      private:
-        typedef coroutines::coroutine<void(void)> coro_t;
-        typedef void type;
-        Handler handler;
-        cgl::scheduler * scheduler;
-        boost::shared_ptr<coro_t> coro;
-        typename coro_t::caller_type * ca;
-        task(Handler handler, cgl::scheduler * scheduler);
-        virtual bool finished() const { return !created() || !*coro; }
-        virtual bool created() const { return coro.get(); }
-        virtual void create();
-        virtual void * enter();
-        virtual void yield(void *);
-        virtual void yield(const void *);
-        void coroutine(typename coro_t::caller_type & ca);
+        void coroutine(pull_type & ca);
       };
     }
 
@@ -120,7 +99,7 @@ namespace boost {
       template<typename CompletionHandler>
       void schedule(CompletionHandler task)
       {
-        tasks.push(new detail::task<CompletionHandler, typename result_of<CompletionHandler(void)>::type>(task, this));
+        tasks.push(new detail::task<CompletionHandler>(task, this));
         count++;
       }
 
@@ -262,37 +241,20 @@ namespace boost {
 
     namespace detail
     {
-      template<typename Handler, class E>
-      task<Handler,E>::task(Handler handler, cgl::scheduler * scheduler):
-      handler(handler), scheduler(scheduler), coro(), ca(0) { }
-      template<typename Handler, class E>
-      void task<Handler,E>::create() { scheduler->make_current(this); coro.reset(new coro_t(bind(&task::coroutine, this, _1))); }
-      template<typename Handler, class E>
-      void * task<Handler,E>::enter() { scheduler->make_current(this); coro->operator()();
-        if(coro->has_result()) { result = coro->get(); return result.get_ptr(); } else return 0; }
-      template<typename Handler, class E>
-      void task<Handler,E>::yield(void * value) { assert(value); ca->operator()(*reinterpret_cast<typename remove_reference<E>::type*>(value));
-        scheduler->make_current(this); }
-      template<typename Handler, class E>
-      void task<Handler,E>::yield(const void * value) { assert(value); ca->operator()(*reinterpret_cast<
-        const typename remove_reference<E>::type*>(value)); scheduler->make_current(this); }
-      template<typename Handler, class E>
-      E task<Handler,E>::coroutine(typename coro_t::caller_type & ca) { this->ca = &ca; scheduler->make_current(this); return handler(); }
-      // ----
       template<typename Handler>
-      task<Handler,void>::task(Handler handler, cgl::scheduler * scheduler):
+      task<Handler>::task(Handler handler, cgl::scheduler * scheduler):
       handler(handler), scheduler(scheduler), coro(), ca(0) { }
       template<typename Handler>
-      void task<Handler, void>::create() { scheduler->make_current(this);
-        if (!coro) { coro.reset(new coro_t(bind(&task::coroutine, this, _1))); } }
+      void task<Handler>::create() { scheduler->make_current(this); coro.reset(new push_type(bind(&task::coroutine, this, _1))); }
       template<typename Handler>
-      void * task<Handler, void>::enter() { scheduler->make_current(this); coro->operator()(); return 0; }
+      void * task<Handler>::enter() { scheduler->make_current(this); coro->operator()(); }
       template<typename Handler>
-      void task<Handler, void>::yield(void *) { ca->operator()(); scheduler->make_current(this); }
+      void task<Handler>::yield(void * value) { ca->operator()(); scheduler->make_current(this); }
       template<typename Handler>
-      void task<Handler, void>::yield(const void *) { ca->operator()(); scheduler->make_current(this); }
+      void task<Handler>::yield(const void * value) { ca->operator()(); scheduler->make_current(this); }
       template<typename Handler>
-      void task<Handler, void>::coroutine(typename coro_t::caller_type & ca) { this->ca = &ca; scheduler->make_current(this); handler(); }
+      void task<Handler>::coroutine(pull_type & ca) {
+        this->ca = &ca; scheduler->make_current(this); handler(); }
     }
   }
 }

@@ -96,7 +96,8 @@ namespace ADWIF
     boost::upgrade_lock<boost::shared_mutex> guard(chunk->lock);
     if(!chunk->accessor)
     {
-      loadChunk(chunk, guard);
+      boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
+      loadChunk(chunk);
     }
 //     if (myAccessCounter++ % myAccessTolerance == 0)
 //       prune(false);
@@ -113,10 +114,12 @@ namespace ADWIF
     uint64_t hash = myBank->put(cell);
 
     std::shared_ptr<Chunk> chunk = getChunk(x, y, z);
-    boost::upgrade_lock<boost::shared_mutex> guard(chunk->lock);
+    boost::unique_lock<boost::shared_mutex> guard(chunk->lock);
     if(!chunk->accessor)
-      loadChunk(chunk, guard);
-    boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
+    {
+      loadChunk(chunk);
+    }
+//     boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
     if (hash == myBackgroundValue)
       chunk->accessor->setValueOff(
         ovdb::Coord(x % myChunkSize.x(), y % myChunkSize.y(), z % myChunkSize.z()), hash);
@@ -183,8 +186,7 @@ namespace ADWIF
       std::transform(accessTimesSorted.begin(), accessTimesSorted.end(),
                      std::inserter(memoryMap, memoryMap.begin()),
                      [](const std::pair<Vec3Type, std::shared_ptr<Chunk>> pair) {
-                       boost::upgrade_lock<boost::shared_mutex> guard(pair.second->lock);
-                       boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
+                       boost::unique_lock<boost::shared_mutex> guard(pair.second->lock);
                         return std::make_pair(pair.first,
                                               pair.second->grid ? pair.second->grid->memUsage() : 0);
                      });
@@ -211,8 +213,7 @@ namespace ADWIF
       auto i = accessTimesSorted.begin();
       while (i != accessTimesSorted.end())
       {
-        boost::upgrade_lock<boost::shared_mutex> guard(i->second->lock);
-        boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
+        boost::unique_lock<boost::shared_mutex> guard(i->second->lock);
         duration_type dur(myClock.now() - i->second->lastAccess.load());
         if (pruneAll || dur > myDurationThreshold ||
             (memUse > myMemThresholdMB))
@@ -282,9 +283,8 @@ namespace ADWIF
     }
   }
 
-  void MapImpl::loadChunk(std::shared_ptr<Chunk> & chunk, boost::upgrade_lock<boost::shared_mutex> & guard) const
+  void MapImpl::loadChunk(std::shared_ptr<Chunk> & chunk) const
   {
-    boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
     boost::filesystem::path path = myMapPath / chunk->fileName;
     if (boost::filesystem::exists(path) &&
         boost::filesystem::file_size(path))
@@ -314,8 +314,7 @@ namespace ADWIF
 
   void MapImpl::saveChunk(std::shared_ptr<Chunk> & chunk) const
   {
-    boost::upgrade_lock<boost::shared_mutex> guard(chunk->lock);
-    boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
+    boost::unique_lock<boost::shared_mutex> guard(chunk->lock);
     if (!chunk->grid)
       return;
     if (chunk->dirty)

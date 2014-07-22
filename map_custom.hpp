@@ -19,72 +19,45 @@
  *
  */
 
-#ifndef MAP_FIELD3D_H
-#define MAP_FIELD3D_H
+#ifndef MAP_CUSTOM_H
+#define MAP_CUSTOM_H
 
-#include "mapcell.hpp"
 #include "map.hpp"
 #include "mapbank.hpp"
 
-#include <Field3D/DenseField.h>
-#include <Field3D/SparseField.h>
-#include <Field3D/SparseFile.h>
-#include <Field3D/Field3DFile.h>
-#include <Field3D/InitIO.h>
-
+#include <boost/multi_array.hpp>
+#include <boost/tuple/tuple.hpp>
+#include <boost/tuple/tuple_comparison.hpp>
 #include <boost/atomic.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/shared_mutex.hpp>
-#include <boost/functional/hash/extensions.hpp>
-#include <boost/functional/hash/hash.hpp>
-
-#include <memory>
+#include <tbb/concurrent_unordered_map.h>
 #include <fstream>
-#include <unordered_map>
 
-namespace F3D = Field3D::v1_4;
+using vec3 = boost::tuple<int, int, int>;
 
-FIELD3D_NAMESPACE_OPEN
-
-  template<>
-  inline DataTypeEnum DataTypeTraits<uint64_t>::typeEnum()
+namespace tbb {
+  namespace interface5
   {
-    return DataTypeEnum::DataTypeDouble;
-  }
-  template <>
-  inline hid_t DataTypeTraits<uint64_t>::h5type()
-  {
-    return H5T_STD_I64BE;
-  }
-  template <>
-  inline int DataTypeTraits<uint64_t>::h5bits()
-  {
-    return 64;
-  }
-
-FIELD3D_NAMESPACE_HEADER_CLOSE
-
-typedef F3D::V3i Vec3Type;
-
-namespace std
-{
-  template <> struct hash<Vec3Type>
-  {
-    size_t operator()(const Vec3Type & vec) const
+    template<>
+    inline size_t tbb_hasher( const vec3& v )
     {
-      size_t h = 0;
-      boost::hash_combine(h, vec.x);
-      boost::hash_combine(h, vec.y);
-      boost::hash_combine(h, vec.z);
-      return h;
+      std::size_t seed = 0;
+      boost::hash_combine(seed, v.get<0>());
+      boost::hash_combine(seed, v.get<1>());
+      boost::hash_combine(seed, v.get<2>());
+      return seed;
     }
-  };
+  }
+}
+
+std::ostream & operator<< (std::ostream & os, const vec3 & v)
+{
+  os << v.get<0>() << "x" << v.get<1>() << "x" << v.get<2>();
 }
 
 namespace ADWIF
 {
-  typedef F3D::DenseField<uint64_t> FieldType;
-
   class MapImpl
   {
     friend class Map;
@@ -95,8 +68,9 @@ namespace ADWIF
 
     struct Chunk
     {
-      F3D::V3i pos;
-      FieldType::Ptr field;
+      vec3 pos;
+      boost::atomic<uint64_t*> data;
+      uint64_t size;
       boost::atomic<time_point> lastAccess;
       boost::atomic_bool dirty;
       std::string fileName;
@@ -117,27 +91,26 @@ namespace ADWIF
     void prune(bool pruneAll = false) const;
 
   private:
-    std::string getChunkName(const Vec3Type & v) const;
-    std::shared_ptr<Chunk> & getChunk(int x, int y, int z) const;
+    std::shared_ptr<Chunk> getChunk(vec3 index) const;
+    std::string getChunkName(const vec3 & v) const;
 
-    void loadChunk(std::shared_ptr<Chunk> & chunk, boost::upgrade_lock<boost::shared_mutex> & guard) const;
+    void loadChunk(std::shared_ptr<Chunk> & chunk) const;
     void saveChunk(std::shared_ptr<Chunk> & chunk) const;
 
     void pruneTask();
 
   private:
-    typedef std::unordered_map<Vec3Type, std::shared_ptr<Chunk>> GridMap;
 
     Map * myMap;
     std::weak_ptr<class Engine> myEngine;
     boost::filesystem::path myMapPath;
-    mutable GridMap myChunks;
-    std::fstream myIndexStream;
-    std::shared_ptr<MapBank> myBank;
-    F3D::V3i myChunkSize;
+    unsigned int myChunkSizeX, myChunkSizeY, myChunkSizeZ;
     uint64_t myBackgroundValue;
-    mutable boost::recursive_mutex myLock;
+    std::shared_ptr<MapBank> myBank;
+    mutable tbb::interface5::concurrent_unordered_map<vec3, std::shared_ptr<Chunk>> myChunks;
     clock_type myClock;
+    std::fstream myIndexStream;
+
     unsigned long int myMemThresholdMB;
     duration_type myDurationThreshold;
     duration_type myPruningInterval;
@@ -147,8 +120,7 @@ namespace ADWIF
     boost::mutex myPruneThreadMutex;
     boost::atomic_bool myPruneThreadQuitFlag;
 
-    static bool myInitialisedFlag;
   };
 }
 
-#endif // MAP_FIELD3D_H
+#endif // MAP_CUSTOM_H

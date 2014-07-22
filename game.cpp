@@ -331,7 +331,7 @@ namespace ADWIF
   {
     MapCell bg;
     bg.clear();
-    myMap.reset(new Map(engine(), saveDir / "map", false, 512, 512, 32, bg));
+    myMap.reset(new Map(engine(), saveDir / "map", false, 400, 240, 8, bg));
 
     myGenerator.reset(new MapGenerator(shared_from_this()));
 
