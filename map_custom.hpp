@@ -69,7 +69,7 @@ namespace ADWIF
     struct Chunk
     {
       vec3 pos;
-      boost::atomic<uint64_t*> data;
+      uint64_t * data;
       uint64_t size;
       boost::atomic<time_point> lastAccess;
       boost::atomic_bool dirty;
@@ -91,11 +91,12 @@ namespace ADWIF
     void prune(bool pruneAll = false) const;
 
   private:
-    std::shared_ptr<Chunk> getChunk(vec3 index) const;
+    std::shared_ptr<Chunk> getChunk(const vec3 & index) const;
     std::string getChunkName(const vec3 & v) const;
 
     void loadChunk(std::shared_ptr<Chunk> & chunk) const;
     void saveChunk(std::shared_ptr<Chunk> & chunk) const;
+    void freeChunk(std::shared_ptr<Chunk> & chunk) const;
 
     void pruneTask();
 
@@ -117,7 +118,7 @@ namespace ADWIF
     mutable boost::atomic_bool myPruningInProgressFlag;
     boost::thread myPruneThread;
     boost::condition_variable myPruneThreadCond;
-    boost::mutex myPruneThreadMutex;
+    mutable boost::mutex myPruneThreadMutex;
     boost::atomic_bool myPruneThreadQuitFlag;
 
   };

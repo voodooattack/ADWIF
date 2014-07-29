@@ -233,7 +233,6 @@ namespace ADWIF
     std::vector<Region> myRegions;
     int myHeight, myWidth, myDepth;
     unsigned int mySeed;
-    int myLastChunkX, myLastChunkY, myLastChunkZ;
     std::vector<std::shared_ptr<noise::module::Module>> myNoiseModules;
     std::map<std::string, std::shared_ptr<noise::module::Module>> myNoiseModuleDefs;
     std::shared_ptr<noise::module::Module> myHeightSource;

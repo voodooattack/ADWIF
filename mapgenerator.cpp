@@ -91,16 +91,16 @@ namespace ADWIF
         {
           for (unsigned int x = myX; x < myX + myWidth; x++)
           {
+            if (myPriority && counter++ % myPriority == 0)
+              generator()->game()->engine()->scheduler()->yield();
             if (myAbortFlag) {
               generator()->game()->engine()->log("GenerateAreaTask"),
-                boost::str(boost::format("aborting area %ix%ix%i with size %ix%ix%i") %
-                  myX % myY % myZ % myWidth % myHeight % myDepth);
-              done(true);
+              boost::str(boost::format("aborting area %ix%ix%i with size %ix%ix%i") %
+              myX % myY % myZ % myWidth % myHeight % myDepth);
+              done(false);
               myGenerator.lock()->notifyComplete(shared_from_this());
               return;
             }
-            if (myPriority && counter++ % myPriority == 0)
-              generator()->game()->engine()->scheduler()->yield();
             int height = generator()->getHeight(x, y);
             if (z <= 0 || z <= height + 1)
               generateCell(x, y, z, height);
@@ -159,7 +159,7 @@ namespace ADWIF
       c.generated(true);
 
       MaterialMapElement * mat = nullptr;
-      std::pair<Material*,MaterialState> m = getMaterial(x, y, z, height, biome);
+      std::pair<Material *, MaterialState> m = getMaterial(x, y, z, height, biome);
 
       if (biome->aquatic && z <= 0 && z > height)
       {
@@ -182,7 +182,7 @@ namespace ADWIF
           mat->vol = MapCell::MaxVolume;
           mat->anchored = true;
           mat->state = MaterialState::Liquid;
-          
+
           c.seen(true);
         }
       }
@@ -247,7 +247,7 @@ namespace ADWIF
     }
 
     bool done() const { return myDoneFlag.load(); }
-    void done(bool d) { myDoneFlag = d; }
+    void done(bool d) { myDoneFlag.store(d); }
 
     bool aborted() const { return myAbortFlag.load(); }
     void abort() { myAbortFlag.store(true); }
@@ -268,8 +268,8 @@ namespace ADWIF
     myColourIndex(), myRandomEngine(), myGenerationMap(),
     myBiomeMap(), myRegions(), myHeight(0), myWidth(0), myDepth(512),
     mySeed(boost::chrono::system_clock::now().time_since_epoch().count()), myGenerationLock(),
-    myLastChunkX(-1), myLastChunkY(-1), myLastChunkZ(-1), myNoiseModules(), myNoiseModuleDefs(),
-    myHeightSource(), myMapPreprocessingProgress(0), myInitialisedFlag(false)
+    myNoiseModules(), myNoiseModuleDefs(), myHeightSource(), myMapPreprocessingProgress(0),
+    myInitialisedFlag(false)
   {
     myRandomEngine.seed(mySeed);
     myMapPreprocessingProgress.store(0);
@@ -786,9 +786,6 @@ namespace ADWIF
 
   void MapGenerator::generateAround(int x, int y, int z, int radius, int radiusZ)
   {
-    if (isGenerated(x / myChunkSizeX, y / myChunkSizeY, z / myChunkSizeZ))
-      return;
-
     int chunkX = int(x / myChunkSizeX) * myChunkSizeX;
     int chunkY = int(y / myChunkSizeY) * myChunkSizeY;
     int chunkZ = int(z / myChunkSizeZ) * myChunkSizeZ;
@@ -797,12 +794,6 @@ namespace ADWIF
 
     {
       boost::upgrade_lock<boost::shared_mutex> guard(myGenerationLock);
-
-      if (chunkX == myLastChunkX && chunkY == myLastChunkY && chunkZ == myLastChunkZ)
-        return;
-
-      myLastChunkX = chunkX; myLastChunkY = chunkY; myLastChunkZ = chunkZ;
-
 
       if (!myIndex.empty())
       {
@@ -820,7 +811,7 @@ namespace ADWIF
           for(auto & i : items)
             if (i.second != task)
               if (!i.second->done())
-                i.second->priority(1000);
+                i.second->priority(myChunkSizeX * myChunkSizeY * myChunkSizeZ / 16);
 
           task->priority(0);
         }
@@ -828,7 +819,7 @@ namespace ADWIF
 
       boost::upgrade_to_unique_lock<boost::shared_mutex> lock(guard);
 
-      if (!task)
+      if (!task && myGenerationMap[chunkX/myChunkSizeX][chunkY/myChunkSizeY][chunkZ/myChunkSizeZ+myDepth/2] == false)
       {
         task = std::shared_ptr<GenerateTerrainTask>(
           new GenerateTerrainTask(shared_from_this(), chunkX, chunkY, chunkZ,
@@ -851,6 +842,8 @@ namespace ADWIF
             {
               if (!(i == 0 && j == 0 && k == 0))
               {
+                if (myGenerationMap[(chunkX/myChunkSizeX)+i][(chunkY/myChunkSizeY)+j][(chunkZ/myChunkSizeZ)+k+myDepth/2] != false)
+                  continue;
                 if (!myIndex.query(boost::geometry::index::intersects(
                                   Point3D(chunkX+i*myChunkSizeX+myChunkSizeX/2,
                                           chunkY+j*myChunkSizeY+myChunkSizeY/2,
@@ -859,7 +852,7 @@ namespace ADWIF
                   std::shared_ptr<GenerateTerrainTask> task(
                     new GenerateTerrainTask(shared_from_this(), chunkX+i*myChunkSizeX, chunkY+j*myChunkSizeY, chunkZ+k*myChunkSizeZ,
                                         myChunkSizeX, myChunkSizeY, myChunkSizeZ, false));
-                  task->priority(10000);
+                  task->priority(myChunkSizeX * myChunkSizeY * myChunkSizeZ / 8);
                   myIndex.insert(SIVal(Box3D(Point3D(chunkX+i*myChunkSizeX, chunkY+j*myChunkSizeY, chunkZ+k*myChunkSizeZ),
                                             Point3D(chunkX+i*myChunkSizeX + myChunkSizeX,
                                                     chunkY+j*myChunkSizeY + myChunkSizeY,
@@ -871,7 +864,7 @@ namespace ADWIF
       }
     }
 
-    while (task && !task->done())
+    while (task && !task->done() && !task->aborted())
       boost::this_thread::sleep_for(boost::chrono::microseconds(500));
   }
 

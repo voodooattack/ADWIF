@@ -25,8 +25,6 @@
 
 #include <boost/format.hpp>
 
-#include <malloc.h>
-
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/shared_ptr.hpp>
@@ -36,6 +34,7 @@
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/device/file.hpp>
 #include <boost/iostreams/filter/bzip2.hpp>
+#include <boost/lexical_cast.hpp>
 
 namespace ADWIF
 {
@@ -80,7 +79,9 @@ namespace ADWIF
     int chunkX = x / myChunkSizeX, chunkY = y / myChunkSizeY, chunkZ = z / myChunkSizeZ;
     int localX = x % myChunkSizeX, localY = y % myChunkSizeY, localZ = z % myChunkSizeZ;
     std::shared_ptr<Chunk> chunk = getChunk(vec3(chunkX, chunkY, chunkZ));
-    return myBank->get(chunk->data[localZ * myChunkSizeX * myChunkSizeY + localY * myChunkSizeY + localX]);
+    uint64_t hash = chunk->data[localZ * myChunkSizeX * myChunkSizeY + localY * myChunkSizeY + localX];
+    chunk->lock.unlock_shared();
+    return myBank->get(hash);
   }
 
   void MapImpl::set(int x, int y, int z, const MapCell & cell) {
@@ -89,15 +90,30 @@ namespace ADWIF
     std::shared_ptr<Chunk> chunk = getChunk(vec3(chunkX, chunkY, chunkZ));
     chunk->data[localZ * myChunkSizeX * myChunkSizeY + localY * myChunkSizeY + localX] = myBank->put(cell);
     chunk->dirty = true;
+    chunk->lock.unlock_shared();
   }
 
   const MapCell & MapImpl::background() const {
     return myBank->get(myBackgroundValue);
   }
 
+  void MapImpl::pruneTask()
+  {
+    while (!myPruneThreadQuitFlag)
+    {
+      boost::unique_lock<boost::mutex> lock(myPruneThreadMutex);
+      myPruneThreadCond.wait_for(lock, myPruningInterval);
+      if (!myPruneThreadQuitFlag)
+        prune(false);
+      else
+        break;
+    }
+  }
+
   void MapImpl::prune(bool pruneAll) const {
     bool isPruning = false;
 
+    // Use an atomic bool for locking instead of a Mutex because pruneTask() uses a Mutex for timing.
     while (!myPruningInProgressFlag.compare_exchange_weak(isPruning, true))
       boost::this_thread::sleep_for(boost::chrono::microseconds(50));
 
@@ -123,10 +139,8 @@ namespace ADWIF
                             [&](unsigned long int sum,
                                 const std::pair<vec3, std::shared_ptr<Chunk>> second)
                             {
-                              return sum + (second.second->data ? second.second->size : 0);
+                              return sum + (second.second->data ? second.second->size / (1024 * 1024) : 0);
                             });;
-
-    memUse /= (1024 * 1024);
 
     if (memUse > myMemThresholdMB)
       myEngine.lock()->log("Map"), memUse, "MB of memory in use, will attempt to free ", memUse - myMemThresholdMB, "MB";
@@ -140,7 +154,6 @@ namespace ADWIF
       auto i = accessTimesSorted.begin();
       while (i != accessTimesSorted.end())
       {
-        boost::unique_lock<boost::shared_mutex> guard(i->second->lock);
         duration_type dur(myClock.now() - i->second->lastAccess.load());
         if (pruneAll || dur > myDurationThreshold ||
           (memUse > myMemThresholdMB))
@@ -150,7 +163,7 @@ namespace ADWIF
             if (pruneAll)
               myEngine.lock()->log("Map"), "scheduling save operation for ", i->second->pos;
             else if (memUse > myMemThresholdMB)
-              myEngine.lock()->log("Map"), "scheduling save operation for ", i->second->pos, " to free",
+              myEngine.lock()->log("Map"), "scheduling save operation for ", i->second->pos, " to free ",
               i->second->size / (1024 * 1024), "MB of memory";
             else if (dur > myDurationThreshold)
               myEngine.lock()->log("Map"), "scheduling save operation for ", i->second->pos, ", last accessed in ", dur;
@@ -158,12 +171,10 @@ namespace ADWIF
             myEngine.lock()->service().post(boost::bind(&MapImpl::saveChunk, this, i->second));
           }
           else
-          {
-            myEngine.lock()->log("Map"), "unloading ", i->second->pos;
-            free(i->second->data.exchange(nullptr));
-            i->second->dirty = false;
-          }
+            freeChunk(i->second);
+
           posted++;
+
           if (!pruneAll && myMemThresholdMB)
           {
             freed += itemMem;
@@ -181,17 +192,28 @@ namespace ADWIF
     myPruningInProgressFlag.store(false);
   }
 
-  std::shared_ptr<MapImpl::Chunk> MapImpl::getChunk(vec3 index) const {
-    if (myChunks.find(index) != myChunks.end())
+  std::shared_ptr<MapImpl::Chunk> MapImpl::getChunk(const vec3 & index) const {
+    auto chunk = myChunks.find(index);
+    if (chunk != myChunks.end())
     {
-      myChunks[index]->lastAccess = myClock.now();
-      if (!myChunks[index]->data)
-        loadChunk(myChunks[index]);
-      return myChunks[index];
+      chunk->second->lock.lock_shared();
+      chunk->second->lastAccess = myClock.now();
+      if (!chunk->second->data && boost::filesystem::exists(myMapPath / chunk->second->fileName))
+        loadChunk(chunk->second);
+      else if (!chunk->second->data) // a chunk was created but was never edited/saved or file is missing
+      {
+        chunk->second->size = sizeof(uint64_t) * myChunkSizeX * myChunkSizeY * myChunkSizeZ;
+        chunk->second->data = new uint64_t[chunk->second->size];
+        std::fill_n(chunk->second->data, myChunkSizeX * myChunkSizeY * myChunkSizeZ, myBackgroundValue);
+        chunk->second->dirty = true;
+        myEngine.lock()->log("Map"), "created missing chunk ", chunk->second->pos;
+      }
+      return chunk->second;
     }
     else
     {
       std::shared_ptr<Chunk> chunk(new Chunk);
+      chunk->lock.lock_shared();
       chunk->pos = index;
       chunk->fileName = getChunkName(index);
       chunk->lastAccess = myClock.now();
@@ -200,13 +222,12 @@ namespace ADWIF
       else
       {
         chunk->size = sizeof(uint64_t) * myChunkSizeX * myChunkSizeY * myChunkSizeZ;
-        chunk->data = (uint64_t*)malloc(chunk->size);
-        std::fill_n(chunk->data.load(), myChunkSizeX * myChunkSizeY * myChunkSizeZ, myBackgroundValue);
+        chunk->data = new uint64_t[chunk->size];
+        std::fill_n(chunk->data, myChunkSizeX * myChunkSizeY * myChunkSizeZ, myBackgroundValue);
         chunk->dirty = true;
         myEngine.lock()->log("Map"), "created ", chunk->pos;
       }
-      myChunks[index] = chunk;
-      return chunk;
+      return myChunks[index] = chunk;
     }
   }
 
@@ -217,9 +238,10 @@ namespace ADWIF
 
   void MapImpl::loadChunk(std::shared_ptr< MapImpl::Chunk > & chunk) const
   {
+    // This expects the chunk to be lock_shared() before loading
+    chunk->lock.lock_upgrade();
     if (boost::filesystem::exists(myMapPath / chunk->fileName))
     {
-      boost::unique_lock<boost::shared_mutex> guard(chunk->lock);
       myEngine.lock()->log("Map"), "loading ", chunk->pos;
       boost::iostreams::file_source fs((myMapPath / chunk->fileName).native());
       boost::iostreams::filtering_istream os;
@@ -235,6 +257,7 @@ namespace ADWIF
       chunk->dirty = false;
       myEngine.lock()->log("Map"), "loaded ", chunk->pos;
     }
+    chunk->lock.unlock_upgrade_and_lock_shared();
   }
 
   void MapImpl::saveChunk(std::shared_ptr< MapImpl::Chunk > & chunk) const
@@ -249,28 +272,20 @@ namespace ADWIF
       os.push(fs);
       boost::archive::binary_oarchive oa(os);
       oa.save_binary((void*)chunk->data, chunk->size);
-      free(chunk->data.exchange(nullptr));
       chunk->dirty = false;
       myEngine.lock()->log("Map"), "saved ", chunk->pos;
     }
-    else if (!chunk->dirty && chunk->data)
-    {
-      free(chunk->data.exchange(nullptr));
-      myEngine.lock()->log("Map"), "unloaded ", chunk->pos;
-    }
+    duration_type dur(myClock.now() - chunk->lastAccess.load());
+    if (dur > myDurationThreshold)
+      freeChunk(chunk);
   }
 
-  void MapImpl::pruneTask()
+  void MapImpl::freeChunk(std::shared_ptr< MapImpl::Chunk > & chunk) const
   {
-    while (!myPruneThreadQuitFlag)
-    {
-      boost::unique_lock<boost::mutex> lock(myPruneThreadMutex);
-      myPruneThreadCond.wait_for(lock, myPruningInterval);
-      if (!myPruneThreadQuitFlag)
-        prune(false);
-      else
-        break;
-    }
+    boost::unique_lock<boost::shared_mutex> guard(chunk->lock);
+    delete[] chunk->data;
+    chunk->data = nullptr;
+    myEngine.lock()->log("Map"), "unloaded ", chunk->pos;
   }
 
   Map::Map(const std::shared_ptr<class Engine> & engine, const boost::filesystem::path & mapPath, bool load, unsigned int chunkSizeX,
@@ -287,5 +302,6 @@ namespace ADWIF
   const MapCell & Map::background() const { return myImpl->background(); }
   void Map::save() const { myImpl->prune(true); }
   void Map::prune() const { myImpl->prune(false); }
+
 
 }
