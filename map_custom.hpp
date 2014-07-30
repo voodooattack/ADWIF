@@ -34,6 +34,11 @@
 #include <tbb/concurrent_unordered_map.h>
 #include <fstream>
 
+#include <boost/geometry/geometry.hpp>
+#include <boost/geometry/geometries/point.hpp>
+#include <boost/geometry/iterators/base.hpp>
+#include <boost/geometry/core/cs.hpp>
+
 using vec3 = boost::tuple<int, int, int>;
 
 namespace tbb {
@@ -94,9 +99,9 @@ namespace ADWIF
     std::shared_ptr<Chunk> getChunk(const vec3 & index) const;
     std::string getChunkName(const vec3 & v) const;
 
-    void loadChunk(std::shared_ptr<Chunk> & chunk) const;
-    void saveChunk(std::shared_ptr<Chunk> & chunk) const;
-    void freeChunk(std::shared_ptr<Chunk> & chunk) const;
+    void loadChunk(const std::shared_ptr<Chunk> & chunk) const;
+    void saveChunk(const std::shared_ptr<Chunk> & chunk) const;
+    void freeChunk(const std::shared_ptr<Chunk> & chunk) const;
 
     void pruneTask();
 

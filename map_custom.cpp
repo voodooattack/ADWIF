@@ -76,19 +76,25 @@ namespace ADWIF
   }
 
   const MapCell & MapImpl::get(int x, int y, int z) const {
-    int chunkX = x / myChunkSizeX, chunkY = y / myChunkSizeY, chunkZ = z / myChunkSizeZ;
-    int localX = x % myChunkSizeX, localY = y % myChunkSizeY, localZ = z % myChunkSizeZ;
+    int chunkX = x / (int)myChunkSizeX, chunkY = y / (int)myChunkSizeY, chunkZ = z / (int)myChunkSizeZ;
+    int localX = x % (int)myChunkSizeX, localY = y % (int)myChunkSizeY, localZ = z % (int)myChunkSizeZ;
+    if (localX < 0) localX += myChunkSizeX;
+    if (localY < 0) localY += myChunkSizeY;
+    if (localZ < 0) localZ += myChunkSizeZ;
     std::shared_ptr<Chunk> chunk = getChunk(vec3(chunkX, chunkY, chunkZ));
-    uint64_t hash = chunk->data[localZ * myChunkSizeX * myChunkSizeY + localY * myChunkSizeY + localX];
+    uint64_t hash = chunk->data[localZ * myChunkSizeY * myChunkSizeX + localY * myChunkSizeX + localX];
     chunk->lock.unlock_shared();
     return myBank->get(hash);
   }
 
   void MapImpl::set(int x, int y, int z, const MapCell & cell) {
-    int chunkX = x / myChunkSizeX, chunkY = y / myChunkSizeY, chunkZ = z / myChunkSizeZ;
-    int localX = x % myChunkSizeX, localY = y % myChunkSizeY, localZ = z % myChunkSizeZ;
+    int chunkX = x / (int)myChunkSizeX, chunkY = y / (int)myChunkSizeY, chunkZ = z / (int)myChunkSizeZ;
+    int localX = x % (int)myChunkSizeX, localY = y % (int)myChunkSizeY, localZ = z % (int)myChunkSizeZ;
+    if (localX < 0) localX += myChunkSizeX;
+    if (localY < 0) localY += myChunkSizeY;
+    if (localZ < 0) localZ += myChunkSizeZ;
     std::shared_ptr<Chunk> chunk = getChunk(vec3(chunkX, chunkY, chunkZ));
-    chunk->data[localZ * myChunkSizeX * myChunkSizeY + localY * myChunkSizeY + localX] = myBank->put(cell);
+    chunk->data[localZ * myChunkSizeY * myChunkSizeX + localY * myChunkSizeX + localX] = myBank->put(cell);
     chunk->dirty = true;
     chunk->lock.unlock_shared();
   }
@@ -139,7 +145,7 @@ namespace ADWIF
                             [&](unsigned long int sum,
                                 const std::pair<vec3, std::shared_ptr<Chunk>> second)
                             {
-                              return sum + (second.second->data ? second.second->size / (1024 * 1024) : 0);
+                              return sum + (second.second->data ? second.second->size * sizeof(uint64_t) / (1024 * 1024) : 0);
                             });;
 
     if (memUse > myMemThresholdMB)
@@ -148,46 +154,50 @@ namespace ADWIF
       myEngine.lock()->log("Map"), memUse, "MB of memory in use";
 
     unsigned long int freed = 0;
-    unsigned int posted = 0;
 
+    boost::atomic_uint freeCount(0);
+
+    auto freeSaveAndFreeChunk = [&](const std::shared_ptr<Chunk> & chunk)
     {
-      auto i = accessTimesSorted.begin();
-      while (i != accessTimesSorted.end())
+      saveChunk(chunk);
+      freeChunk(chunk);
+      freeCount--;
+    };
+
+    auto i = accessTimesSorted.begin();
+    while (i != accessTimesSorted.end())
+    {
+      duration_type dur(myClock.now() - i->second->lastAccess.load());
+      if (pruneAll || dur > myDurationThreshold ||
+        (memUse > myMemThresholdMB))
       {
-        duration_type dur(myClock.now() - i->second->lastAccess.load());
-        if (pruneAll || dur > myDurationThreshold ||
-          (memUse > myMemThresholdMB))
+        if (pruneAll)
+          myEngine.lock()->log("Map"), "scheduling save operation for ", i->second->pos;
+        else if (memUse > myMemThresholdMB)
+          myEngine.lock()->log("Map"), "scheduling save operation for ", i->second->pos, " to free ",
+            i->second->size * sizeof(uint64_t) / (1024 * 1024), "MB of memory";
+        else if (dur > myDurationThreshold)
+          myEngine.lock()->log("Map"), "scheduling save operation for ", i->second->pos, ", last accessed in ", dur;
+
+        freeCount++;
+        myEngine.lock()->service().post(boost::bind<void>(freeSaveAndFreeChunk, i->second));
+
+        if (!pruneAll && myMemThresholdMB)
         {
-          if (i->second->dirty)
-          {
-            if (pruneAll)
-              myEngine.lock()->log("Map"), "scheduling save operation for ", i->second->pos;
-            else if (memUse > myMemThresholdMB)
-              myEngine.lock()->log("Map"), "scheduling save operation for ", i->second->pos, " to free ",
-              i->second->size / (1024 * 1024), "MB of memory";
-            else if (dur > myDurationThreshold)
-              myEngine.lock()->log("Map"), "scheduling save operation for ", i->second->pos, ", last accessed in ", dur;
-
-            myEngine.lock()->service().post(boost::bind(&MapImpl::saveChunk, this, i->second));
-          }
-          else
-            freeChunk(i->second);
-
-          posted++;
-
-          if (!pruneAll && myMemThresholdMB)
-          {
-            freed += itemMem;
-            if (memUse - freed < myMemThresholdMB * 0.70)
-              break;
-          }
-          i = accessTimesSorted.erase(i);
+          freed += itemMem;
+          if (memUse - freed < myMemThresholdMB * 0.70)
+            break;
         }
-        else ++i;
+        i = accessTimesSorted.erase(i);
       }
+      else ++i;
     }
+
     if (freed)
       myEngine.lock()->log("Map"), "scheduled ", freed, "MB to be freed";
+
+    while(freeCount);
+
     myBank->prune(pruneAll);
     myPruningInProgressFlag.store(false);
   }
@@ -202,9 +212,9 @@ namespace ADWIF
         loadChunk(chunk->second);
       else if (!chunk->second->data) // a chunk was created but was never edited/saved or file is missing
       {
-        chunk->second->size = sizeof(uint64_t) * myChunkSizeX * myChunkSizeY * myChunkSizeZ;
+        chunk->second->size = myChunkSizeX * myChunkSizeY * myChunkSizeZ;
         chunk->second->data = new uint64_t[chunk->second->size];
-        std::fill_n(chunk->second->data, myChunkSizeX * myChunkSizeY * myChunkSizeZ, myBackgroundValue);
+        std::fill_n(chunk->second->data, chunk->second->size, myBackgroundValue);
         chunk->second->dirty = true;
         myEngine.lock()->log("Map"), "created missing chunk ", chunk->second->pos;
       }
@@ -221,9 +231,9 @@ namespace ADWIF
         loadChunk(chunk);
       else
       {
-        chunk->size = sizeof(uint64_t) * myChunkSizeX * myChunkSizeY * myChunkSizeZ;
+        chunk->size = myChunkSizeX * myChunkSizeY * myChunkSizeZ;
         chunk->data = new uint64_t[chunk->size];
-        std::fill_n(chunk->data, myChunkSizeX * myChunkSizeY * myChunkSizeZ, myBackgroundValue);
+        std::fill_n(chunk->data, chunk->size, myBackgroundValue);
         chunk->dirty = true;
         myEngine.lock()->log("Map"), "created ", chunk->pos;
       }
@@ -236,7 +246,7 @@ namespace ADWIF
     return boost::str(boost::format("%d.%d.%d") % v.get<0>() % v.get<1>() % v.get<2>());
   }
 
-  void MapImpl::loadChunk(std::shared_ptr< MapImpl::Chunk > & chunk) const
+  void MapImpl::loadChunk(const std::shared_ptr< MapImpl::Chunk > & chunk) const
   {
     // This expects the chunk to be lock_shared() before loading
     chunk->lock.lock_upgrade();
@@ -250,17 +260,17 @@ namespace ADWIF
       boost::archive::binary_iarchive ia(os);
       if (!chunk->data)
       {
-        chunk->size = sizeof(uint64_t) * myChunkSizeX * myChunkSizeY * myChunkSizeZ;
-        chunk->data = (uint64_t*)malloc(chunk->size);
+        chunk->size = myChunkSizeX * myChunkSizeY * myChunkSizeZ;
+        chunk->data = new uint64_t[chunk->size];
       }
-      ia.load_binary((void*)chunk->data, chunk->size);
+      ia.load_binary((void*)chunk->data, chunk->size * sizeof(uint64_t));
       chunk->dirty = false;
       myEngine.lock()->log("Map"), "loaded ", chunk->pos;
     }
     chunk->lock.unlock_upgrade_and_lock_shared();
   }
 
-  void MapImpl::saveChunk(std::shared_ptr< MapImpl::Chunk > & chunk) const
+  void MapImpl::saveChunk(const std::shared_ptr< MapImpl::Chunk > & chunk) const
   {
     boost::unique_lock<boost::shared_mutex> guard(chunk->lock);
     myEngine.lock()->log("Map"), "saving ", chunk->pos;
@@ -271,19 +281,24 @@ namespace ADWIF
       os.push(boost::iostreams::bzip2_compressor());
       os.push(fs);
       boost::archive::binary_oarchive oa(os);
-      oa.save_binary((void*)chunk->data, chunk->size);
+      oa.save_binary((void*)chunk->data, chunk->size * sizeof(uint64_t));
       chunk->dirty = false;
       myEngine.lock()->log("Map"), "saved ", chunk->pos;
     }
     duration_type dur(myClock.now() - chunk->lastAccess.load());
-    if (dur > myDurationThreshold)
-      freeChunk(chunk);
+    if (chunk->data && dur > myDurationThreshold)
+    {
+      delete[] chunk->data;
+      chunk->data = nullptr;
+      myEngine.lock()->log("Map"), "unloaded ", chunk->pos;
+    }
   }
 
-  void MapImpl::freeChunk(std::shared_ptr< MapImpl::Chunk > & chunk) const
+  void MapImpl::freeChunk(const std::shared_ptr< MapImpl::Chunk > & chunk) const
   {
     boost::unique_lock<boost::shared_mutex> guard(chunk->lock);
-    delete[] chunk->data;
+    if (chunk->data)
+      delete[] chunk->data;
     chunk->data = nullptr;
     myEngine.lock()->log("Map"), "unloaded ", chunk->pos;
   }
