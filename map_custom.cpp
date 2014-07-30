@@ -77,10 +77,9 @@ namespace ADWIF
 
   const MapCell & MapImpl::get(int x, int y, int z) const {
     int chunkX = x / (int)myChunkSizeX, chunkY = y / (int)myChunkSizeY, chunkZ = z / (int)myChunkSizeZ;
-    int localX = x % (int)myChunkSizeX, localY = y % (int)myChunkSizeY, localZ = z % (int)myChunkSizeZ;
-    if (localX < 0) localX += myChunkSizeX;
-    if (localY < 0) localY += myChunkSizeY;
-    if (localZ < 0) localZ += myChunkSizeZ;
+    int localX = ((int)myChunkSizeX + x % (int)myChunkSizeX) % (int)myChunkSizeX,
+        localY = ((int)myChunkSizeY + y % (int)myChunkSizeY) % (int)myChunkSizeY,
+        localZ = ((int)myChunkSizeZ + z % (int)myChunkSizeZ) % (int)myChunkSizeZ;
     std::shared_ptr<Chunk> chunk = getChunk(vec3(chunkX, chunkY, chunkZ));
     uint64_t hash = chunk->data[localZ * myChunkSizeY * myChunkSizeX + localY * myChunkSizeX + localX];
     chunk->lock.unlock_shared();
@@ -89,10 +88,9 @@ namespace ADWIF
 
   void MapImpl::set(int x, int y, int z, const MapCell & cell) {
     int chunkX = x / (int)myChunkSizeX, chunkY = y / (int)myChunkSizeY, chunkZ = z / (int)myChunkSizeZ;
-    int localX = x % (int)myChunkSizeX, localY = y % (int)myChunkSizeY, localZ = z % (int)myChunkSizeZ;
-    if (localX < 0) localX += myChunkSizeX;
-    if (localY < 0) localY += myChunkSizeY;
-    if (localZ < 0) localZ += myChunkSizeZ;
+    int localX = ((int)myChunkSizeX + x % (int)myChunkSizeX) % (int)myChunkSizeX,
+        localY = ((int)myChunkSizeY + y % (int)myChunkSizeY) % (int)myChunkSizeY,
+        localZ = ((int)myChunkSizeZ + z % (int)myChunkSizeZ) % (int)myChunkSizeZ;
     std::shared_ptr<Chunk> chunk = getChunk(vec3(chunkX, chunkY, chunkZ));
     chunk->data[localZ * myChunkSizeY * myChunkSizeX + localY * myChunkSizeX + localX] = myBank->put(cell);
     chunk->dirty = true;
